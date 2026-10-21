@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Adapters.EventGrid\ME.Adapters.EventGrid.csproj" />
+  </ItemGroup>
+</Project>

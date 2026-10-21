@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Adapters.ServiceBus</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Adapters.ServiceBus</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
+    <ProjectReference Include="..\ME.Redaction\ME.Redaction.csproj" />
+    <ProjectReference Include="..\ME.Correlation\ME.Correlation.csproj" />
+  </ItemGroup>
+</Project>

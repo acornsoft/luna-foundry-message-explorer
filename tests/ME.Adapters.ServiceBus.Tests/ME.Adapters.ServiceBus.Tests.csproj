@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
+    <ProjectReference Include="..\..\src\ME.Redaction\ME.Redaction.csproj" />
+  </ItemGroup>
+</Project>
