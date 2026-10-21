@@ -1,0 +1,22 @@
+# Ideas log
+
+Borrowed ideas only. This repository is written from scratch. No source from the projects below is copied here.
+
+| Idea | Source | How it shows up here |
+|---|---|---|
+| A desktop explorer that can peek a queue and open a dead-letter view | [Service Bus Explorer](https://github.com/paolosalvatori/ServiceBusExplorer), MIT. Release 6.3.1 was confirmed at 2026-09-15 17:33:38Z. | Observe mode peeks and can address the dead-letter subqueue. Send, receive, and purge stay out of observe mode. |
+| An Avalonia shell can front a Service Bus explorer on more than one operating system | [philipmat/PurpleExplorer](https://github.com/philipmat/PurpleExplorer), MIT, a continuation of the earlier Avalonia explorer. The original publication is no longer on GitHub. | `ME.App` and `ME.App.Desktop` are a new Avalonia shell. The layout and code are not taken from that project. |
+| One neutral envelope across brokers | [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md) | `CloudEventEnvelope`. Extension names are lowercase letters and digits. |
+| Peek takes no lock. Page with an explicit sequence number. Peek can return deferred, scheduled, and expired messages. | [Message browsing](https://learn.microsoft.com/azure/service-bus-messaging/message-browsing), checked 2026-10-20 | `ServiceBusObserveClient` requires `fromSequenceNumber`, caps a call at 100, and copies `State`, `ExpiresAt`, and `DeliveryCount`. |
+| Complete, abandon, defer, and lock renewal are settlement, not a read | [Transfers, locks, and settlement](https://learn.microsoft.com/azure/service-bus-messaging/message-transfers-locks-settlement) and [deferral](https://learn.microsoft.com/azure/service-bus-messaging/message-deferral) | `ObserveMode` refuses those operations. The side-effect suite records them. |
+| Dead-letter path is a subqueue and those messages do not expire | [Dead-letter queues](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-dead-letter-queues) | Subqueue `deadletter`. Observe mode does not mark those messages expired. |
+| There is no read-only Service Bus data role. Data Receiver can also settle. | [Service Bus RBAC](https://learn.microsoft.com/azure/service-bus-messaging/service-bus-role-based-access-control) | The matrix says so. Read-only is enforced in this code. No SAS fallback is implemented. |
+| A consumer group read is not a peek. Checkpoints and owner epochs move another reader. | [Event Hubs features](https://learn.microsoft.com/azure/event-hubs/event-hubs-features) and [quotas](https://learn.microsoft.com/azure/event-hubs/event-hubs-quotas) | `EventHubsObserveReader` keeps the cursor in memory, rejects an owner level, and rejects a checkpoint store. The group name is `cg-message-explorer`. |
+| Event Grid has no read API. A subscription is a write and needs a destination. | [Service Bus handler](https://learn.microsoft.com/azure/event-grid/handler-service-bus) and [authorization](https://learn.microsoft.com/azure/event-grid/security-authorization) | Observe mode throws. `src/ME.Admin/Templates/eventgrid-diagnostic-subscription.bicep` is the owner-applied tap. The explorer does not deploy it. |
+| Storage Queues can peek the front 32 messages. Get Messages is a receive. | [Peek Messages](https://learn.microsoft.com/rest/api/storageservices/peek-messages) | A matrix row only. No adapter in this skeleton. |
+| Tool annotations are hints. The server must enforce read-only behavior, and message text is untrusted. | [MCP authorization, 2025-06-18](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization) and [OWASP LLM01](https://owasp.org/www-project-top-10-for-large-language-model-applications/) | Admin tools are a separate switch, default off. Bodies are wrapped as data, not instructions. An agent cannot approve its own request. |
+| Masking in a Kafka UI is a useful idea for a later adapter | [kafbat/kafka-ui](https://github.com/kafbat/kafka-ui) | Not built. No code copied. |
+| A multi-broker explorer's C# helper is an idea, not a design to adopt | CrossBusExplorer (prior art, not forked) | Not built. No code copied. |
+| A separate dashboard can show test traces | Aspire Dashboard, used as its own tool. Direction on 2026-10-20: do not copy its code. | Not referenced. No package and no source from that project. |
+
+Re-check vendor pages before a release. The doc dates above are the review date for this skeleton, not a fresh fetch of every page.
