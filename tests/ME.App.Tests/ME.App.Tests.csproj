@@ -18,5 +18,6 @@
   <ItemGroup>
     <Compile Include="..\ME.Brokers.Abstractions.Tests\Fakes\FakeBroker.cs" Link="Fakes\FakeBroker.cs" />
     <Compile Include="..\ME.Adapters.ServiceBus.Tests\ArmFakes.cs" Link="Fakes\ArmFakes.cs" />
+    <Compile Include="..\ME.Voice.Tests\FakeVoiceSocket.cs" Link="Fakes\FakeVoiceSocket.cs" />
   </ItemGroup>
 </Project>

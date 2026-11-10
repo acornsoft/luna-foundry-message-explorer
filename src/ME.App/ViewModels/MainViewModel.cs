@@ -40,6 +40,7 @@ public sealed class MainViewModel : ViewModelBase
         var tester = new LoginTester(vault, () => services.TestProvider ?? ServiceBusIn(catalog), () => Accounts);
         Logins = new LoginsViewModel(vault, tester, () => Accounts);
         Move = new MoveViewModel(MoveMode, move ?? MoveServices.InMemory());
+        Voice = new VoiceViewModel(vault, () => _inventory, () => Connect.ConnectedTo is { Length: > 0 } to ? to : "the connected namespace", scheduler: scheduler);
         Move.Moved += (_, _) => _ = RefreshGridsAsync();
         MoveMode.Changed += (_, _) => OnPropertyChanged(nameof(MoveModeOn));
         Accounts.PropertyChanged += (_, e) =>
@@ -70,6 +71,9 @@ public sealed class MainViewModel : ViewModelBase
         set => Move.IsOn = value;
     }
 
+    /// <summary>The Voice tab: push-to-talk Grok Voice with the read-only tools.</summary>
+    public VoiceViewModel Voice { get; }
+
     public ConnectViewModel Connect { get; }
 
     public QueuesViewModel Queues { get; }
@@ -87,6 +91,7 @@ public sealed class MainViewModel : ViewModelBase
     public const int TopicsTab = 3;
     public const int JobsTab = 4;
     public const int MoveTab = 5;
+    public const int VoiceTab = 6;
 
     private int _selectedTab;
 

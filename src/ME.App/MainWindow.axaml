@@ -166,6 +166,9 @@
       <TabItem x:Name="MoveTab" Header="Move">
         <views:MoveView x:Name="MovePanel" DataContext="{Binding Move}" />
       </TabItem>
+      <TabItem x:Name="VoiceTab" Header="Voice">
+        <views:VoiceView x:Name="VoicePanel" DataContext="{Binding Voice}" />
+      </TabItem>
     </TabControl>
   </DockPanel>
 </Window>

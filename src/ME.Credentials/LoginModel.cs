@@ -15,6 +15,7 @@ public enum LoginSystem
     RabbitMq,
     AwsSqsSns,
     Emulator,
+    Xai,
 }
 
 /// <summary>How a login authenticates. Each kind fixes which non-secret fields it has and whether it has a secret.</summary>
@@ -31,6 +32,7 @@ public enum LoginKind
     AwsAccessKey,
     AwsProfile,
     EmulatorConnectionString,
+    XaiApiKey,
 }
 
 /// <summary>A non-secret field of a login, such as an endpoint or a user name.</summary>
@@ -95,6 +97,9 @@ public static class LoginKinds
         new(LoginKind.EmulatorConnectionString, LoginSystem.Emulator, "Service Bus emulator",
             [new("endpoint", "Endpoint", "localhost")],
             "Connection string", SecretRequired: true),
+        new(LoginKind.XaiApiKey, LoginSystem.Xai, "xAI API key (Grok Voice)",
+            [new("voice", "Voice", "eve")],
+            "API key", SecretRequired: true),
     ];
 
     public static LoginKindInfo Of(LoginKind kind) => All.Single(k => k.Kind == kind);
@@ -110,6 +115,7 @@ public static class LoginKinds
         LoginSystem.RabbitMq => "RabbitMQ",
         LoginSystem.AwsSqsSns => "AWS SQS / SNS",
         LoginSystem.Emulator => "Local emulator",
+        LoginSystem.Xai => "xAI (Grok Voice)",
         _ => system.ToString(),
     };
 
@@ -123,6 +129,7 @@ public static class LoginKinds
         LoginSystem.RabbitMq => "RQ",
         LoginSystem.AwsSqsSns => "AWS",
         LoginSystem.Emulator => "EM",
+        LoginSystem.Xai => "xAI",
         _ => "?",
     };
 }

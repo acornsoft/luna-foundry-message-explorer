@@ -44,6 +44,7 @@ Admin actions are a separate module, off by default. They file a request. Observ
 | `src/ME.ReadTools` | Read-only sources and tools shared by `lfme`, `lfme-mcp` and the app: inventory, limit checks, dead-letter summary |
 | `src/ME.Headless` | `lfme`: headless, read-only inventory and checks for containers and pipelines |
 | `src/ME.McpServer` | `lfme-mcp`: read-only MCP server over stdio |
+| `src/ME.Voice` | Grok Voice session (xAI realtime WebSocket) over the read-only tools, built-in voices, redaction |
 | `plugins/cursor/lfme-readonly` | A Cursor plugin scaffold for `lfme-mcp` (not published) |
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
 | `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
@@ -130,6 +131,10 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 
 `lfme-mcp` is a read-only MCP server over stdio with four tools: `list_entities`, `get_entity`, `check_limits` and `summarize_dead_letters`. It speaks MCP 2026-07-28 and the older `initialize` handshake. It reads counts only. A Cursor plugin scaffold, never published, is in `plugins/cursor/lfme-readonly`. See [MCP server](docs/mcp-server.md).
 
+## Grok Voice
+
+The Voice tab answers questions about the connected namespace out loud, push-to-talk, using the same four read-only tools as `lfme-mcp`. It can never move anything. The xAI key lives only in the vault (Saved logins > xAI). Message bodies are redacted by default, and the voice picker offers xAI's built-in voices only. See [Grok Voice](docs/voice.md).
+
 ## Environments
 
 Azure public, US Government and China accounts; desktop builds for macOS, Windows and Linux (x64 and arm64); and an Android head. See [environments](docs/environments.md).
@@ -160,4 +165,4 @@ The desktop head builds with the solution. CI does not launch the window.
 - Natural language beyond an allow-listed entity name and a minute window.
 - Topology, trace, and dead-letter screens. The window is an observe-mode shell with Accounts, Queues, Topics, and Test jobs tabs.
 - A Storage Queues adapter. The matrix records the peek verdict only.
-- Web, voice, and non-Azure adapters.
+- Web and non-Azure adapters. A platform audio backend for the Voice tab (questions are typed until one is added).

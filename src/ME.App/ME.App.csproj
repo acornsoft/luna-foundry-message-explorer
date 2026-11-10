@@ -19,5 +19,6 @@
     <ProjectReference Include="..\ME.Jobs\ME.Jobs.csproj" />
     <ProjectReference Include="..\ME.Credentials\ME.Credentials.csproj" />
     <ProjectReference Include="..\ME.Operations\ME.Operations.csproj" />
+    <ProjectReference Include="..\ME.Voice\ME.Voice.csproj" />
   </ItemGroup>
 </Project>
