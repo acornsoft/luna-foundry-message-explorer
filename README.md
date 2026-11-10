@@ -79,7 +79,12 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 - `--collection <folder>` opens a collection on the Test jobs tab. `--run` starts the default job.
 - `--pace <n>` sets simulated seconds per real second (0 runs as fast as possible).
 - `--tab queues|topics|jobs` picks the tab.
+- `--exit-after-run <file>` writes the finished run report to the file and quits (used by the macOS smoke check).
 - `--synthetic-demo` (or `LFME_SYNTHETIC_DEMO=1`) adds an in-memory provider with made-up queues, topics, and subscriptions, and connects to it. It is off by default.
+
+## macOS
+
+A DMG with a self-contained app for Apple Silicon and for Intel Macs: `eng/package-macos.sh`. See [docs/install-macos.md](docs/install-macos.md) for install, first launch, and signing.
 
 ## Build and test
 

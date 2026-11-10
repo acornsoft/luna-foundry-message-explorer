@@ -407,6 +407,8 @@ Built:
 - Sample jobs: `erp-standin`, `crew-stock`, `python-hello`.
 - The app (fifth PR): a Test jobs tab runs a job in process through the same runner. The runner streams each step to an `IRunObserver`; the live view queues steps and applies them in one batched UI update at a time, so a 70-message run stays smooth. It shows expected versus actual per correlation ID, a status (pending, passed, failed, dead-lettered, late), the hop timeline and latency, plugin event counters, a status filter, a final summary, and Export JUnit. A pace option slows the simulated clock for watching. The crew-stock sample gives the same JUnit from the panel as from the CLI (a test checks this byte for byte).
 
+The packaged desktop app is self-contained, so a Mac may have no `dotnet`. It runs `dotnet plugin.dll` commands itself (`<app> --run-plugin plugin.dll`, the plugin in its own load context); the wire is the same stdio JSON-RPC.
+
 Safety: the loader and the runner accept only `provider: in-memory`. `ME.Jobs` and the CLI do not reference any broker SDK or the Service Bus adapter (a test checks this). The Service Bus adapter stays read-only and its no-mutation guard still passes.
 
 Stubs and later work:

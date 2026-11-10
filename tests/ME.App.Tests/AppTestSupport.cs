@@ -19,6 +19,13 @@ internal static class Repo
 
     public static string ErpStandin => Path("samples", "jobs", "erp-standin");
 
+    /// <summary>The desktop head built in the same configuration as the tests.</summary>
+    public static string DesktopDll => Path("src", "ME.App.Desktop", "bin", Configuration, "net8.0", "Acornsoft.MessageExplorer.Desktop.dll");
+
+    private static string Configuration =>
+        typeof(Repo).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyConfigurationAttribute), false)
+            .OfType<System.Reflection.AssemblyConfigurationAttribute>().Single().Configuration;
+
     private static string FindRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -87,7 +94,13 @@ internal sealed class FakeDialogs(string? folder, string? junitPath) : ViewModel
 {
     public string? SuggestedName { get; private set; }
 
-    public Task<string?> PickCollectionFolderAsync() => Task.FromResult(folder);
+    public string? StartFolder { get; private set; }
+
+    public Task<string?> PickCollectionFolderAsync(string? startFolder)
+    {
+        StartFolder = startFolder;
+        return Task.FromResult(folder);
+    }
 
     public Task<string?> PickJUnitPathAsync(string suggestedFileName)
     {

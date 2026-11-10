@@ -59,17 +59,21 @@ public sealed class JobsViewModel : ViewModelBase
     private string _statusText = "Choose a collection folder.";
     private PaceOption _selectedPace;
     private CancellationTokenSource? _cancel;
+    private JobOption? _selectedSample;
 
     public JobsViewModel(
         IUiScheduler scheduler,
         IJobsDialogs? dialogs = null,
         Func<JobRunner>? runnerFactory = null,
-        Func<string, string?>? environmentVariables = null)
+        Func<string, string?>? environmentVariables = null,
+        string? samplesFolder = null)
     {
         _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
         _runnerFactory = runnerFactory ?? (() => new JobRunner());
         _environmentVariables = environmentVariables ?? Environment.GetEnvironmentVariable;
         Live = new LiveRunViewModel(scheduler, dialogs);
+        SamplesFolder = samplesFolder;
+        Samples = BundledSamples.List(samplesFolder);
         Paces =
         [
             new PaceOption("As fast as possible", 0),
@@ -83,6 +87,29 @@ public sealed class JobsViewModel : ViewModelBase
     }
 
     public LiveRunViewModel Live { get; }
+
+    /// <summary>Where the bundled sample collections are, if the app ships any. The folder picker starts here.</summary>
+    public string? SamplesFolder { get; }
+
+    public IReadOnlyList<JobOption> Samples { get; }
+
+    public bool HasSamples => Samples.Count > 0;
+
+    /// <summary>Picking a sample opens it, like choosing its folder.</summary>
+    public JobOption? SelectedSample
+    {
+        get => _selectedSample;
+        set
+        {
+            if (Set(ref _selectedSample, value) && value is not null && !IsBusy)
+                OpenCollection(value.Path);
+        }
+    }
+
+    /// <summary>After a run: the state, the summary and the counters, one per line. Null before the first run ends.</summary>
+    public string? FinishedReport => State is JobPanelState.Passed or JobPanelState.Failed or JobPanelState.Cancelled or JobPanelState.Error
+        ? string.Join('\n', State.ToString(), Live.Summary, Live.CountersText, Live.EventsText)
+        : null;
 
     public IJobsDialogs? Dialogs
     {
@@ -171,6 +198,7 @@ public sealed class JobsViewModel : ViewModelBase
             if (Set(ref _state, value))
             {
                 OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(FinishedReport));
                 BrowseCommand.RaiseCanExecuteChanged();
                 RunCommand.RaiseCanExecuteChanged();
                 CancelCommand.RaiseCanExecuteChanged();
@@ -293,7 +321,8 @@ public sealed class JobsViewModel : ViewModelBase
     {
         if (Dialogs is null)
             return;
-        var folder = await Dialogs.PickCollectionFolderAsync().ConfigureAwait(true);
+        var start = SamplesFolder ?? (_collectionFolder is null ? null : Path.GetDirectoryName(_collectionFolder));
+        var folder = await Dialogs.PickCollectionFolderAsync(start).ConfigureAwait(true);
         if (!string.IsNullOrEmpty(folder))
             OpenCollection(folder);
     }

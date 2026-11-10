@@ -14,13 +14,13 @@ public sealed class MainViewModel : ViewModelBase
 {
     private IEntityInventory? _inventory;
 
-    public MainViewModel(ProviderCatalog catalog, IUiScheduler? scheduler = null)
+    public MainViewModel(ProviderCatalog catalog, IUiScheduler? scheduler = null, Func<Jobs.Running.JobRunner>? runnerFactory = null, string? samplesFolder = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         Shell = ShellModel.Observe();
         Queues = new QueuesViewModel();
         Topics = new TopicsViewModel();
-        Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance);
+        Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance, runnerFactory: runnerFactory, samplesFolder: samplesFolder);
         Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected);
     }
 

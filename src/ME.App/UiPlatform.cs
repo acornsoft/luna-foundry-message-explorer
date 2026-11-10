@@ -19,12 +19,14 @@ public sealed class DispatcherUiScheduler : IUiScheduler
 /// <summary>The window's folder and save pickers. Only local paths are used.</summary>
 public sealed class WindowJobsDialogs(TopLevel owner) : IJobsDialogs
 {
-    public async Task<string?> PickCollectionFolderAsync()
+    public async Task<string?> PickCollectionFolderAsync(string? startFolder)
     {
+        var start = startFolder is null ? null : await owner.StorageProvider.TryGetFolderFromPathAsync(startFolder).ConfigureAwait(true);
         var folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = "Choose a test-job collection folder (with collection.yaml)",
             AllowMultiple = false,
+            SuggestedStartLocation = start,
         }).ConfigureAwait(true);
         return folders.Count == 0 ? null : folders[0].TryGetLocalPath();
     }

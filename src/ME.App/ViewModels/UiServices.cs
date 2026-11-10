@@ -26,7 +26,8 @@ public sealed class InlineUiScheduler : IUiScheduler
 /// <summary>File and folder pickers. The window supplies the real ones; tests supply answers.</summary>
 public interface IJobsDialogs
 {
-    Task<string?> PickCollectionFolderAsync();
+    /// <summary>Pick a collection folder, starting in <paramref name="startFolder"/> when given.</summary>
+    Task<string?> PickCollectionFolderAsync(string? startFolder);
 
     Task<string?> PickJUnitPathAsync(string suggestedFileName);
 }

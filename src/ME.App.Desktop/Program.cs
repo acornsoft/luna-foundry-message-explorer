@@ -4,6 +4,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 using Avalonia;
+using Acornsoft.MessageExplorer.Jobs.Hosting;
 using Acornsoft.MessageExplorer.Shell;
 
 namespace Acornsoft.MessageExplorer.Desktop;
@@ -11,8 +12,13 @@ namespace Acornsoft.MessageExplorer.Desktop;
 public static class Program
 {
     [STAThread]
-    public static void Main(string[] args) =>
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static int Main(string[] args)
+    {
+        // The packaged app has no separate dotnet; plugin processes are this executable with --run-plugin.
+        if (args.Length >= 2 && args[0] == DotnetPluginCommand.RunPluginSwitch)
+            return PluginSelfHost.Run(args[1], args[2..]);
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()

@@ -17,6 +17,8 @@
         <TextBlock Text="Collection" Opacity="0.8" />
         <TextBlock x:Name="CollectionText" Text="{Binding CollectionText}" TextWrapping="Wrap" />
         <Button x:Name="BrowseButton" Content="Choose collection folder..." Command="{Binding BrowseCommand}" />
+        <ComboBox x:Name="SamplePicker" ItemsSource="{Binding Samples}" SelectedItem="{Binding SelectedSample}" IsVisible="{Binding HasSamples}"
+                  PlaceholderText="Or open a bundled sample" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsBusy}" />
         <TextBlock Text="Job" Opacity="0.8" />
         <ComboBox x:Name="JobPicker" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsBusy}" />
         <TextBlock Text="Environment" Opacity="0.8" />

@@ -20,6 +20,9 @@ public sealed record PluginHostOptions
     public TimeSpan CallTimeout { get; init; } = TimeSpan.FromSeconds(10);
 
     public TimeSpan ShutdownTimeout { get; init; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>Optional rewrite of a plugin command before it starts, for example <see cref="DotnetPluginCommand.RunWithSelf"/>.</summary>
+    public Func<IReadOnlyList<string>, IReadOnlyList<string>>? CommandResolver { get; init; }
 }
 
 /// <summary>
@@ -74,6 +77,8 @@ public sealed class StdioJsonRpcPluginHost : IPluginHost
         if (command.Count == 0)
             throw new ArgumentException("A plugin command is required.", nameof(command));
         options ??= new PluginHostOptions();
+        if (options.CommandResolver is { } resolve)
+            command = resolve(command);
 
         var start = new ProcessStartInfo(command[0])
         {

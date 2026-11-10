@@ -38,6 +38,11 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 - Replay store, gRPC transport, sending to sandbox brokers behind an allow-list, redaction of saved run records.
 - `hop-relay`: ordering gates and timer-driven reprocessing.
 
+## Packaging
+
+- macOS DMG (arm64 and x64), ad-hoc signed: built in the sixth PR. Developer ID signing and notarization are wired and wait for the certificate and API key. See [install on macOS](install-macos.md).
+- Windows and Linux packages. Not started.
+
 ## Learning
 
 - Video learning deliverable for LFME, to hand off to Jodie (Videographer) later. Not started.

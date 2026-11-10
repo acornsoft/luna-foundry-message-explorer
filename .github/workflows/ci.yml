@@ -28,3 +28,93 @@ jobs:
 
       - name: License check
         run: bash eng/check-license.sh
+
+  macos-dmg-linux:
+    name: macOS DMG built on Linux (ad-hoc signed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Packaging tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q hfsprogs zlib1g-dev libbz2-dev
+          bash eng/macos/install-linux-tools.sh .tools/macos
+
+      - name: Package
+        run: LFME_MAC_TOOLS="$PWD/.tools/macos" bash eng/package-macos.sh --out artifacts/dist
+
+      - name: Verify DMGs
+        run: |
+          export LFME_MAC_TOOLS="$PWD/.tools/macos"
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-arm64.dmg arm64
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-x64.dmg x64
+
+      - name: Upload DMGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: lfme-dmg-built-on-linux
+          path: |
+            artifacts/dist/*.dmg
+            artifacts/dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  macos-dmg:
+    name: macOS DMG on a Mac (package, verify, launch)
+    runs-on: macos-latest
+    needs: macos-dmg-linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Package with codesign and hdiutil
+        run: bash eng/package-macos.sh --out artifacts/dist
+
+      - name: Verify DMGs
+        run: |
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-arm64.dmg arm64
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-x64.dmg x64
+
+      - name: Launch the arm64 app and run the bundled sample
+        run: bash eng/macos/smoke-test.sh artifacts/dist/*-arm64.dmg artifacts/smoke/mac-built-arm64.txt artifacts/smoke/mac-built-arm64.png
+
+      - name: Download the DMGs built on Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: lfme-dmg-built-on-linux
+          path: artifacts/linux-built
+
+      - name: Verify and launch the arm64 DMG built on Linux
+        run: |
+          bash eng/macos/verify-dmg.sh artifacts/linux-built/*-arm64.dmg arm64
+          bash eng/macos/smoke-test.sh artifacts/linux-built/*-arm64.dmg artifacts/smoke/linux-built-arm64.txt artifacts/smoke/linux-built-arm64.png
+
+      - name: Launch the x64 app under Rosetta
+        continue-on-error: true
+        run: bash eng/macos/smoke-test.sh artifacts/dist/*-x64.dmg artifacts/smoke/mac-built-x64.txt "" arch -x86_64
+
+      - name: Upload DMGs and smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lfme-dmg-built-on-mac
+          path: |
+            artifacts/dist/*.dmg
+            artifacts/dist/SHA256SUMS.txt
+            artifacts/smoke/
+          if-no-files-found: warn

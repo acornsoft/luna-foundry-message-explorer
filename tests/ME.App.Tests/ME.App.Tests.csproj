@@ -7,6 +7,8 @@
     <ProjectReference Include="..\..\src\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\ME.Jobs\ME.Jobs.csproj" />
     <ProjectReference Include="..\..\src\ME.Jobs.Cli\ME.Jobs.Cli.csproj" />
+    <!-- The desktop head hosts plugins itself in the packaged app (no dotnet on the machine). -->
+    <ProjectReference Include="..\..\src\ME.App.Desktop\ME.App.Desktop.csproj" ReferenceOutputAssembly="false" />
     <!-- The sample plugins run as processes in the end-to-end tests. -->
     <ProjectReference Include="..\..\samples\plugins\OrderGenerator\OrderGenerator.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\samples\plugins\ErpStandin\ErpStandin.csproj" ReferenceOutputAssembly="false" />

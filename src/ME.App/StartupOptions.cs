@@ -12,10 +12,20 @@ namespace Acornsoft.MessageExplorer.Shell;
 /// Command-line options for the desktop app:
 /// <c>--collection &lt;folder&gt;</c> opens a test-job collection, <c>--tab queues|topics|jobs</c> picks the tab,
 /// <c>--synthetic-demo</c> (or <c>LFME_SYNTHETIC_DEMO=1</c>) adds and connects the synthetic demo provider,
-/// <c>--pace &lt;simulated seconds per second&gt;</c> picks a pace, and <c>--run</c> starts the selected job.
+/// <c>--pace &lt;simulated seconds per second&gt;</c> picks a pace, <c>--run</c> starts the selected job, and
+/// <c>--exit-after-run &lt;file&gt;</c> writes the finished report to the file and quits (a smoke check).
 /// </summary>
-public sealed record StartupOptions(string? Collection, int? Tab, bool SyntheticDemo, double? Pace = null, bool Run = false)
+public sealed record StartupOptions(string? Collection, int? Tab, bool SyntheticDemo, double? Pace = null, bool Run = false, string? ExitAfterRunReport = null)
 {
+    /// <summary>Open the default bundled sample when no collection was given. The tab is left alone.</summary>
+    public StartupOptions WithDefaultCollection(string? samplesFolder)
+    {
+        if (Collection is not null || samplesFolder is null)
+            return this;
+        var sample = Path.Combine(samplesFolder, BundledSamples.DefaultSample);
+        return Directory.Exists(sample) ? this with { Collection = sample } : this;
+    }
+
     public static StartupOptions Parse(IReadOnlyList<string> args, Func<string, string?> environment)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -25,6 +35,7 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
         var demo = environment("LFME_SYNTHETIC_DEMO") is "1" or "true";
         double? pace = null;
         var run = false;
+        string? report = null;
         for (var i = 0; i < args.Count; i++)
         {
             switch (args[i])
@@ -50,10 +61,13 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
                 case "--run":
                     run = true;
                     break;
+                case "--exit-after-run" when i + 1 < args.Count:
+                    report = args[++i];
+                    break;
             }
         }
 
-        return new StartupOptions(collection, tab ?? (collection is null ? null : MainViewModel.JobsTab), demo, pace, run);
+        return new StartupOptions(collection, tab ?? (collection is null ? null : MainViewModel.JobsTab), demo, pace, run, report);
     }
 
     public void Apply(MainViewModel main)
