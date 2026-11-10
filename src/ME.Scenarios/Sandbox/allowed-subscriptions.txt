@@ -1,0 +1,2 @@
+# Synthetic allow-list. Not a real subscription.
+00000000-0000-0000-0000-000000000001

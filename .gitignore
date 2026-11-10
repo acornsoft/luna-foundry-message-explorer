@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+TestResults/
+*.trx
+.dotnet/
+artifacts/

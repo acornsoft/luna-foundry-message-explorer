@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless.XUnit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.App\ME.App.csproj" />
+    <ProjectReference Include="..\..\src\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\ME.Jobs\ME.Jobs.csproj" />
+    <ProjectReference Include="..\..\src\ME.Jobs.Cli\ME.Jobs.Cli.csproj" />
+    <!-- The sample plugins run as processes in the end-to-end tests. -->
+    <ProjectReference Include="..\..\samples\plugins\OrderGenerator\OrderGenerator.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\samples\plugins\ErpStandin\ErpStandin.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\samples\plugins\HopRelay\HopRelay.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\ME.Brokers.Abstractions.Tests\Fakes\FakeBroker.cs" Link="Fakes\FakeBroker.cs" />
+  </ItemGroup>
+</Project>
