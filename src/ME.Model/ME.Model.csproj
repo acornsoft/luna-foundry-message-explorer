@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Model</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Model</AssemblyName>
+  </PropertyGroup>
+</Project>

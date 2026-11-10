@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Samples.HopRelay</RootNamespace>
+    <AssemblyName>HopRelay</AssemblyName>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,13 @@
+{
+  "name": "lfme-browser-vault-tests",
+  "private": true,
+  "license": "MPL-2.0",
+  "type": "module",
+  "description": "Runs lfme-vault.js in headless Chromium. Test-only; nothing here ships.",
+  "scripts": {
+    "test": "node --test vault.test.mjs interop.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.0"
+  }
+}
