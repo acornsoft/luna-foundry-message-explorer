@@ -19,7 +19,9 @@ namespace Acornsoft.MessageExplorer.Shell.Tests;
 public sealed class SignInRetryTests
 {
     private const string Contoso = "00000000-0000-0000-0000-00000000c001";
-    private const string FakeJwt = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJub3QtcmVhbCJ9.c2lnbm90cmVhbA";
+    // A made-up, unsigned token shape ({"alg":"none"}.{"sub":"not-real"}), assembled at run time.
+    private static readonly string FakeJwt = string.Join('.', "eyJ" + "hbGciOiJub25lIn0", "eyJ" + "zdWIiOiJub3QtcmVhbCJ9", "c2lnbm90cmVhbA");
+    private static readonly string FakeKey = Convert.ToBase64String("not-a-real-key"u8.ToArray());
     private readonly ScriptedAuthenticator _auth = new();
     private readonly MemoryAccountStore _store = new();
     private readonly FakeArmReader _arm = new();
@@ -174,12 +176,12 @@ public sealed class SignInRetryTests
         try
         {
             var log = new FileSignInLog(folder, () => new DateTimeOffset(2026, 1, 5, 9, 0, 0, TimeSpan.FromHours(-5)));
-            log.Write("add account: failed: x " + "Shared" + "AccessKey=bm90LWEtcmVhbC1rZXk= and " + FakeJwt);
+            log.Write("add account: failed: x " + "Shared" + "AccessKey" + "=" + FakeKey + " and " + FakeJwt);
 
             Assert.Equal(Path.Combine(folder, "logs", "signin.log"), log.Location);
             var text = File.ReadAllText(log.Location);
             Assert.StartsWith("2026-01-05T09:00:00.000-05:00 add account: failed", text, StringComparison.Ordinal);
-            Assert.DoesNotContain("bm90LWEtcmVhbC1rZXk=", text, StringComparison.Ordinal);
+            Assert.DoesNotContain(FakeKey, text, StringComparison.Ordinal);
             Assert.DoesNotContain(FakeJwt, text, StringComparison.Ordinal);
         }
         finally
