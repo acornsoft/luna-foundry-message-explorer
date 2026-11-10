@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Headless\ME.Headless.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\ME.Adapters.ServiceBus.Tests\MutationScanner.cs" Link="Guard\MutationScanner.cs" />
+  </ItemGroup>
+</Project>

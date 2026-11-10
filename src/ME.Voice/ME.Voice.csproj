@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Voice</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Voice</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
+    <ProjectReference Include="..\ME.ReadTools\ME.ReadTools.csproj" />
+    <ProjectReference Include="..\ME.Redaction\ME.Redaction.csproj" />
+    <ProjectReference Include="..\ME.Credentials\ME.Credentials.csproj" />
+  </ItemGroup>
+</Project>
