@@ -38,8 +38,11 @@ public sealed record EntitySnapshot(
     public string Path => Parent is null ? Name : $"{Parent}/subscriptions/{Name}";
 }
 
-/// <summary>The result of one inventory read, with the number of broker pages it took.</summary>
-public sealed record InventoryResult(IReadOnlyList<EntitySnapshot> Entities, int PagesRead);
+/// <summary>
+/// The result of one inventory read, with the number of broker pages it took. <paramref name="Notice"/> is a
+/// plain sentence to show above the grid when the connection can only see part of the picture.
+/// </summary>
+public sealed record InventoryResult(IReadOnlyList<EntitySnapshot> Entities, int PagesRead, string? Notice = null);
 
 /// <summary>
 /// Read-only entity inventory. There is no send, receive, lock, settle, create, update, or delete here,

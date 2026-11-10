@@ -44,13 +44,26 @@
         <StackPanel Spacing="4" IsVisible="{Binding UseEntra}">
           <TextBlock Text="Namespace" />
           <TextBox x:Name="NamespaceBox" Text="{Binding NamespaceText}" Watermark="contoso-synthetic.servicebus.windows.net" />
-          <TextBlock Text="Uses your Azure sign-in. No secret is stored." TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+          <TextBlock x:Name="EntraHintText" Text="{Binding EntraHint}" TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
         </StackPanel>
 
         <StackPanel Spacing="4" IsVisible="{Binding UseConnectionString}">
-          <TextBlock Text="Connection string" />
-          <TextBox x:Name="ConnectionStringBox" Text="{Binding ConnectionString}" PasswordChar="•" RevealPassword="False" Watermark="Endpoint=sb://..." />
-          <TextBlock Text="Held in memory only. Cleared after connecting. Never saved." TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+          <TextBlock Text="Connection string or SAS token" />
+          <TextBox x:Name="ConnectionStringBox" Text="{Binding ConnectionString}" PasswordChar="•" RevealPassword="False" Watermark="Endpoint=sb://... or SharedAccessSignature sr=..." />
+          <TextBlock x:Name="DetectedText" Text="{Binding DetectedText}" IsVisible="{Binding HasDetectedText}" Classes.error="{Binding DetectedIsError}" TextWrapping="Wrap" FontSize="12" />
+          <TextBlock Text="Namespace key, entity key (EntityPath), SAS token, Endpoint only (signs in with your account), or the local emulator." TextWrapping="Wrap" Opacity="0.6" FontSize="11" />
+          <CheckBox x:Name="SaveConnectionBox" Content="{Binding SaveLabel}" IsChecked="{Binding SaveConnection}" IsEnabled="{Binding CanSave}" />
+          <TextBox x:Name="SaveNameBox" Text="{Binding SaveName}" Watermark="Name (optional)" IsVisible="{Binding SaveConnection}" />
+          <TextBlock x:Name="SaveNoteText" Text="{Binding SaveNote}" TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+        </StackPanel>
+
+        <StackPanel Spacing="4" IsVisible="{Binding HasSavedConnections}">
+          <TextBlock Text="Saved connections" Opacity="0.8" Margin="0,6,0,0" />
+          <ComboBox x:Name="SavedConnectionsBox" ItemsSource="{Binding SavedConnections}" SelectedItem="{Binding SelectedSaved}" HorizontalAlignment="Stretch" PlaceholderText="Choose a saved connection" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="ConnectSavedButton" Content="Connect saved" Command="{Binding ConnectSavedCommand}" />
+            <Button x:Name="DeleteSavedButton" Content="Forget" Command="{Binding DeleteSavedCommand}" />
+          </StackPanel>
         </StackPanel>
 
         <TextBlock x:Name="ValidationText" Classes="error" Text="{Binding ValidationMessage}" IsVisible="{Binding HasValidationMessage}" TextWrapping="Wrap" />
@@ -64,6 +77,9 @@
     </Border>
 
     <TabControl x:Name="MainTabs" SelectedIndex="{Binding SelectedTab}">
+      <TabItem x:Name="AccountsTab" Header="Accounts">
+        <views:AccountsView x:Name="AccountsPanel" DataContext="{Binding Accounts}" />
+      </TabItem>
       <TabItem x:Name="QueuesTab" Header="Queues">
           <DockPanel DataContext="{Binding Queues}" x:DataType="vm:QueuesViewModel">
             <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
@@ -71,6 +87,7 @@
                 <TextBlock Text="Queues" FontSize="16" FontWeight="SemiBold" />
                 <TextBlock x:Name="SummaryText" Text="{Binding Summary}" Opacity="0.8" />
                 <TextBlock Text="{Binding SortText}" Opacity="0.6" FontSize="12" IsVisible="{Binding HasRows}" />
+                <TextBlock x:Name="QueuesNoticeText" Text="{Binding Notice}" IsVisible="{Binding HasNotice}" TextWrapping="Wrap" FontSize="12" />
               </StackPanel>
               <Button Grid.Column="1" x:Name="RefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top" />
             </Grid>

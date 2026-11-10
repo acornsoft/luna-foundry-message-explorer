@@ -25,11 +25,13 @@ public partial class App : Application
         {
             var samples = BundledSamples.Locate(AppContext.BaseDirectory);
             var options = StartupOptions.Parse(desktop.Args ?? [], Environment.GetEnvironmentVariable).WithDefaultCollection(samples);
-            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples);
+            var accounts = options.SyntheticDemo ? AccountServices.SyntheticDemo() : AccountServices.ForThisComputer(Environment.GetEnvironmentVariable);
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts);
             if (options.ExitAfterRunReport is { } report)
                 ExitAfterRun(desktop, main.Jobs, report);
             options.Apply(main);
             desktop.MainWindow = new MainWindow { DataContext = main };
+            _ = main.Accounts.RestoreAsync();
         }
 
         base.OnFrameworkInitializationCompleted();

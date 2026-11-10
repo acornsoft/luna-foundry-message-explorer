@@ -64,9 +64,27 @@ public sealed class TopicsViewModel : ViewModelBase
 
     public string LoadingText => "Loading topics...";
 
+    private string? _notice;
+
+    /// <summary>A plain note from the connection, for example that an entity-level key can't read counts.</summary>
+    public string? Notice
+    {
+        get => _notice;
+        private set
+        {
+            if (Set(ref _notice, value))
+            {
+                OnPropertyChanged(nameof(HasNotice));
+                OnPropertyChanged(nameof(EmptyText));
+            }
+        }
+    }
+
+    public bool HasNotice => !string.IsNullOrEmpty(_notice);
+
     public string EmptyText => _inventory?.Provider.Supports(BrokerCapabilities.ListTopics) == false
         ? "This provider does not list topics."
-        : "This namespace has no topics.";
+        : HasNotice ? "No topics to show with this connection." : "This namespace has no topics.";
 
     public string? ErrorMessage
     {
@@ -147,6 +165,7 @@ public sealed class TopicsViewModel : ViewModelBase
     public void Clear()
     {
         _inventory = null;
+        Notice = null;
         Topics.Clear();
         ClearSubscriptions();
         _selectedTopic = null;
@@ -215,6 +234,7 @@ public sealed class TopicsViewModel : ViewModelBase
         try
         {
             var result = await _inventory.ListTopicsAsync(cancellationToken).ConfigureAwait(true);
+            Notice = result.Notice;
             Topics.Clear();
             foreach (var row in result.Entities.Where(e => e.Kind == EntityKind.Topic).OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
                 Topics.Add(new EntityRowViewModel(row));

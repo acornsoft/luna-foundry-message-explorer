@@ -12,6 +12,7 @@
       <StackPanel Spacing="2">
         <TextBlock Text="Topics" FontSize="16" FontWeight="SemiBold" />
         <TextBlock x:Name="TopicsSummaryText" Text="{Binding Summary}" Opacity="0.8" />
+        <TextBlock x:Name="TopicsNoticeText" Text="{Binding Notice}" IsVisible="{Binding HasNotice}" TextWrapping="Wrap" FontSize="12" />
       </StackPanel>
       <Button Grid.Column="1" x:Name="TopicsRefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top" />
     </Grid>

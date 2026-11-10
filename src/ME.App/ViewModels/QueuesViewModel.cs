@@ -80,7 +80,25 @@ public sealed class QueuesViewModel : ViewModelBase
 
     public string LoadingText => "Loading queues...";
 
-    public string EmptyText => "This namespace has no queues.";
+    private string? _notice;
+
+    /// <summary>A plain note from the connection, for example that an entity-level key can't read counts.</summary>
+    public string? Notice
+    {
+        get => _notice;
+        private set
+        {
+            if (Set(ref _notice, value))
+            {
+                OnPropertyChanged(nameof(HasNotice));
+                OnPropertyChanged(nameof(EmptyText));
+            }
+        }
+    }
+
+    public bool HasNotice => !string.IsNullOrEmpty(_notice);
+
+    public string EmptyText => HasNotice ? "No queues to show with this connection." : "This namespace has no queues.";
 
     public string? ErrorMessage
     {
@@ -124,6 +142,7 @@ public sealed class QueuesViewModel : ViewModelBase
     public void Clear()
     {
         _inventory = null;
+        Notice = null;
         _all = [];
         Rows.Clear();
         ErrorMessage = null;
@@ -166,6 +185,7 @@ public sealed class QueuesViewModel : ViewModelBase
         try
         {
             var result = await _inventory.ListQueuesAsync(cancellationToken).ConfigureAwait(true);
+            Notice = result.Notice;
             _all = result.Entities.Where(entity => entity.Kind == EntityKind.Queue).Select(entity => new EntityRowViewModel(entity)).ToList();
             PagesRead = result.PagesRead;
             ApplySort();

@@ -12,9 +12,9 @@ Read-only first: every write (send, receive, settle, create, delete, purge) stay
 
 | Area | Feature in Service Bus Explorer | Our status | How we do it on the modern stack |
 |---|---|---|---|
-| Connect | Connect with a connection string | Done (this PR) | Masked field. The string lives in memory only and is cleared after connecting. Nothing is saved to disk. |
-| Connect | Connect with Microsoft Entra ID | Done (this PR) | `DefaultAzureCredential` with a namespace host name. No secret is typed. |
-| Connect | Saved connections list | Planned | Save the host name and sign-in mode only. Secrets go to the OS keychain, never to a settings file. |
+| Connect | Connect with a connection string | Done | Masked field. One paste box detects namespace key, entity key (EntityPath), SAS token, endpoint only, and emulator strings. Cleared after connecting. |
+| Connect | Connect with Microsoft Entra ID | Done | Accounts tab: one or more accounts in the system browser, namespaces discovered through ARM across tenants and subscriptions. A typed host name uses the signed-in account. |
+| Connect | Saved connections list | Done | Saved by name in the OS secure store only (Keychain on macOS), never a settings file. Masked in the UI and logs. |
 | Connect | More than one broker family | Done (this PR), design | `IBrokerProvider` in `ME.Brokers.Abstractions`. Service Bus is enabled. Kafka and AWS SQS/SNS show as planned and disabled. |
 | Layout | Entity tree on the left, details on the right | Partial | Connect panel plus Queues, Topics, and Test jobs tabs. A tree of queues, topics, and subscriptions comes later. |
 | Layout | Log pane | Planned | Structured, redacted event log. No message bodies in the log. |

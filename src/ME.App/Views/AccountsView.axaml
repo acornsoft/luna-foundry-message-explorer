@@ -1,0 +1,82 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.AccountsView"
+             x:DataType="vm:AccountsViewModel">
+  <UserControl.Styles>
+    <Style Selector="TreeViewItem" x:DataType="vm:DiscoveryNode">
+      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="Border.account">
+      <Setter Property="BorderBrush" Value="#40808080" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="400,16,*">
+    <!-- Accounts -->
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+        <TextBlock Text="Accounts" FontSize="16" FontWeight="SemiBold" />
+        <TextBlock x:Name="AccountsSummaryText" Text="{Binding Summary}" Opacity="0.8" />
+        <TextBlock Text="Tenant (optional)" Margin="0,6,0,0" />
+        <TextBox x:Name="TenantBox" Text="{Binding TenantText}" Watermark="Any work or school account" />
+        <Button x:Name="AddAccountButton" Content="Add account" Command="{Binding AddAccountCommand}" />
+        <TextBlock Text="{Binding ClientIdText}" TextWrapping="Wrap" Opacity="0.6" FontSize="12" />
+        <TextBlock x:Name="AccountsMessageText" Classes="error" Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextWrapping="Wrap" />
+      </StackPanel>
+      <Panel>
+        <TextBlock x:Name="NoAccountsText" Classes="state" Text="{Binding EmptyText}" IsVisible="{Binding !HasAccounts}" TextWrapping="Wrap" />
+        <ScrollViewer>
+          <ItemsControl x:Name="AccountList" ItemsSource="{Binding Accounts}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountItemViewModel">
+                <Border Classes="account">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding Username}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding TenantText}" Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" TextWrapping="Wrap" FontSize="12" />
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+                      <Button Content="Sign in" Command="{Binding SignInCommand}" IsVisible="{Binding CanSignIn}" />
+                      <Button Content="Sign out" Command="{Binding SignOutCommand}" IsVisible="{Binding IsSignedIn}" />
+                      <Button Content="Remove" Command="{Binding RemoveCommand}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Panel>
+    </DockPanel>
+
+    <!-- Namespaces -->
+    <DockPanel Grid.Column="2">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+        <StackPanel Spacing="2">
+          <TextBlock Text="Service Bus namespaces" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Text="Every namespace your accounts can read, across all tenants and subscriptions. Double-click one, or select it and choose Open." TextWrapping="Wrap" Opacity="0.8" />
+        </StackPanel>
+        <Button Grid.Column="1" x:Name="OpenNamespaceButton" Content="Open" Command="{Binding OpenCommand}" VerticalAlignment="Top" />
+      </Grid>
+      <TreeView x:Name="DiscoveryTree" ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedNode}" DoubleTapped="OnTreeDoubleTapped">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate x:DataType="vm:DiscoveryNode" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Classes.error="{Binding IsError}" />
+              <TextBlock Text="{Binding Detail}" Opacity="0.7" IsVisible="{Binding HasDetail}" Classes.error="{Binding IsError}" TextWrapping="Wrap" MaxWidth="520" />
+            </StackPanel>
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+    </DockPanel>
+  </Grid>
+</UserControl>

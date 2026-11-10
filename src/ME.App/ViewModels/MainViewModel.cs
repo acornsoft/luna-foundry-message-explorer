@@ -14,15 +14,31 @@ public sealed class MainViewModel : ViewModelBase
 {
     private IEntityInventory? _inventory;
 
-    public MainViewModel(ProviderCatalog catalog, IUiScheduler? scheduler = null, Func<Jobs.Running.JobRunner>? runnerFactory = null, string? samplesFolder = null)
+    public MainViewModel(
+        ProviderCatalog catalog,
+        IUiScheduler? scheduler = null,
+        Func<Jobs.Running.JobRunner>? runnerFactory = null,
+        string? samplesFolder = null,
+        AccountServices? accounts = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        var services = accounts ?? AccountServices.None();
         Shell = ShellModel.Observe();
         Queues = new QueuesViewModel();
         Topics = new TopicsViewModel();
         Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance, runnerFactory: runnerFactory, samplesFolder: samplesFolder);
-        Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected);
+        Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected, services.Vault);
+        Accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, OpenFromAccountsAsync);
+        Connect.Accounts = Accounts;
+        Accounts.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(AccountsViewModel.DefaultUsername))
+                Connect.RefreshAccountText();
+        };
     }
+
+    /// <summary>Signed-in Entra accounts and the namespaces each can read.</summary>
+    public AccountsViewModel Accounts { get; }
 
     public ShellModel Shell { get; }
 
@@ -37,9 +53,10 @@ public sealed class MainViewModel : ViewModelBase
 
     public string Title => Shell.Title;
 
-    public const int QueuesTab = 0;
-    public const int TopicsTab = 1;
-    public const int JobsTab = 2;
+    public const int AccountsTab = 0;
+    public const int QueuesTab = 1;
+    public const int TopicsTab = 2;
+    public const int JobsTab = 3;
 
     private int _selectedTab;
 
@@ -57,6 +74,12 @@ public sealed class MainViewModel : ViewModelBase
             () => new DefaultAzureCredential(includeInteractiveCredentials: true),
             client => new Adapters.ServiceBus.Inventory.AdministrationClientReader(client));
         return new(syntheticDemo ? [serviceBus, new SyntheticDemoProvider()] : [serviceBus], ProviderCatalog.PlannedProviders);
+    }
+
+    private async Task OpenFromAccountsAsync(IEntityInventory inventory, string label)
+    {
+        SelectedTab = QueuesTab;
+        await Connect.ConnectWithAsync(inventory, label).ConfigureAwait(true);
     }
 
     private async Task OnConnectedAsync(IEntityInventory inventory)

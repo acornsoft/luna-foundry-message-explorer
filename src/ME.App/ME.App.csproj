@@ -10,6 +10,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ME.Model\ME.Model.csproj" />

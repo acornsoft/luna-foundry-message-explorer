@@ -8,6 +8,7 @@ using Acornsoft.MessageExplorer.Adapters.ServiceBus.Inventory;
 using Acornsoft.MessageExplorer.Brokers;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
+using Azure.ResourceManager.ServiceBus;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
@@ -16,7 +17,9 @@ namespace Acornsoft.MessageExplorer.Adapters.ServiceBus.Tests;
 /// <summary>
 /// The no-mutation guard. It reads the compiled adapter IL and fails if any Service Bus send, receive,
 /// lock, settle, create, update, or delete API is referenced anywhere in it, including async state machines
-/// and lambdas. A negative control proves the scanner catches a planted call.
+/// and lambdas. Azure Resource Manager calls must be property reads or an allow-listed list or get (HTTP GET);
+/// create, update, delete, key listing and key regeneration fail the build. Negative controls prove the
+/// scanner catches planted calls of both kinds.
 /// </summary>
 public class NoMutationGuardTests
 {
@@ -42,6 +45,33 @@ public class NoMutationGuardTests
         {
             Assert.Contains(expected, calls);
         }
+    }
+
+    [Fact]
+    public void Adapter_does_call_the_arm_list_reads()
+    {
+        var path = typeof(ServiceBusEntityInventory).Assembly.Location;
+        var calls = MutationScanner.ArmCalls(path);
+        foreach (var expected in new[]
+        {
+            "GetTenants", "GetSubscriptions", "GetAllAsync", "GetServiceBusNamespacesAsync",
+            "GetServiceBusQueues", "GetServiceBusTopics", "GetServiceBusSubscriptions",
+        })
+        {
+            Assert.Contains(expected, calls);
+        }
+    }
+
+    [Fact]
+    public void Scanner_catches_planted_arm_writes_and_key_reads()
+    {
+        var path = typeof(PlantedArmViolation).Assembly.Location;
+        var violations = MutationScanner.Scan(path, type => type.FullName.Contains(nameof(PlantedArmViolation), StringComparison.Ordinal));
+
+        Assert.Contains(violations, v => v.Contains("CreateOrUpdateAsync", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("DeleteAsync", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("GetKeysAsync", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("RegenerateKeysAsync", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -85,6 +115,18 @@ public class NoMutationGuardTests
             await using var sender = client.CreateSender("planted");
         }
     }
+
+    /// <summary>Never called. ARM writes and secret reads the scanner must catch.</summary>
+    private static class PlantedArmViolation
+    {
+        public static async Task Plant(ServiceBusNamespaceResource ns, ServiceBusNamespaceAuthorizationRuleResource rule)
+        {
+            await ns.GetServiceBusQueues().CreateOrUpdateAsync(Azure.WaitUntil.Completed, "planted", new ServiceBusQueueData()).ConfigureAwait(false);
+            await ns.DeleteAsync(Azure.WaitUntil.Completed).ConfigureAwait(false);
+            await rule.GetKeysAsync().ConfigureAwait(false);
+            await rule.RegenerateKeysAsync(new Azure.ResourceManager.ServiceBus.Models.ServiceBusRegenerateAccessKeyContent(Azure.ResourceManager.ServiceBus.Models.ServiceBusAccessKeyType.PrimaryKey)).ConfigureAwait(false);
+        }
+    }
 }
 
 internal static class MutationScanner
@@ -110,6 +152,26 @@ internal static class MutationScanner
         "GetTopicsAsync",
         "GetSubscriptionsRuntimePropertiesAsync",
         "GetSubscriptionsAsync",
+    };
+
+    /// <summary>Azure Resource Manager methods the adapter may call. Each one is an HTTP GET or builds a client locally.</summary>
+    private static readonly HashSet<string> AllowedArmMethods = new(StringComparer.Ordinal)
+    {
+        ".ctor",
+        "GetTenants",
+        "GetSubscriptions",
+        "GetSubscriptionResource",
+        "CreateResourceIdentifier",
+        "GetAllAsync",
+        "GetAsync",
+        "GetServiceBusNamespacesAsync",
+        "GetServiceBusNamespaceResource",
+        "GetServiceBusQueues",
+        "GetServiceBusTopics",
+        "GetServiceBusSubscriptions",
+        "ToString",
+        "Equals",
+        "GetHashCode",
     };
 
     private static readonly string[] MutatingPrefixes =
@@ -155,6 +217,22 @@ internal static class MutationScanner
         return calls;
     }
 
+    public static IReadOnlySet<string> ArmCalls(string assemblyPath)
+    {
+        var calls = new HashSet<string>(StringComparer.Ordinal);
+        using var assembly = AssemblyDefinition.ReadAssembly(assemblyPath);
+        foreach (var method in assembly.MainModule.GetTypes().SelectMany(type => type.Methods).Where(method => method.HasBody))
+        {
+            foreach (var instruction in method.Body.Instructions)
+            {
+                if (instruction.Operand is MethodReference called && IsResourceManager(Root(called.DeclaringType)))
+                    calls.Add(called.Name);
+            }
+        }
+
+        return calls;
+    }
+
     private static void Check(Instruction instruction, string where, List<string> violations)
     {
         switch (instruction.Operand)
@@ -175,6 +253,13 @@ internal static class MutationScanner
     private static void CheckMethod(MethodReference method, string where, List<string> violations)
     {
         var declaring = Root(method.DeclaringType);
+        if (IsResourceManager(declaring))
+        {
+            if (!method.Name.StartsWith("get_", StringComparison.Ordinal) && !AllowedArmMethods.Contains(method.Name))
+                violations.Add($"{where} calls {declaring.Name}.{method.Name} (not an allow-listed ARM read)");
+            return;
+        }
+
         if (!IsServiceBus(declaring))
             return;
 
@@ -204,11 +289,17 @@ internal static class MutationScanner
         return element;
     }
 
-    private static bool IsServiceBus(TypeReference type)
+    private static bool IsServiceBus(TypeReference type) =>
+        Outermost(type).Namespace.StartsWith("Azure.Messaging.ServiceBus", StringComparison.Ordinal);
+
+    private static bool IsResourceManager(TypeReference type) =>
+        Outermost(type).Namespace.StartsWith("Azure.ResourceManager", StringComparison.Ordinal);
+
+    private static TypeReference Outermost(TypeReference type)
     {
         var current = type;
         while (current.IsNested)
             current = current.DeclaringType;
-        return current.Namespace.StartsWith("Azure.Messaging.ServiceBus", StringComparison.Ordinal);
+        return current;
     }
 }

@@ -39,16 +39,43 @@ Admin actions are a separate module, off by default. They file a request. This s
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
 | `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
 | `samples/plugins`, `samples/jobs` | Sample plugins (C# and Python) and sample jobs. Synthetic data only |
-| `src/ME.App` | Avalonia shell: Connect panel (Entra or in-memory connection string), sortable Queues and Topics grids, and the Test jobs panel with a live run view |
+| `src/ME.App` | Avalonia shell: Accounts tab (one or more Entra accounts, namespace discovery), Connect panel (typed namespace or any connection string flavor), sortable Queues and Topics grids, and the Test jobs panel with a live run view |
 | `src/ME.App.Desktop` | Desktop entry point |
 | `src/Scenarios`, `tests/Scenarios` | Reserved for the GSL Reg E dispute library and runner (separate PR) |
 | `tests/*` | One test project per core library, plus the shell (view models and headless UI) |
 
 Borrowed ideas are credited in [docs/ideas-log.md](docs/ideas-log.md). No code is copied from those projects. Feature parity is tracked in [docs/parity-matrix.md](docs/parity-matrix.md), the plan in [docs/backlog.md](docs/backlog.md), and the test jobs design in [docs/design/test-jobs.md](docs/design/test-jobs.md).
 
+## Accounts and namespace discovery
+
+The **Accounts** tab opens first. Choose **Add account** and sign in with Microsoft Entra ID in your browser. Add as many accounts as you like. For each account, the app lists every tenant the account belongs to, every subscription in those tenants, and every Service Bus namespace in those subscriptions, through Azure Resource Manager GETs (`Azure.ResourceManager.ServiceBus`). A namespace shows up only when the account can read it in ARM (the Reader role is enough). The tree is Account > Subscription > Namespace. Double-click a namespace to open its queue and topic grids with that account.
+
+- One account, tenant, or subscription that fails (an expired sign-in, a tenant that needs MFA, no access) shows its own error row. The others still load.
+- **Sign out** keeps the account in the list, signed out. **Remove** forgets it.
+- Sign-in uses `InteractiveBrowserCredential` with the system browser and tenant `organizations` (any work or school account), or the tenant you type. The client ID is the public Azure CLI application, `04b07795-8ddb-461a-bbee-02f9e1bf7b46`. Set `LFME_ENTRA_CLIENT_ID`, or `entraClientId` in `settings.json` in the config folder, to use another public client app.
+- The app keeps each account's `AuthenticationRecord` (user name, tenant, account ID; no token) in the config folder, under `accounts/`. Tokens go in the MSAL token cache named `lfme`, which is kept in the OS secure store (Keychain on macOS). On the next launch, accounts sign in silently.
+- Config folder: `~/Library/Application Support/LunaFoundryMessageExplorer` on macOS, `~/.local/share/LunaFoundryMessageExplorer` on Linux, `%LOCALAPPDATA%\LunaFoundryMessageExplorer` on Windows. `LFME_CONFIG_DIR` overrides it.
+- Limit: Remove and Sign out forget the account in the app. Azure.Identity has no call that deletes one account from the shared `lfme` token cache. To clear it on macOS, delete the `lfme` item in Keychain Access.
+
+## Connection strings
+
+One paste box takes every flavor and says which one it found:
+
+| Flavor | Example shape | What opens |
+|---|---|---|
+| Namespace key | `Endpoint=sb://…/;…KeyName=…;…Key=…` | Queues and topics with counts |
+| Entity key | the same plus `EntityPath=orders` | Only that entity. An entity-level key can't read namespace lists or counts, so the grid says so |
+| SAS token | `SharedAccessSignature sr=…&sig=…&se=…&skn=…`, bare or as `SharedAccessSignature=` in a string | Namespace-wide token: queues and topics. Entity token: that entity only |
+| Endpoint only | `Endpoint=sb://…/` | Your signed-in Entra account (the first one on the Accounts tab) |
+| Emulator | `…;UseDevelopmentEmulator=true` | The local Service Bus emulator |
+
+The string is shown masked and cleared after connecting. Tick **Save to Keychain** (the OS secure store: Keychain on macOS, the system keyring on Linux, Windows protected storage on Windows) to keep it under a name. Saved strings are never written to a plain file. When the secure store is not available, saving is turned off and says why. The masked form (keys and signatures as `***`) is the only form that reaches the UI or a log.
+
 ## Service Bus queue list
 
-Connect with Microsoft Entra ID (namespace host name plus `DefaultAzureCredential`) or with a connection string typed at runtime. The connection string is held in memory, shown masked, and cleared after connecting. The queue list reads the management plane only (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged). Listing needs a management read permission on the namespace.
+A typed namespace connects with Microsoft Entra ID: your signed-in account, or `DefaultAzureCredential` when no account is signed in. Typed namespaces and connection strings read the data-plane management API (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged), which needs a management read permission on the namespace. A namespace picked on the Accounts tab reads the same counts through ARM instead, so the Reader role is enough.
+
+The no-mutation guard reads the compiled adapter IL. Service Bus send, receive, settle, create, update, and delete calls fail the build. ARM calls must be property reads or an allow-listed list or get; create, update, delete, key listing, and key regeneration fail the build.
 
 The **Topics** tab lists topics with subscription counts. Pick a topic to list its subscriptions with active, dead-letter, and transfer dead-letter counts; non-zero dead-letter cells are highlighted.
 
@@ -104,8 +131,8 @@ The desktop head builds with the solution. CI does not launch the window.
 - The Event Grid template is not deployed.
 - Machine-learning PII detection. The local net is schema rules, a pattern scrubber, and an echo scrub of values those rules already removed.
 - Scenario execution. The scenario runner returns a plan and sends nothing. (Test jobs run against the in-memory broker only.)
-- MCP Streamable HTTP and Entra sign-in. The dispatcher enforces policy in process.
+- MCP Streamable HTTP. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
-- Topology, trace, and dead-letter screens. The window is an observe-mode shell with Queues, Topics, and Test jobs tabs.
+- Topology, trace, and dead-letter screens. The window is an observe-mode shell with Accounts, Queues, Topics, and Test jobs tabs.
 - A Storage Queues adapter. The matrix records the peek verdict only.
 - Web, voice, and non-Azure adapters.

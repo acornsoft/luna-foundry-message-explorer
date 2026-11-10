@@ -28,8 +28,9 @@ public sealed class RuntimeSecret
 /// <summary>Where and how to connect. The endpoint is not secret. The secret is optional and in memory only.</summary>
 public sealed record BrokerConnection
 {
-    private BrokerConnection(string providerId, AuthMode authMode, string? endpoint, RuntimeSecret? secret)
+    private BrokerConnection(string providerId, AuthMode authMode, string? endpoint, RuntimeSecret? secret, object? credential)
     {
+        Credential = credential;
         ProviderId = providerId;
         AuthMode = authMode;
         Endpoint = endpoint;
@@ -45,18 +46,25 @@ public sealed record BrokerConnection
 
     public RuntimeSecret? Secret { get; }
 
-    public static BrokerConnection WithEntra(string providerId, string endpoint)
+    /// <summary>
+    /// A provider-specific signed-in account credential (for Azure, a TokenCredential), or null to use the
+    /// provider's default. Held in memory only and never part of <see cref="ToString"/>.
+    /// </summary>
+    public object? Credential { get; }
+
+    public static BrokerConnection WithEntra(string providerId, string endpoint, object? credential = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
         ArgumentException.ThrowIfNullOrWhiteSpace(endpoint);
-        return new BrokerConnection(providerId, AuthMode.Entra, endpoint.Trim(), null);
+        return new BrokerConnection(providerId, AuthMode.Entra, endpoint.Trim(), null, credential);
     }
 
-    public static BrokerConnection WithConnectionString(string providerId, RuntimeSecret connectionString)
+    /// <param name="credential">Used when the pasted text names only an endpoint and the account signs in.</param>
+    public static BrokerConnection WithConnectionString(string providerId, RuntimeSecret connectionString, object? credential = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
         ArgumentNullException.ThrowIfNull(connectionString);
-        return new BrokerConnection(providerId, AuthMode.ConnectionString, null, connectionString);
+        return new BrokerConnection(providerId, AuthMode.ConnectionString, null, connectionString, credential);
     }
 
     public override string ToString() =>

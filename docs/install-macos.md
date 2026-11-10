@@ -37,11 +37,30 @@ After that it opens normally.
   folder picker starts in them. `erp-standin` opens at startup and needs nothing else. `crew-stock` and
   `python-hello` have a Python plugin, so they need `python3` (macOS asks to install the Command Line Tools
   the first time). Test jobs run against the in-memory broker only.
-- **Queues** and **Topics** tabs: connect to a real Azure Service Bus namespace, read-only.
-  - **Connection string**: paste it at runtime. It is held in memory only and never saved.
-  - **Microsoft Entra ID**: uses `DefaultAzureCredential`. On the Mac, sign in once with the Azure CLI
-    (`brew install azure-cli`, then `az login`); the app picks that sign-in up. Your account needs a
-    management read role on the namespace.
+- **Accounts** tab (opens first): **Add account** opens your browser to sign in with Microsoft Entra ID.
+  Add more accounts the same way. Every Service Bus namespace each account can read shows up, across all
+  of its tenants and subscriptions. Double-click one to open its queues and topics. No Azure CLI needed.
+- **Queues** and **Topics** tabs: read-only grids for the namespace you opened.
+  - **Connection string**: paste any flavor (namespace key, entity key, SAS token, endpoint only, or the
+    emulator). The panel says which one it found. Tick **Save to Keychain** to keep it; it goes only into
+    your login Keychain, never a file.
+  - **Microsoft Entra ID**: type a namespace. It uses your first signed-in account.
+
+## First sign-in: what you approve
+
+- The sign-in page belongs to Microsoft. The app uses the public **Microsoft Azure CLI** application
+  (client ID `04b07795-8ddb-461a-bbee-02f9e1bf7b46`). Most tenants already allow it, so there is usually no
+  consent prompt. If your tenant blocks it, ask an admin to allow it, or register your own public client
+  app (redirect URI `http://localhost`) and set `LFME_ENTRA_CLIENT_ID` to its ID.
+- The app asks only for Azure Resource Manager access (`https://management.azure.com/.default`, which is
+  `user_impersonation` on Azure Service Management) and only makes GET calls with it.
+- To see a namespace, your account needs at least the **Reader** role on it, its resource group, or its
+  subscription.
+- Other tenants that need MFA or their own consent show an error row under the account until you sign in to
+  them. Type that tenant in **Tenant (optional)** and add the account again.
+- macOS asks whether the app may use the Keychain the first time it saves the token cache (`lfme`) or a
+  connection string. Choose **Always Allow**.
+- Account records (no tokens) are in `~/Library/Application Support/LunaFoundryMessageExplorer/accounts`.
 
 ## Build the DMGs yourself
 
@@ -79,6 +98,8 @@ Keychain Access, or convert it with OpenSSL using `-certpbe PBE-SHA1-3DES -keypb
 
 ## Limits
 
+- Remove and Sign out forget an account in the app, but its tokens stay in the `lfme` Keychain item until
+  they expire. Delete that item in Keychain Access to clear every account at once.
 - Until a Developer ID build exists, the first launch needs the steps above.
 - There are two DMGs, not one universal app. .NET self-contained runtimes are per architecture.
 - The Linux-built DMG is checked on a real Mac in CI, and the DMG built on the Mac is the reference.

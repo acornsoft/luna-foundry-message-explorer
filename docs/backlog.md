@@ -10,7 +10,10 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 - Peek view for active, dead-letter, and scheduled messages, with redacted bodies.
 - Dead-letter view with reason and description.
 - Session browse without taking a session lock.
-- Saved connections: host name and sign-in mode only. Secrets in the OS keychain.
+- Saved connections: built in the seventh PR. Connection strings saved by name in the OS secure store only (Keychain on macOS).
+- Entra accounts and namespace discovery: built in the seventh PR (Accounts tab, several accounts, ARM GETs across tenants and subscriptions).
+- Per-account removal from the shared token cache (needs MSAL directly; Azure.Identity has no call for it).
+- Choose which signed-in account a typed namespace or endpoint-only string uses (today: the first one).
 - Export inventory to JSON or CSV.
 - Azure Monitor metrics charts.
 - Admin module actions (send, resubmit) behind approval, with an audit row.

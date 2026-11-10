@@ -5,15 +5,19 @@
 
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Inventory;
 using Acornsoft.MessageExplorer.Brokers;
+using Azure;
 using Azure.Core;
 using Azure.Identity;
-using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 
 namespace Acornsoft.MessageExplorer.Adapters.ServiceBus;
 
 /// <summary>How a connection will be opened. Pure, so auth-mode selection is testable without a network.</summary>
-public sealed record ServiceBusConnectionPlan(AuthMode Mode, string FullyQualifiedNamespace);
+public sealed record ServiceBusConnectionPlan(
+    AuthMode Mode,
+    string FullyQualifiedNamespace,
+    ConnectionFlavor Flavor = ConnectionFlavor.EndpointOnly,
+    string? EntityPath = null);
 
 /// <summary>Azure Service Bus behind the broker-neutral provider interface.</summary>
 public sealed class ServiceBusBrokerProvider : IBrokerProvider
@@ -86,10 +90,11 @@ public sealed class ServiceBusBrokerProvider : IBrokerProvider
 
             case AuthMode.ConnectionString:
             {
-                var error = ValidateConnectionString(connection.Secret, out var fqdn);
-                if (error is not null)
-                    throw new BrokerException(BrokerErrorKind.InvalidConnection, error);
-                return new ServiceBusConnectionPlan(AuthMode.ConnectionString, fqdn);
+                var input = ParseSecret(connection.Secret);
+                if (input.Error is not null)
+                    throw new BrokerException(BrokerErrorKind.InvalidConnection, input.Error);
+                var mode = input.Flavor == ConnectionFlavor.EndpointOnly ? AuthMode.Entra : AuthMode.ConnectionString;
+                return new ServiceBusConnectionPlan(mode, input.FullyQualifiedNamespace!, input.Flavor, input.EntityPath);
             }
 
             default:
@@ -97,12 +102,23 @@ public sealed class ServiceBusBrokerProvider : IBrokerProvider
         }
     }
 
+    /// <summary>
+    /// Opens the read-only inventory. A namespace-wide key, token, or the emulator uses the admin reader;
+    /// an entity-level key or token sees only that entity; an endpoint alone signs in with the account.
+    /// </summary>
     public IEntityInventory OpenInventory(BrokerConnection connection)
     {
         var plan = Plan(connection);
-        var client = plan.Mode == AuthMode.Entra
-            ? new ServiceBusAdministrationClient(plan.FullyQualifiedNamespace, _credentialFactory())
-            : new ServiceBusAdministrationClient(connection.Secret!.Reveal());
+        if (plan.EntityPath is not null)
+            return new EntityScopedInventory(Descriptor, plan.FullyQualifiedNamespace, plan.EntityPath);
+
+        var client = plan.Flavor switch
+        {
+            // The admin client takes a SAS token only as a credential, not inside a connection string.
+            ConnectionFlavor.SasToken => new ServiceBusAdministrationClient(plan.FullyQualifiedNamespace, new AzureSasCredential(ParseSecret(connection.Secret).Token!)),
+            _ when plan.Mode == AuthMode.Entra => new ServiceBusAdministrationClient(plan.FullyQualifiedNamespace, connection.Credential as TokenCredential ?? _credentialFactory()),
+            _ => new ServiceBusAdministrationClient(ParseSecret(connection.Secret).ToConnectionString()),
+        };
         return new ServiceBusEntityInventory(Descriptor, _readerFactory(client));
     }
 
@@ -145,24 +161,11 @@ public sealed class ServiceBusBrokerProvider : IBrokerProvider
 
     private static string? ValidateConnectionString(RuntimeSecret? secret, out string fullyQualifiedNamespace)
     {
-        fullyQualifiedNamespace = string.Empty;
-        if (secret is null)
-            return "Enter a connection string.";
-
-        ServiceBusConnectionStringProperties properties;
-        try
-        {
-            properties = ServiceBusConnectionStringProperties.Parse(secret.Reveal());
-        }
-        catch (Exception exception) when (exception is FormatException or ArgumentException)
-        {
-            return "The connection string could not be read. It needs an Endpoint and a key or signature.";
-        }
-
-        if (string.IsNullOrEmpty(properties.FullyQualifiedNamespace))
-            return "The connection string has no Endpoint.";
-
-        fullyQualifiedNamespace = properties.FullyQualifiedNamespace;
-        return null;
+        var input = ParseSecret(secret);
+        fullyQualifiedNamespace = input.FullyQualifiedNamespace ?? string.Empty;
+        return input.Error;
     }
+
+    private static ServiceBusConnectionInput ParseSecret(RuntimeSecret? secret) =>
+        ServiceBusConnectionInput.Parse(secret?.Reveal());
 }
