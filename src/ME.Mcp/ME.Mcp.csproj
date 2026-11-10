@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Mcp</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Mcp</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
+    <ProjectReference Include="..\ME.Redaction\ME.Redaction.csproj" />
+    <ProjectReference Include="..\ME.Admin\ME.Admin.csproj" />
+  </ItemGroup>
+</Project>

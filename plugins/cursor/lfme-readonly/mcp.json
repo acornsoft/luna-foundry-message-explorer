@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lfme": {
+      "command": "lfme-mcp",
+      "args": ["--synthetic"]
+    }
+  }
+}

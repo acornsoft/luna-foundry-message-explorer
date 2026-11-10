@@ -1,0 +1,103 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             xmlns:views="using:Acornsoft.MessageExplorer.Shell.Views"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.JobsView"
+             x:DataType="vm:JobsViewModel">
+  <Grid ColumnDefinitions="290,*">
+    <!-- Job picker -->
+    <ScrollViewer Grid.Column="0" Margin="0,0,16,0">
+      <StackPanel x:Name="JobPanel" Spacing="8">
+        <TextBlock Text="Test jobs" FontSize="16" FontWeight="SemiBold" />
+        <TextBlock x:Name="SafetyText" Text="{Binding SafetyText}" TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+        <TextBlock Text="Collection" Opacity="0.8" />
+        <TextBlock x:Name="CollectionText" Text="{Binding CollectionText}" TextWrapping="Wrap" />
+        <Button x:Name="BrowseButton" Content="Choose collection folder..." Command="{Binding BrowseCommand}" />
+        <ComboBox x:Name="SamplePicker" ItemsSource="{Binding Samples}" SelectedItem="{Binding SelectedSample}" IsVisible="{Binding HasSamples}"
+                  PlaceholderText="Or open a bundled sample" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsBusy}" />
+        <TextBlock Text="Job" Opacity="0.8" />
+        <ComboBox x:Name="JobPicker" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsBusy}" />
+        <TextBlock Text="Environment" Opacity="0.8" />
+        <ComboBox x:Name="EnvironmentPicker" ItemsSource="{Binding Environments}" SelectedItem="{Binding SelectedEnvironment}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsBusy}" />
+        <TextBlock Text="Pace" Opacity="0.8" />
+        <ComboBox x:Name="PacePicker" ItemsSource="{Binding Paces}" SelectedItem="{Binding SelectedPace}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsBusy}" />
+
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,4,0,0">
+          <TextBlock Text="Seed" Opacity="0.8" Margin="0,0,8,2" />
+          <TextBlock Grid.Column="1" x:Name="SeedText" Text="{Binding SeedText}" />
+          <TextBlock Grid.Row="1" Text="Clock" Opacity="0.8" Margin="0,0,8,2" />
+          <TextBlock Grid.Row="1" Grid.Column="1" x:Name="ClockText" Text="{Binding ClockText}" TextWrapping="Wrap" />
+          <TextBlock Grid.Row="2" Text="Target" Opacity="0.8" Margin="0,0,8,2" />
+          <TextBlock Grid.Row="2" Grid.Column="1" x:Name="TargetText" Text="{Binding TargetText}" TextWrapping="Wrap" />
+        </Grid>
+
+        <TextBlock Text="Pinned plugins" Opacity="0.8" />
+        <ItemsControl x:Name="PluginList" ItemsSource="{Binding Plugins}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding}" FontFamily="monospace" FontSize="12" Margin="0,1" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock x:Name="JobValidationText" Classes="error" Text="{Binding ValidationText}" IsVisible="{Binding HasValidationText}" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+          <Button x:Name="RunButton" Content="Run" Command="{Binding RunCommand}" />
+          <Button x:Name="CancelButton" Content="Cancel" Command="{Binding CancelCommand}" />
+        </StackPanel>
+        <TextBlock x:Name="JobStatusText" Text="{Binding StatusText}" TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Live view -->
+    <DockPanel Grid.Column="1" DataContext="{Binding Live}" x:DataType="vm:LiveRunViewModel">
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBlock Text="Live run: expected versus actual" FontSize="16" FontWeight="SemiBold" />
+          <ComboBox Grid.Column="1" x:Name="FilterPicker" ItemsSource="{Binding Filters}" SelectedItem="{Binding Filter}" Margin="8,0" MinWidth="150">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:LiveFilter">
+                <TextBlock Text="{Binding Converter={x:Static views:JobsView.FilterLabel}}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button Grid.Column="2" x:Name="ExportButton" Content="Export JUnit..." Command="{Binding ExportJUnitCommand}" />
+        </Grid>
+        <TextBlock x:Name="LiveSummaryText" Text="{Binding Summary}" TextWrapping="Wrap" />
+        <TextBlock x:Name="CountersText" Text="{Binding CountersText}" />
+        <TextBlock x:Name="EventsText" Text="{Binding EventsText}" Opacity="0.8" />
+        <TextBlock x:Name="LiveClockText" Text="{Binding ClockText}" Opacity="0.7" FontSize="12" />
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsRunning}" />
+      </StackPanel>
+
+      <DataGrid x:Name="LiveGrid" ItemsSource="{Binding Rows}" IsReadOnly="True" CanUserResizeColumns="True"
+                GridLinesVisibility="Horizontal">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Correlation ID" x:DataType="vm:LiveRowViewModel" Binding="{Binding CorrelationId}" />
+          <DataGridTextColumn Header="Sent" x:DataType="vm:LiveRowViewModel" Binding="{Binding SentText}" />
+          <DataGridTemplateColumn Header="Status">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:LiveRowViewModel">
+                <Border Classes.deadletter="{Binding IsDeadLettered}" Padding="6,2" Margin="4,2">
+                  <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
+                             Classes.passed="{Binding IsPassed}" Classes.failed="{Binding IsFailed}"
+                             Classes.late="{Binding IsLate}" Classes.pending="{Binding IsPending}"
+                             Classes.deadletter="{Binding IsDeadLettered}" />
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Latency" x:DataType="vm:LiveRowViewModel" Binding="{Binding LatencyText}" />
+          <DataGridTextColumn Header="Expected" x:DataType="vm:LiveRowViewModel" Binding="{Binding ExpectedText}" Width="1.4*" />
+          <DataGridTextColumn Header="Actual (hop timeline)" x:DataType="vm:LiveRowViewModel" Binding="{Binding ActualText}" Width="1.8*" />
+          <DataGridTextColumn Header="Verdict" x:DataType="vm:LiveRowViewModel" Binding="{Binding Reason}" Width="2.2*" />
+        </DataGrid.Columns>
+      </DataGrid>
+    </DockPanel>
+  </Grid>
+</UserControl>
