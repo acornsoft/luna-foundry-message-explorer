@@ -20,7 +20,7 @@ Read mode is named **Observe**.
 - Event Hubs observe mode reads with `EventHubConsumerClient`-style forward reads on the shared group `cg-message-explorer`. Position stays in memory. There is no checkpoint store and no owner epoch.
 - Event Grid has no read API. A diagnostic subscription is a write. The Bicep file under `src/ME.Admin/Templates` is an owner-applied template. The explorer does not create the subscription.
 
-Admin actions are a separate module, off by default. They file a request. Observe mode does not send, purge, or settle. `lfme` is a separate sandbox simulation tool: it sends only with `--send`, and only after the sandbox gate.
+Admin actions are a separate module, off by default. They file a request. Observe mode does not send, purge, or settle. `lfme` is a separate sandbox simulation tool: it requires a Microsoft Entra sign-in (`az login`) on every command except `--help`, and it sends only with `--send`, and only after the sandbox gate. It has no HTTP listener and no local emulator mode; keys, SAS, and connection strings are refused.
 
 ## Layout
 
@@ -35,7 +35,7 @@ Admin actions are a separate module, off by default. They file a request. Observ
 | `src/ME.Admin` | Role gate, audit row, approval tickets, Event Grid template |
 | `src/ME.Scenarios` | Seeded scenario parser, sandbox gate, kill switch, GSL Reg E live scenario runner and dead-letter fixer |
 | `src/ME.Adapters.ServiceBus.Azure` | Azure Service Bus scenario broker: Entra token credential, send, peek, dead-letter resubmit, ARM counts |
-| `src/ME.Cli` | `lfme` console runner for live scenarios. No UI |
+| `src/ME.Cli` | `lfme` console runner for live scenarios. Entra sign-in required. No UI, no HTTP listener |
 | `src/ME.Mcp` | In-process tool policy: redaction, scopes, no self-approval |
 | `src/ME.App` | Avalonia shell. Admin controls are hidden in observe mode |
 | `src/ME.App.Desktop` | Desktop entry point |

@@ -5,6 +5,8 @@
 
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Azure;
 using Acornsoft.MessageExplorer.Scenarios.Tests;
+using Azure.Core;
+using Azure.Identity;
 
 namespace Acornsoft.MessageExplorer.Cli.Tests;
 
@@ -59,7 +61,7 @@ public class CliAppTests
         var output = new StringWriter();
         var clock = new StepClock();
         var addresses = new List<AzureQueueAddress>();
-        var app = new CliApp((address, _) => { addresses.Add(address); return broker; }, output, clock, clock.Delay);
+        var app = new CliApp((address, _) => { addresses.Add(address); return broker; }, output, clock, clock.Delay, _ => Task.CompletedTask);
         return (app, broker, output, addresses);
     }
 
@@ -225,5 +227,158 @@ public class CliAppTests
         {
             Environment.SetEnvironmentVariable("LFME_ALLOWED_SUBSCRIPTIONS", null);
         }
+    }
+
+    [Theory]
+    [InlineData("scenario", "list")]
+    [InlineData("scenario", "run")]
+    [InlineData("dlq", "peek")]
+    [InlineData("dlq", "resubmit")]
+    public async Task Every_command_requires_entra_sign_in(string verb, string noun)
+    {
+        var broker = new FakeRegEBroker();
+        var output = new StringWriter();
+        var clock = new StepClock();
+        var app = new CliApp((_, _) => broker, output, clock, clock.Delay, _ => throw new EntraSignInException(EntraAuth.SignInMessage));
+        string[] args = verb == "scenario" && noun == "list"
+            ? ["scenario", "list"]
+            : [verb, noun, "gsl-reg-e-dispute", "--run-id", "t1", "--run", "t1", "--send", .. Coordinates];
+
+        Assert.Equal(1, await app.RunAsync(args));
+        Assert.Contains("Sign in with Microsoft Entra first", output.ToString(), StringComparison.Ordinal);
+        Assert.Empty(broker.Sent);
+        Assert.Empty(broker.DeadLetters);
+    }
+
+    [Fact]
+    public async Task Help_does_not_require_sign_in()
+    {
+        var broker = new FakeRegEBroker();
+        var output = new StringWriter();
+        var clock = new StepClock();
+        var app = new CliApp((_, _) => broker, output, clock, clock.Delay, _ => throw new EntraSignInException(EntraAuth.SignInMessage));
+        Assert.Equal(0, await app.RunAsync(["--help"]));
+        Assert.DoesNotContain("Sign in with Microsoft Entra first", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--connection-string", "Endpoint=sb://example.servicebus.windows.net/;KeyName=Root")]
+    [InlineData("--sas-key", "not-a-secret")]
+    [InlineData("--shared-access-key", "not-a-secret")]
+    [InlineData("--sas-token", "not-a-secret")]
+    public async Task Non_entra_credentials_are_refused(string option, string value)
+    {
+        var (app, broker, output, _) = Make();
+        Assert.Equal(2, await app.RunAsync(["scenario", "list", option, value]));
+        Assert.Contains("Keys, SAS, and connection strings are refused", output.ToString(), StringComparison.Ordinal);
+        Assert.Empty(broker.Sent);
+    }
+
+    [Fact]
+    public async Task Skip_auth_environment_is_refused()
+    {
+        try
+        {
+            Environment.SetEnvironmentVariable("LFME_SKIP_AUTH", "1");
+            var (app, broker, output, _) = Make();
+            Assert.Equal(2, await app.RunAsync(["scenario", "list"]));
+            Assert.Contains("does not allow skipping Microsoft Entra sign-in", output.ToString(), StringComparison.Ordinal);
+            Assert.Empty(broker.Sent);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LFME_SKIP_AUTH", null);
+        }
+    }
+
+    [Fact]
+    public async Task Lfme_connection_string_environment_is_refused()
+    {
+        try
+        {
+            Environment.SetEnvironmentVariable("LFME_CONNECTION_STRING", "Endpoint=sb://example.servicebus.windows.net/;KeyName=Root");
+            var (app, broker, output, _) = Make();
+            Assert.Equal(2, await app.RunAsync(["scenario", "list"]));
+            Assert.Contains("LFME_CONNECTION_STRING", output.ToString(), StringComparison.Ordinal);
+            Assert.Contains("Keys, SAS, and connection strings are refused", output.ToString(), StringComparison.Ordinal);
+            Assert.Empty(broker.Sent);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LFME_CONNECTION_STRING", null);
+        }
+    }
+}
+
+public class EntraAuthTests
+{
+    [Fact]
+    public void Managed_identity_stays_off_by_default()
+    {
+        var off = EntraAuth.CredentialOptions(useManagedIdentity: false);
+        Assert.True(off.ExcludeInteractiveBrowserCredential);
+        Assert.True(off.ExcludeManagedIdentityCredential);
+
+        var on = EntraAuth.CredentialOptions(useManagedIdentity: true);
+        Assert.True(on.ExcludeInteractiveBrowserCredential);
+        Assert.False(on.ExcludeManagedIdentityCredential);
+    }
+
+    [Fact]
+    public async Task Ensure_signed_in_accepts_a_token()
+    {
+        await EntraAuth.EnsureSignedInAsync(new FakeTokenCredential("token"), CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Ensure_signed_in_refuses_a_missing_account()
+    {
+        var error = await Assert.ThrowsAsync<EntraSignInException>(
+            () => EntraAuth.EnsureSignedInAsync(new FakeTokenCredential(exception: new CredentialUnavailableException("none")), CancellationToken.None));
+        Assert.Equal(EntraAuth.SignInMessage, error.Message);
+    }
+
+    [Fact]
+    public async Task Ensure_signed_in_refuses_an_empty_token()
+    {
+        var error = await Assert.ThrowsAsync<EntraSignInException>(
+            () => EntraAuth.EnsureSignedInAsync(new FakeTokenCredential(""), CancellationToken.None));
+        Assert.Equal(EntraAuth.SignInMessage, error.Message);
+    }
+
+    [Fact]
+    public void Connection_string_shapes_are_detected_without_storing_a_key()
+    {
+        Assert.True(EntraAuth.LooksLikeConnectionString("Endpoint=sb://example.servicebus.windows.net/;KeyName=Root"));
+        Assert.True(EntraAuth.LooksLikeConnectionString("UseDevelopmentStorage=true"));
+        Assert.True(EntraAuth.LooksLikeConnectionString("prefix " + "Shared" + "AccessKey" + "=abcd"));
+        Assert.False(EntraAuth.LooksLikeConnectionString("rg-gsl-dev-eastus-001"));
+        Assert.False(EntraAuth.LooksLikeConnectionString("00000000-0000-0000-0000-000000000001"));
+    }
+}
+
+internal sealed class FakeTokenCredential : TokenCredential
+{
+    private readonly string? _token;
+    private readonly Exception? _exception;
+
+    public FakeTokenCredential(string? token = "token", Exception? exception = null)
+    {
+        _token = token;
+        _exception = exception;
+    }
+
+    public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
+        Request(requestContext);
+
+    public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
+        new(Request(requestContext));
+
+    private AccessToken Request(TokenRequestContext requestContext)
+    {
+        Assert.Contains(EntraAuth.ManagementScope, requestContext.Scopes);
+        if (_exception is not null)
+            throw _exception;
+        return new AccessToken(_token ?? "", DateTimeOffset.UtcNow.AddHours(1));
     }
 }

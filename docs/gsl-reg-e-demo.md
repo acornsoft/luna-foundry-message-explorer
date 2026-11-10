@@ -18,7 +18,7 @@ property. There are no real people, accounts, or cases.
 
 | Need | Why |
 |---|---|
-| `az login` as a user in the tenant | `DefaultAzureCredential` picks up the Azure CLI sign-in. No keys or connection strings exist anywhere. |
+| `az login` as a user in the tenant | Every `lfme` command except `--help` checks Microsoft Entra sign-in first (`DefaultAzureCredential`, Azure CLI works). Keys, SAS, connection strings, and skip-auth variables are refused. There is no HTTP listener and no local emulator mode. |
 | **Azure Service Bus Data Sender** and **Data Receiver** on the namespace | Send, peek, and dead-letter resubmit are data-plane calls. |
 | **Reader** on the resource group | Tags, `disableLocalAuth`, and queue counts are read through Azure Resource Manager. |
 | The subscription id in `LFME_ALLOWED_SUBSCRIPTIONS` | The sandbox gate fails closed. Real subscription ids stay out of the repository. |

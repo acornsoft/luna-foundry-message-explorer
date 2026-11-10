@@ -22,7 +22,9 @@ internal sealed class CliApp
           lfme dlq peek <scenario-id> --subscription <id> --resource-group <rg> --run <run-id>
           lfme dlq resubmit <scenario-id> --subscription <id> --resource-group <rg> (--run <run-id> | --sequence 3,7) [--yes] [--send]
 
-        Auth is Microsoft Entra through DefaultAzureCredential (az login works). No keys or connection strings.
+        Auth is Microsoft Entra through DefaultAzureCredential (az login works). Every command except --help
+        requires a signed-in Entra account. Keys, SAS, connection strings, and skip-auth variables are refused.
+        lfme has no HTTP listener and no local emulator mode.
         scenario run is a dry run by default (gate, plan, and counts; nothing is sent). Pass --send to write to the queue.
         Resubmit needs both --yes and --send. dlq peek needs --run so it only shows that run's dead-letters.
         --subscription and --resource-group can come from LFME_SUBSCRIPTION and LFME_RESOURCE_GROUP.
@@ -36,13 +38,20 @@ internal sealed class CliApp
     private readonly TextWriter _out;
     private readonly IClock _clock;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
+    private readonly Func<CancellationToken, Task> _ensureSignedIn;
 
-    public CliApp(Func<AzureQueueAddress, bool, IScenarioBroker> brokerFactory, TextWriter output, IClock clock, Func<TimeSpan, CancellationToken, Task> delay)
+    public CliApp(
+        Func<AzureQueueAddress, bool, IScenarioBroker> brokerFactory,
+        TextWriter output,
+        IClock clock,
+        Func<TimeSpan, CancellationToken, Task> delay,
+        Func<CancellationToken, Task> ensureSignedIn)
     {
         _brokerFactory = brokerFactory;
         _out = output;
         _clock = clock;
         _delay = delay;
+        _ensureSignedIn = ensureSignedIn ?? throw new ArgumentNullException(nameof(ensureSignedIn));
     }
 
     public async Task<int> RunAsync(IReadOnlyList<string> argv, CancellationToken cancellationToken = default)
@@ -57,6 +66,9 @@ internal sealed class CliApp
                 return args.Command.Length == 0 && !args.Flags.Contains("help") ? 2 : 0;
             }
 
+            EntraAuth.RefuseNonEntraInput(args);
+            await _ensureSignedIn(cancellationToken).ConfigureAwait(false);
+
             return args.Command switch
             {
                 "scenario list" => List(),
@@ -65,6 +77,11 @@ internal sealed class CliApp
                 "dlq resubmit" => await ResubmitAsync(args, cancellationToken).ConfigureAwait(false),
                 _ => throw new CliUsageException("Unknown command '" + args.Command + "'."),
             };
+        }
+        catch (EntraSignInException error)
+        {
+            _out.WriteLine(error.Message);
+            return 1;
         }
         catch (CliUsageException error)
         {

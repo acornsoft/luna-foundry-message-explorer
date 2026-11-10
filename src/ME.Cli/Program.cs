@@ -6,7 +6,6 @@
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Azure;
 using Acornsoft.MessageExplorer.Cli;
 using Acornsoft.MessageExplorer.Model;
-using Azure.Identity;
 
 using var cancel = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -18,15 +17,11 @@ Console.CancelKeyPress += (_, e) =>
 // Entra only. Interactive browser sign-in stays off so the runner never pops a window in CI.
 // Managed identity is off unless asked for: off Azure, the metadata-endpoint probe can stall for minutes.
 // AZURE_TOKEN_CREDENTIALS (an Azure.Identity setting) still works, for example AZURE_TOKEN_CREDENTIALS=dev.
-var useManagedIdentity = Environment.GetEnvironmentVariable("LFME_USE_MANAGED_IDENTITY") == "1";
-var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-{
-    ExcludeInteractiveBrowserCredential = true,
-    ExcludeManagedIdentityCredential = !useManagedIdentity,
-});
+var credential = EntraAuth.CreateCredential();
 var app = new CliApp(
     (address, webSockets) => new AzureScenarioBroker(address, credential, webSockets),
     Console.Out,
     new SystemClock(),
-    Task.Delay);
+    Task.Delay,
+    ct => EntraAuth.EnsureSignedInAsync(credential, ct));
 return await app.RunAsync(args, cancel.Token);

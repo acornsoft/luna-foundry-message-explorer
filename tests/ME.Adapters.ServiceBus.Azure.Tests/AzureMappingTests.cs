@@ -68,5 +68,20 @@ public class AzureMappingTests
     {
         var constructors = typeof(AzureScenarioBroker).GetConstructors();
         Assert.All(constructors, c => Assert.Contains(c.GetParameters(), p => p.ParameterType == typeof(global::Azure.Core.TokenCredential)));
+        Assert.DoesNotContain(constructors, c => c.GetParameters().Any(p => p.ParameterType == typeof(string) && p.Name is not null && p.Name.Contains("connection", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Theory]
+    [InlineData("Endpoint=sb://example.servicebus.windows.net/;KeyName=Root")]
+    [InlineData("sb://example.servicebus.windows.net")]
+    [InlineData("localhost")]
+    [InlineData("127.0.0.1")]
+    [InlineData("example.servicebus.windows.net:5671")]
+    [InlineData("servicebus.windows.net")]
+    public void Address_refuses_connection_strings_loopback_and_non_azure_hosts(string host)
+    {
+        var error = Assert.Throws<ArgumentException>(() => new AzureQueueAddress("s", "rg", host, "q"));
+        Assert.Equal("FullyQualifiedNamespace", error.ParamName);
+        Assert.Contains("Entra", error.Message, StringComparison.Ordinal);
     }
 }

@@ -12,9 +12,47 @@ using Azure.ResourceManager.ServiceBus;
 namespace Acornsoft.MessageExplorer.Adapters.ServiceBus.Azure;
 
 /// <summary>Where the broker lives. Control-plane coordinates come from the command line, never from a scenario file.</summary>
-public sealed record AzureQueueAddress(string SubscriptionId, string ResourceGroup, string FullyQualifiedNamespace, string Queue)
+public sealed record AzureQueueAddress
 {
+    public const string NamespaceSuffix = ".servicebus.windows.net";
+
+    public AzureQueueAddress(string subscriptionId, string resourceGroup, string fullyQualifiedNamespace, string queue)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullyQualifiedNamespace);
+        ArgumentException.ThrowIfNullOrWhiteSpace(queue);
+        if (LooksLikeConnectionString(fullyQualifiedNamespace) || fullyQualifiedNamespace.Contains('/', StringComparison.Ordinal))
+            throw new ArgumentException("The namespace must be a host name. Connection strings, SAS, and keys are not supported. Use Microsoft Entra.", nameof(FullyQualifiedNamespace));
+        if (IsLoopback(fullyQualifiedNamespace))
+            throw new ArgumentException("There is no local emulator mode. Point at an Azure Service Bus namespace and sign in with Microsoft Entra.", nameof(FullyQualifiedNamespace));
+        if (!fullyQualifiedNamespace.EndsWith(NamespaceSuffix, StringComparison.OrdinalIgnoreCase)
+            || fullyQualifiedNamespace.Length <= NamespaceSuffix.Length
+            || fullyQualifiedNamespace.Contains(':', StringComparison.Ordinal))
+            throw new ArgumentException("The namespace must be a host name ending in " + NamespaceSuffix + ". Use Microsoft Entra.", nameof(FullyQualifiedNamespace));
+
+        SubscriptionId = subscriptionId;
+        ResourceGroup = resourceGroup;
+        FullyQualifiedNamespace = fullyQualifiedNamespace;
+        Queue = queue;
+    }
+
+    public string SubscriptionId { get; init; }
+    public string ResourceGroup { get; init; }
+    public string FullyQualifiedNamespace { get; init; }
+    public string Queue { get; init; }
     public string NamespaceName => FullyQualifiedNamespace.Split('.')[0];
+
+    internal static bool LooksLikeConnectionString(string value) =>
+        value.Contains(';', StringComparison.Ordinal)
+        || value.Contains('=', StringComparison.Ordinal)
+        || value.Contains("sb://", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLoopback(string value)
+    {
+        var host = value.Split(':')[0];
+        return host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host is "127.0.0.1" or "::1"
+            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 /// <summary>
