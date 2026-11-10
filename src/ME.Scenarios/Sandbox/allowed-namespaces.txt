@@ -1,2 +1,4 @@
 # Synthetic allow-list. Not a real namespace.
 sb-gsl-test-synthetic
+# GSL dev demo namespace (fictional customer, synthetic data, Entra only). Name only; no keys.
+sbns-gsl-dev-eastus-001

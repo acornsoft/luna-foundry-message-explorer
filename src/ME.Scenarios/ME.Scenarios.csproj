@@ -10,6 +10,9 @@
     <EmbeddedResource Include="Scenarios\reg-e-dispute.yaml">
       <LogicalName>reg-e-dispute.yaml</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Scenarios\gsl-reg-e-dispute.yaml">
+      <LogicalName>gsl-reg-e-dispute.yaml</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Scenarios\account-takeover.yaml">
       <LogicalName>account-takeover.yaml</LogicalName>
     </EmbeddedResource>
@@ -19,5 +22,8 @@
     <EmbeddedResource Include="Sandbox\allowed-subscriptions.txt">
       <LogicalName>allowed-subscriptions.txt</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ME.Scenarios.Tests" />
   </ItemGroup>
 </Project>

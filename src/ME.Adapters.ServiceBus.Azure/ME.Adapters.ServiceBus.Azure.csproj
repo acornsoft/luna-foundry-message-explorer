@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Adapters.ServiceBus.Azure</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Adapters.ServiceBus.Azure</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Scenarios\ME.Scenarios.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="Azure.ResourceManager.ServiceBus" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ME.Adapters.ServiceBus.Azure.Tests" />
+  </ItemGroup>
+</Project>

@@ -33,7 +33,9 @@ Admin actions are a separate module, off by default. They file a request. This s
 | `src/ME.Adapters.EventHubs` | Read-only consumer, in-memory position |
 | `src/ME.Adapters.EventGrid` | Refuses a read and points at the admin template |
 | `src/ME.Admin` | Role gate, audit row, approval tickets, Event Grid template |
-| `src/ME.Scenarios` | Seeded scenario parser, sandbox gate, kill switch |
+| `src/ME.Scenarios` | Seeded scenario parser, sandbox gate, kill switch, GSL Reg E live scenario runner and dead-letter fixer |
+| `src/ME.Adapters.ServiceBus.Azure` | Azure Service Bus scenario broker: Entra token credential, send, peek, dead-letter resubmit, ARM counts |
+| `src/ME.Cli` | `lfme` console runner for live scenarios. No UI |
 | `src/ME.Mcp` | In-process tool policy: redaction, scopes, no self-approval |
 | `src/ME.App` | Avalonia shell. Admin controls are hidden in observe mode |
 | `src/ME.App.Desktop` | Desktop entry point |
@@ -58,7 +60,9 @@ The desktop head builds with the solution. CI does not launch the window.
 - Azure SDK clients. Adapters talk to interfaces. A production peek transport is not wired, and no cloud call is made.
 - The Event Grid template is not deployed.
 - Machine-learning PII detection. The local net is schema rules, a pattern scrubber, and an echo scrub of values those rules already removed.
-- Scenario execution. The runner returns a plan and sends nothing.
+- Scenario execution for the starter scenarios. `ScenarioRunner` returns a plan and sends nothing. The one exception is the
+  GSL Reg E demo: `lfme scenario run gsl-reg-e-dispute` sends synthetic messages to an allow-listed sandbox queue. See
+  [docs/gsl-reg-e-demo.md](docs/gsl-reg-e-demo.md).
 - MCP Streamable HTTP and Entra sign-in. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
 - Topology, trace, and dead-letter screens. The window is an observe-mode shell.

@@ -27,8 +27,13 @@ public sealed record ScenarioDefinition(
     int MaxMessages,
     int MaxDurationSeconds,
     IReadOnlyList<ScenarioStep> Steps,
-    IReadOnlyList<string> ExpectedHops)
+    IReadOnlyList<string> ExpectedHops,
+    IReadOnlyDictionary<string, string>? Settings = null)
 {
+    /// <summary>Root keys other than the reserved ones, for example <c>target_queue</c>.</summary>
+    public IReadOnlyDictionary<string, string> SettingsOrEmpty =>
+        Settings ?? new Dictionary<string, string>(StringComparer.Ordinal);
+
     public string Fingerprint()
     {
         var text = Id
@@ -36,6 +41,8 @@ public sealed record ScenarioDefinition(
             + Seed.ToString(CultureInfo.InvariantCulture)
             + "|"
             + string.Join(",", Steps.Select(step => step.Id + ":" + step.Count.ToString(CultureInfo.InvariantCulture) + ":" + step.Template));
+        if (Settings is { Count: > 0 })
+            text += "|" + string.Join(",", Settings.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => pair.Key + "=" + pair.Value));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
     }
 
@@ -123,7 +130,11 @@ public static class ScenarioParser
         if (steps.Count == 0)
             throw new ScenarioParseException("A scenario needs at least one step.");
 
-        return new ScenarioDefinition(id, seed, clock, maxMessages, duration, steps, hops);
+        var reserved = new HashSet<string>(StringComparer.Ordinal) { "id", "seed", "clock", "max_messages", "max_duration_seconds" };
+        var settings = root.Where(pair => !reserved.Contains(pair.Key))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+
+        return new ScenarioDefinition(id, seed, clock, maxMessages, duration, steps, hops, settings.Count == 0 ? null : settings);
     }
 
     public static ScenarioDefinition LoadEmbedded(string resourceName)
@@ -222,6 +233,17 @@ public sealed class SandboxPolicy
         return new SandboxPolicy(ReadNames("allowed-namespaces.txt"), ReadNames("allowed-subscriptions.txt"));
     }
 
+    /// <summary>
+    /// Adds subscriptions from local configuration (for example the LFME_ALLOWED_SUBSCRIPTIONS variable) so real
+    /// subscription ids stay out of the repository. Namespaces still come only from the embedded list.
+    /// </summary>
+    public SandboxPolicy WithSubscriptions(IEnumerable<string> extra)
+    {
+        ArgumentNullException.ThrowIfNull(extra);
+        var cleaned = extra.Select(item => item.Trim()).Where(item => item.Length > 0);
+        return new SandboxPolicy(Namespaces, Subscriptions.Concat(cleaned));
+    }
+
     private static IEnumerable<string> ReadNames(string resourceName)
     {
         foreach (var raw in ScenarioParser.ReadResource(resourceName).Split('\n'))
@@ -295,11 +317,32 @@ public static class ResourceCleanup
 
 public static class BusinessCalendar
 {
+    // US federal holidays as observed (Saturday -> Friday, Sunday -> Monday), 2026 and 2027.
+    // A fixed list keeps scenario runs reproducible. Extend it before running scenarios dated after 2027.
     private static readonly HashSet<DateOnly> Holidays =
     [
         new(2026, 1, 1),
+        new(2026, 1, 19),
+        new(2026, 2, 16),
+        new(2026, 5, 25),
+        new(2026, 6, 19),
+        new(2026, 7, 3),
+        new(2026, 9, 7),
+        new(2026, 10, 12),
+        new(2026, 11, 11),
         new(2026, 11, 26),
         new(2026, 12, 25),
+        new(2027, 1, 1),
+        new(2027, 1, 18),
+        new(2027, 2, 15),
+        new(2027, 5, 31),
+        new(2027, 6, 18),
+        new(2027, 7, 5),
+        new(2027, 9, 6),
+        new(2027, 10, 11),
+        new(2027, 11, 11),
+        new(2027, 11, 25),
+        new(2027, 12, 24),
     ];
 
     public static bool IsBusinessDay(DateOnly date) =>
