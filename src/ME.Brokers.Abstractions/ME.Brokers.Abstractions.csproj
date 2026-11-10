@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Brokers</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Brokers.Abstractions</AssemblyName>
+  </PropertyGroup>
+</Project>
