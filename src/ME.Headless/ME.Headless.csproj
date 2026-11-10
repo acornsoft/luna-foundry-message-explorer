@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Acornsoft.MessageExplorer.Headless</RootNamespace>
+    <AssemblyName>lfme</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
+    <ProjectReference Include="..\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
+  </ItemGroup>
+</Project>

@@ -118,6 +118,14 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 - `--exit-after-run <file>` writes the finished run report to the file and quits (used by the macOS smoke check).
 - `--synthetic-demo` (or `LFME_SYNTHETIC_DEMO=1`) adds an in-memory provider with made-up queues, topics, and subscriptions, and connects to it. It is off by default.
 
+## Headless (`lfme`)
+
+`lfme` is the read-only command-line and container form: inventory and health checks (dead-letter, active and scheduled limits) for any queue, topic or subscription, with JSON reports and exit codes for pipelines. It never reads bodies and cannot change anything. See [headless](docs/headless.md), the container in `eng/container/`, and an [example GitHub Actions workflow](docs/examples/github-actions/servicebus-health.yml).
+
+## Environments
+
+Azure public, US Government and China accounts; desktop builds for macOS, Windows and Linux (x64 and arm64); and an Android head. See [environments](docs/environments.md).
+
 ## macOS
 
 A DMG with a self-contained app for Apple Silicon and for Intel Macs: `eng/package-macos.sh`. See [docs/install-macos.md](docs/install-macos.md) for install, first launch, and signing.

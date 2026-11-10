@@ -225,3 +225,44 @@ jobs:
           name: lfme-android-apk
           path: artifacts/platforms/*.apk
           if-no-files-found: error
+
+  headless-container:
+    name: Headless container (read-only, synthetic)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the lfme image
+        run: docker build -f eng/container/Dockerfile -t lfme:ci .
+
+      - name: Runs as non-root
+        run: |
+          user="$(docker image inspect lfme:ci --format '{{.Config.User}}')"
+          echo "image user: $user"
+          [[ -n "$user" && "$user" != "0" && "$user" != "root" ]]
+
+      - name: Inventory and check on a read-only file system
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" && chmod 777 "$RUNNER_TEMP/out"
+          docker run --rm --read-only lfme:ci inventory --synthetic
+          docker run --rm --read-only lfme:ci check --synthetic --max-dead-letter 10
+          set +e
+          docker run --rm --read-only -v "$RUNNER_TEMP/out:/out" lfme:ci check --synthetic --max-dead-letter 0 --out /out/report.json --summary /out/summary.md
+          code=$?
+          set -e
+          [[ $code -eq 3 ]] || { echo "expected exit 3 for a breached limit, got $code"; exit 1; }
+          python3 -c "import json,sys; r=json.load(open(sys.argv[1])); assert r['readOnly'] and len(r['breaches'])==2, r" "$RUNNER_TEMP/out/report.json"
+          cat "$RUNNER_TEMP/out/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Refuses a secret on the command line
+        run: |
+          set +e
+          out="$(docker run --rm lfme:ci inventory --connection-string "Endpoint=sb://sbns-demo-001.servicebus.windows.net/;placeholder" 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          [[ $code -eq 64 ]] && ! grep -q placeholder <<< "$out"
+
+      - name: The example workflow parses
+        run: python3 -c "import yaml; yaml.safe_load(open('docs/examples/github-actions/servicebus-health.yml'))"
