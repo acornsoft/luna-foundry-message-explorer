@@ -41,6 +41,10 @@ Admin actions are a separate module, off by default. They file a request. Observ
 | `src/ME.Admin` | Role gate, audit row, approval tickets, Event Grid template |
 | `src/ME.Scenarios` | Seeded scenario parser, sandbox gate, kill switch |
 | `src/ME.Mcp` | In-process tool policy: redaction, scopes, no self-approval |
+| `src/ME.ReadTools` | Read-only sources and tools shared by `lfme`, `lfme-mcp` and the app: inventory, limit checks, dead-letter summary |
+| `src/ME.Headless` | `lfme`: headless, read-only inventory and checks for containers and pipelines |
+| `src/ME.McpServer` | `lfme-mcp`: read-only MCP server over stdio |
+| `plugins/cursor/lfme-readonly` | A Cursor plugin scaffold for `lfme-mcp` (not published) |
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
 | `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
 | `samples/plugins`, `samples/jobs` | Sample plugins (C# and Python) and sample jobs. Synthetic data only |
@@ -121,6 +125,10 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 ## Headless (`lfme`)
 
 `lfme` is the read-only command-line and container form: inventory and health checks (dead-letter, active and scheduled limits) for any queue, topic or subscription, with JSON reports and exit codes for pipelines. It never reads bodies and cannot change anything. See [headless](docs/headless.md), the container in `eng/container/`, and an [example GitHub Actions workflow](docs/examples/github-actions/servicebus-health.yml).
+
+## MCP server (`lfme-mcp`)
+
+`lfme-mcp` is a read-only MCP server over stdio with four tools: `list_entities`, `get_entity`, `check_limits` and `summarize_dead_letters`. It speaks MCP 2026-07-28 and the older `initialize` handshake. It reads counts only. A Cursor plugin scaffold, never published, is in `plugins/cursor/lfme-readonly`. See [MCP server](docs/mcp-server.md).
 
 ## Environments
 

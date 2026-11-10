@@ -9,6 +9,7 @@
     <ProjectReference Include="..\..\src\ME.App.Desktop\ME.App.Desktop.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\ME.Jobs.Cli\ME.Jobs.Cli.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\ME.Headless\ME.Headless.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.McpServer\ME.McpServer.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\ME.Mcp\ME.Mcp.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\ME.Scenarios\ME.Scenarios.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\ME.Admin\ME.Admin.csproj" ReferenceOutputAssembly="false" />

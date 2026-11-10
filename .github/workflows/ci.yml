@@ -266,3 +266,26 @@ jobs:
 
       - name: The example workflow parses
         run: python3 -c "import yaml; yaml.safe_load(open('docs/examples/github-actions/servicebus-health.yml'))"
+
+  mcp-server:
+    name: MCP server (read-only, stdio, synthetic)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build lfme-mcp
+        run: dotnet build src/ME.McpServer --configuration Release
+
+      - name: Drive it over stdio (2026-07-28 and the 2025-11-25 handshake)
+        run: python3 eng/mcp/smoke.py
+
+      - name: The plugin scaffold's manifests parse and are not a marketplace
+        run: |
+          python3 -c "import json; [json.load(open(p)) for p in ('plugins/cursor/lfme-readonly/.cursor-plugin/plugin.json', 'plugins/cursor/lfme-readonly/mcp.json')]"
+          test ! -e plugins/cursor/lfme-readonly/.cursor-plugin/marketplace.json

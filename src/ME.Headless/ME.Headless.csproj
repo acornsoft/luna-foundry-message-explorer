@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
-    <ProjectReference Include="..\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
+    <ProjectReference Include="..\ME.ReadTools\ME.ReadTools.csproj" />
   </ItemGroup>
 </Project>

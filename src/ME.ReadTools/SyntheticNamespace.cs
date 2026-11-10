@@ -5,7 +5,7 @@
 
 using Acornsoft.MessageExplorer.Brokers;
 
-namespace Acornsoft.MessageExplorer.Headless;
+namespace Acornsoft.MessageExplorer.ReadTools;
 
 /// <summary>
 /// A made-up namespace, in memory, so the headless tool, its container and CI examples can be tried with no

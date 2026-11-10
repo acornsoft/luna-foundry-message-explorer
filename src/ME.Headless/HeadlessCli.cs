@@ -6,10 +6,9 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-using Acornsoft.MessageExplorer.Adapters.ServiceBus;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.ReadTools;
 using Azure.Core;
 using Azure.Identity;
 
@@ -21,7 +20,7 @@ namespace Acornsoft.MessageExplorer.Headless;
 /// reads a message body, and it cannot send, receive, settle, move, create or delete anything (the compiled
 /// tool is scanned for that in the tests). Works for any queue or topic.
 /// </summary>
-public static partial class HeadlessCli
+public static class HeadlessCli
 {
     public const int Ok = 0;
     public const int BrokerError = 2;
@@ -55,7 +54,7 @@ public static partial class HeadlessCli
         """;
 
     public static Task<int> Main(string[] args) =>
-        RunAsync(args, Console.Out, Console.Error, Environment.GetEnvironmentVariable, connection => new ServiceBusBrokerProvider().OpenInventory(connection));
+        RunAsync(args, Console.Out, Console.Error, Environment.GetEnvironmentVariable, InventorySources.OpenServiceBus);
 
     /// <param name="open">Opens the read-only inventory for a namespace's management API. Tests pass a fake.</param>
     /// <param name="openArm">Opens the read-only inventory through Azure Resource Manager. Null: the real ARM reader.</param>
@@ -67,7 +66,6 @@ public static partial class HeadlessCli
         Func<BrokerConnection, IEntityInventory> open,
         Func<NamespaceRef, TokenCredential, IEntityInventory>? openArm = null)
     {
-        openArm ??= (ns, credential) => new ArmEntityInventory(new ArmReader(AzureClouds.Find(ns.Cloud)), credential, ns);
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
@@ -96,9 +94,9 @@ public static partial class HeadlessCli
         string source;
         try
         {
-            (inventory, source) = Open(options, environment, open, openArm);
+            (inventory, source) = InventorySources.Open(options.Source, environment, open, openArm);
         }
-        catch (UsageException exception)
+        catch (InventorySourceException exception)
         {
             return await Fail(stderr, exception.Message).ConfigureAwait(false);
         }
@@ -107,11 +105,11 @@ public static partial class HeadlessCli
             return await BrokerFailure(stderr, exception).ConfigureAwait(false);
         }
 
-        List<EntitySnapshot> entities;
+        IReadOnlyList<EntitySnapshot> entities;
         try
         {
             await using (inventory.ConfigureAwait(false))
-                entities = await ReadAllAsync(inventory).ConfigureAwait(false);
+                entities = await InventorySources.ReadAllAsync(inventory).ConfigureAwait(false);
         }
         catch (BrokerException exception)
         {
@@ -129,71 +127,6 @@ public static partial class HeadlessCli
         if (options.SummaryPath is { } summaryPath)
             await File.AppendAllTextAsync(summaryPath, report.ToMarkdown()).ConfigureAwait(false);
         return report.Breaches.Count == 0 ? Ok : ThresholdBreached;
-    }
-
-    private static (IEntityInventory Inventory, string Source) Open(
-        Options options,
-        Func<string, string?> environment,
-        Func<BrokerConnection, IEntityInventory> open,
-        Func<NamespaceRef, TokenCredential, IEntityInventory> openArm)
-    {
-        if (options.Synthetic)
-            return (new SyntheticNamespace(), "synthetic");
-
-        if (options.ConnectionStringVariable is { } variable)
-        {
-            var value = environment(variable);
-            if (string.IsNullOrWhiteSpace(value))
-                throw new UsageException($"Environment variable {variable} is not set or is empty.");
-            var connection = BrokerConnection.WithConnectionString(ServiceBusBrokerProvider.ProviderId, new RuntimeSecret(value));
-            var plan = ServiceBusBrokerProvider.Plan(connection);
-            return (open(connection), plan.FullyQualifiedNamespace);
-        }
-
-        var cloud = AzureClouds.Find(options.Cloud);
-        var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-        {
-            AuthorityHost = cloud.AuthorityHost,
-            ExcludeInteractiveBrowserCredential = true,
-        });
-
-        if (options.ResourceId is { } resourceId)
-        {
-            var match = NamespaceResourceId().Match(resourceId.Trim());
-            if (!match.Success)
-                throw new UsageException("--resource-id must be a Service Bus namespace: /subscriptions/<id>/resourceGroups/<group>/providers/Microsoft.ServiceBus/namespaces/<name>.");
-            var name = match.Groups["name"].Value;
-            var ns = new NamespaceRef(
-                name,
-                cloud.NamespaceHost(name),
-                resourceId.Trim(),
-                match.Groups["group"].Value,
-                string.Empty,
-                match.Groups["subscription"].Value,
-                environment("AZURE_TENANT_ID") is { Length: > 0 } tenant ? tenant : null!,
-                cloud.Id);
-            return (openArm(ns, credential), ns.FullyQualifiedNamespace);
-        }
-
-        var host = cloud.NamespaceHost(options.Namespace!);
-        return (open(BrokerConnection.WithEntra(ServiceBusBrokerProvider.ProviderId, host, credential)), host);
-    }
-
-    [GeneratedRegex(@"^/subscriptions/(?<subscription>[^/]+)/resourceGroups/(?<group>[^/]+)/providers/Microsoft\.ServiceBus/namespaces/(?<name>[^/]+)/?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex NamespaceResourceId();
-
-    private static async Task<List<EntitySnapshot>> ReadAllAsync(IEntityInventory inventory)
-    {
-        var all = new List<EntitySnapshot>();
-        all.AddRange((await inventory.ListQueuesAsync().ConfigureAwait(false)).Entities);
-        var topics = (await inventory.ListTopicsAsync().ConfigureAwait(false)).Entities;
-        foreach (var topic in topics)
-        {
-            all.Add(topic);
-            all.AddRange((await inventory.ListSubscriptionsAsync(topic.Name).ConfigureAwait(false)).Entities);
-        }
-
-        return all;
     }
 
     private static async Task<int> Fail(TextWriter stderr, string message)
@@ -215,17 +148,11 @@ public static partial class HeadlessCli
 
     private sealed record Options(
         string Command,
-        bool Synthetic,
-        string? Namespace,
-        string? ResourceId,
-        string? Cloud,
-        string? ConnectionStringVariable,
+        InventorySourceSpec Source,
         bool Json,
         string? OutPath,
         string? SummaryPath,
-        long? MaxDeadLetter,
-        long? MaxActive,
-        long? MaxScheduled,
+        CountLimits Limits,
         IReadOnlyList<string> Entities)
     {
         public static Options Parse(string command, string[] args)
@@ -252,11 +179,7 @@ public static partial class HeadlessCli
                     case "--synthetic": synthetic = true; break;
                     case "--namespace": ns = Next(); break;
                     case "--resource-id": resourceId = Next(); break;
-                    case "--cloud":
-                        cloud = Next();
-                        if (!AzureClouds.All.Any(c => string.Equals(c.Id, cloud, StringComparison.OrdinalIgnoreCase)))
-                            throw new UsageException($"--cloud is public, usgov or china, not '{cloud}'.");
-                        break;
+                    case "--cloud": cloud = Next(); break;
                     case "--connection-string-env": variable = Next(); break;
                     case "--connection-string" or "--sas" or "--key":
                         // The value is skipped, never echoed: a secret on the command line ends up in shell history and process lists.
@@ -280,46 +203,22 @@ public static partial class HeadlessCli
                 }
             }
 
-            var sources = (synthetic ? 1 : 0) + (ns is null ? 0 : 1) + (resourceId is null ? 0 : 1) + (variable is null ? 0 : 1);
-            if (sources != 1)
-                throw new UsageException("Give exactly one source: --synthetic, --resource-id, --namespace or --connection-string-env.");
-            if (cloud is not null && ns is null && resourceId is null)
-                throw new UsageException("--cloud goes with --resource-id or --namespace.");
-            return new Options(command, synthetic, ns, resourceId, cloud, variable, json, outPath, summary, maxDead, maxActive, maxScheduled, entities);
+            var source = new InventorySourceSpec(synthetic, ns, resourceId, cloud, variable);
+            if (source.Problem() is { } problem)
+                throw new UsageException(problem);
+            return new Options(command, source, json, outPath, summary, new CountLimits(maxDead, maxActive, maxScheduled), entities);
         }
     }
 
-    private sealed record Breach(string Path, string Reason);
-
-    private sealed record Report(string Source, IReadOnlyList<EntitySnapshot> Entities, IReadOnlyList<Breach> Breaches, bool IsCheck)
+    private sealed record Report(string Source, IReadOnlyList<EntitySnapshot> Entities, IReadOnlyList<LimitBreach> Breaches, bool IsCheck)
     {
         public static Report Build(Options options, string source, IReadOnlyList<EntitySnapshot> all)
         {
-            var entities = options.Entities.Count == 0 ? all : all.Where(e => options.Entities.Any(f => Matches(e, f))).ToList();
-            var breaches = new List<Breach>();
-            if (options.Command == "check")
-            {
-                foreach (var e in entities)
-                {
-                    Limit(e, "dead-letter", e.Counts.DeadLetter, options.MaxDeadLetter);
-                    Limit(e, "active", e.Counts.Active, options.MaxActive);
-                    Limit(e, "scheduled", e.Counts.Scheduled, options.MaxScheduled);
-                }
-            }
-
-            return new Report(source, entities, breaches, options.Command == "check");
-
-            void Limit(EntitySnapshot e, string what, long? count, long? max)
-            {
-                if (max is { } limit && count is { } value && value > limit)
-                    breaches.Add(new Breach(e.Path, $"{what} {value} > {limit}"));
-            }
+            var entities = EntityChecks.Filter(all, options.Entities);
+            var isCheck = options.Command == "check";
+            var breaches = isCheck ? EntityChecks.Breaches(entities, options.Limits) : [];
+            return new Report(source, entities, breaches, isCheck);
         }
-
-        private static bool Matches(EntitySnapshot e, string filter) =>
-            string.Equals(e.Path, filter, StringComparison.OrdinalIgnoreCase)
-            || (e.Parent is null && string.Equals(e.Name, filter, StringComparison.OrdinalIgnoreCase))
-            || (e.Parent is not null && string.Equals(e.Parent, filter, StringComparison.OrdinalIgnoreCase));
 
         public string ToJson()
         {

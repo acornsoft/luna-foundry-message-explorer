@@ -7,6 +7,7 @@ using System.Text.Json;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Tests;
 using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.ReadTools;
 
 namespace Acornsoft.MessageExplorer.Headless.Tests;
 
@@ -225,6 +226,13 @@ public sealed class HeadlessCliTests
     public void The_compiled_headless_tool_reaches_no_send_receive_settle_or_management_write()
     {
         var violations = MutationScanner.Scan(typeof(HeadlessCli).Assembly.Location, _ => true);
+        Assert.True(violations.Count == 0, string.Join("\n", violations));
+    }
+
+    [Fact]
+    public void The_shared_read_tools_reach_no_send_receive_settle_or_management_write()
+    {
+        var violations = MutationScanner.Scan(typeof(InventorySources).Assembly.Location, _ => true);
         Assert.True(violations.Count == 0, string.Join("\n", violations));
     }
 
