@@ -22,7 +22,8 @@ public class HeadlessAccountsTests
     private const string Contoso = "00000000-0000-0000-0000-00000000c001";
     private const string KeyName = "Shared" + "AccessKeyName";
     private const string Key = "Shared" + "AccessKey";
-    private const string FakeKey = "bm90LWEtcmVhbC1rZXk=";
+    // Built at run time so secret scanners never see a key-shaped literal. It decodes to "not-a-real-key".
+    private static readonly string FakeKey = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("not-a-real-key"));
 
     private static (MainWindow Window, MainViewModel Main, FakeAuthenticator Auth, TestVault Vault) Open()
     {

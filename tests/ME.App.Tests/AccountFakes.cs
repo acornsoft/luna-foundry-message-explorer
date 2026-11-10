@@ -25,6 +25,8 @@ internal sealed class FakeAuthenticator : IAccountAuthenticator
 
     public List<(string? Tenant, string? Hint)> InteractiveCalls { get; } = [];
 
+    public List<string> InteractiveClouds { get; } = [];
+
     public Dictionary<string, FakeCredential> Credentials { get; } = [];
 
     public static StoredAccount Account(string username, string tenant = "00000000-0000-0000-0000-00000000c001") =>
@@ -41,15 +43,21 @@ internal sealed class FakeAuthenticator : IAccountAuthenticator
         return SignInInteractiveAsync(tenant, null, prompt, cancellationToken);
     }
 
-    public Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken)
+    /// <summary>When set, interactive sign-in waits on this first (a browser that has not returned yet).</summary>
+    public Func<Task>? BeforeInteractive { get; set; }
+
+    public async Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken)
     {
+        if (BeforeInteractive is { } wait)
+            await wait().ConfigureAwait(true);
         Browsers.Add(prompt.Browser.Id);
         prompt.LinkReady?.Invoke(new Uri("https://login.example/fake/authorize"));
         InteractiveCalls.Add((tenant, loginHint));
+        InteractiveClouds.Add(prompt.TargetCloud.Id);
         if (!NextInteractive.TryDequeue(out var next))
             throw new AuthenticationFailedException("The browser window was closed before sign-in finished.");
-        var account = next() with { RequestedTenant = tenant };
-        return Task.FromResult(new SignedInAccount(account, CredentialFor(account.Username)));
+        var account = next() with { RequestedTenant = tenant, Cloud = prompt.TargetCloud.Id };
+        return new SignedInAccount(account, CredentialFor(account.Username));
     }
 
     public Task<SignedInAccount> SignInSilentAsync(StoredAccount account, CancellationToken cancellationToken)

@@ -91,16 +91,36 @@ public sealed class AccountsInfrastructureTests : IDisposable
     }
 
     [Fact]
-    public async Task The_synthetic_demo_has_two_accounts_and_one_tenant_error()
+    public async Task The_synthetic_demo_has_four_accounts_and_one_tenant_error()
     {
         var services = AccountServices.SyntheticDemo();
         var accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, (_, _) => Task.CompletedTask);
 
         await accounts.RestoreAsync();
 
-        Assert.Equal(2, accounts.Accounts.Count);
+        Assert.Equal(4, accounts.Accounts.Count);
         Assert.Contains(accounts.Namespaces, n => n.Name == "sbns-demo-001");
         Assert.Contains(accounts.Tree.SelectMany(n => n.Children), n => n.IsError);
         Assert.All(accounts.Accounts, a => Assert.EndsWith(".example", a.Username, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task The_synthetic_demo_shows_an_account_in_each_cloud_with_that_clouds_namespace_host()
+    {
+        var services = AccountServices.SyntheticDemo();
+        var accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, (_, _) => Task.CompletedTask);
+
+        await accounts.RestoreAsync();
+
+        Assert.Equal(["china", "public", "usgov"], accounts.Accounts.Select(a => a.Account.Cloud).Distinct().Order());
+        Assert.Contains(accounts.Namespaces, n => n.FullyQualifiedNamespace == "sbns-gov-demo-001.servicebus.usgovcloudapi.net" && n.Cloud == "usgov");
+        Assert.Contains(accounts.Namespaces, n => n.FullyQualifiedNamespace == "sbns-cn-demo-001.servicebus.chinacloudapi.cn" && n.Cloud == "china");
+    }
+
+    [Fact]
+    public void The_phone_view_can_be_picked_on_the_command_line_and_is_off_by_default()
+    {
+        Assert.True(StartupOptions.Parse(["--phone-view"], _ => null).PhoneView);
+        Assert.False(StartupOptions.Parse([], _ => null).PhoneView);
     }
 }

@@ -24,6 +24,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     private readonly IArmReader _arm;
     private readonly Func<IEntityInventory, string, Task> _open;
     private string _tenantText = string.Empty;
+    private AzureCloud _selectedCloud = AzureClouds.Public;
     private string? _message;
     private DiscoveryNode? _selectedNode;
     private readonly ISignInLog _log;
@@ -127,6 +128,16 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         set => Set(ref _tenantText, value ?? string.Empty);
     }
 
+    /// <summary>The clouds a new account can sign in to: Azure public, US Government, China.</summary>
+    public IReadOnlyList<AzureCloud> Clouds => AzureClouds.All;
+
+    /// <summary>The cloud the next Add account signs in to. Each account keeps its own.</summary>
+    public AzureCloud SelectedCloud
+    {
+        get => _selectedCloud;
+        set => Set(ref _selectedCloud, value ?? AzureClouds.Public);
+    }
+
     public string ClientIdText => $"Signs in with the app ID {_authenticator.ClientId} in your browser.";
 
     public string? Message
@@ -208,7 +219,8 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     {
         Message = null;
         var browser = SelectedBrowser;
-        var outcome = await InteractiveAsync("add account", browser,
+        var cloud = SelectedCloud;
+        var outcome = await InteractiveAsync("add account", browser, cloud,
             (prompt, token) => _authenticator.SignInInteractiveAsync(Blank(TenantText), null, prompt, token)).ConfigureAwait(true);
         if (outcome.Error is { } error)
         {
@@ -217,7 +229,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         }
 
         var signedIn = outcome.Account!;
-        signedIn = signedIn with { Account = signedIn.Account with { Browser = browser.Id } };
+        signedIn = signedIn with { Account = signedIn.Account with { Browser = browser.Id, Cloud = cloud.Id } };
         var item = Accounts.FirstOrDefault(a => a.Id == signedIn.Account.Id) ?? Track(signedIn.Account);
         await UseAsync(item, signedIn, CancellationToken.None).ConfigureAwait(true);
     }
@@ -226,7 +238,8 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     public async Task SignInWithCodeAsync()
     {
         Message = null;
-        var outcome = await InteractiveAsync("sign in with a code", SelectedBrowser,
+        var codeCloud = SelectedCloud;
+        var outcome = await InteractiveAsync("sign in with a code", SelectedBrowser, codeCloud,
             (prompt, token) => _authenticator.SignInWithDeviceCodeAsync(Blank(TenantText), prompt, token)).ConfigureAwait(true);
         if (outcome.Error is { } error)
         {
@@ -235,6 +248,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         }
 
         var signedIn = outcome.Account!;
+        signedIn = signedIn with { Account = signedIn.Account with { Cloud = codeCloud.Id } };
         var item = Accounts.FirstOrDefault(a => a.Id == signedIn.Account.Id) ?? Track(signedIn.Account);
         await UseAsync(item, signedIn, CancellationToken.None).ConfigureAwait(true);
     }
@@ -264,7 +278,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     /// timeout. The token source is disposed every time, so nothing from a failed try is left to block the next.
     /// The real error goes to the UI and the sign-in log.
     /// </summary>
-    private async Task<Outcome> InteractiveAsync(string what, BrowserChoice browser, Func<SignInPrompt, CancellationToken, Task<SignedInAccount>> run)
+    private async Task<Outcome> InteractiveAsync(string what, BrowserChoice browser, AzureCloud cloud, Func<SignInPrompt, CancellationToken, Task<SignedInAccount>> run)
     {
         _signIn?.Cancel();
         using var attempt = new CancellationTokenSource(_signInTimeout);
@@ -272,7 +286,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         SignInLink = null;
         DeviceCodeText = null;
         SigningInChanged();
-        _log.Write($"{what}: started (client {_authenticator.ClientId}, browser {browser.Name}, timeout {_signInTimeout.TotalSeconds:0}s)");
+        _log.Write($"{what}: started (client {_authenticator.ClientId}, cloud {cloud.Id}, browser {browser.Name}, timeout {_signInTimeout.TotalSeconds:0}s)");
         // MSAL calls back on its own thread; the screen is updated on the thread that started the sign-in.
         var ui = SynchronizationContext.Current;
         void OnUi(Action action)
@@ -295,7 +309,8 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
             {
                 if (ReferenceEquals(_signIn, attempt))
                     DeviceCodeText = text;
-            }));
+            }),
+            cloud);
         try
         {
             var account = await run(prompt, attempt.Token).ConfigureAwait(true);
@@ -359,7 +374,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         if (node is not { Namespace: { } ns, Account: { Credential: { } credential } account })
             return;
         Message = null;
-        var inventory = new ArmEntityInventory(_arm, credential, ns);
+        var inventory = new ArmEntityInventory(_arm.ForCloud(AzureClouds.Find(ns.Cloud)), credential, ns);
         await _open(inventory, $"{ns.Name} as {account.Username}").ConfigureAwait(true);
     }
 
@@ -396,7 +411,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     {
         item.ErrorMessage = null;
         item.State = AccountState.SigningIn;
-        var outcome = await InteractiveAsync("sign in again", item.Browser,
+        var outcome = await InteractiveAsync("sign in again", item.Browser, AzureClouds.Find(item.Account.Cloud),
             (prompt, token) => _authenticator.SignInInteractiveAsync(item.Account.RequestedTenant, item.Username, prompt, token)).ConfigureAwait(true);
         if (outcome.Error is { } error)
         {
@@ -407,7 +422,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         }
 
         var signedIn = outcome.Account!;
-        signedIn = signedIn with { Account = signedIn.Account with { Browser = item.Account.Browser } };
+        signedIn = signedIn with { Account = signedIn.Account with { Browser = item.Account.Browser, Cloud = item.Account.Cloud } };
 
         var target = signedIn.Account.Id == item.Id ? item : Accounts.FirstOrDefault(a => a.Id == signedIn.Account.Id) ?? Track(signedIn.Account);
         if (!ReferenceEquals(target, item))
@@ -434,7 +449,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
 
         Rebuild();
 
-        var discovery = await NamespaceDiscovery.DiscoverAsync(_arm, signedIn.Credential, cancellationToken).ConfigureAwait(true);
+        var discovery = await NamespaceDiscovery.DiscoverAsync(_arm.ForCloud(AzureClouds.Find(item.Account.Cloud)), signedIn.Credential, cancellationToken).ConfigureAwait(true);
         if (!ReferenceEquals(item.Credential, signedIn.Credential))
             return; // Signed out or removed while discovery ran.
         item.Discovery = discovery;
@@ -490,7 +505,9 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
 
     private static DiscoveryNode BuildAccountNode(AccountItemViewModel account)
     {
-        var node = new DiscoveryNode(DiscoveryNodeKind.Account, account.Username, account.StatusText, account: account);
+        // Public-cloud accounts read as before; other clouds say which, so a US Government namespace is never mistaken for a public one.
+        var status = AzureClouds.Find(account.Account.Cloud) == AzureClouds.Public ? account.StatusText : $"{account.CloudText} · {account.StatusText}";
+        var node = new DiscoveryNode(DiscoveryNodeKind.Account, account.Username, status, account: account);
         if (account.ErrorMessage is { } error)
             node.Children.Add(new DiscoveryNode(DiscoveryNodeKind.Error, "Error", error, account: account));
         if (account.Discovery is not { } discovery)

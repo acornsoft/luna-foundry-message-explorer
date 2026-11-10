@@ -139,7 +139,9 @@ internal static class MutationScanner
         var declaring = Root(method.DeclaringType);
         if (IsResourceManager(declaring))
         {
-            if (!method.Name.StartsWith("get_", StringComparison.Ordinal) && !AllowedArmMethods.Contains(method.Name))
+            // Picking the cloud (ARM endpoint and audience) is a local client option, not a resource write.
+            var localOption = declaring.Name == "ArmClientOptions" && method.Name == "set_Environment";
+            if (!localOption && !method.Name.StartsWith("get_", StringComparison.Ordinal) && !AllowedArmMethods.Contains(method.Name))
                 violations.Add($"{where} calls {declaring.Name}.{method.Name} (not an allow-listed ARM read)");
             return;
         }

@@ -5,6 +5,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using Acornsoft.MessageExplorer.Brokers;
 using Acornsoft.MessageExplorer.Credentials;
 
 namespace Acornsoft.MessageExplorer.Shell.Accounts;
@@ -27,7 +28,8 @@ public sealed class VaultAccountStore(ICredentialVault vault) : IAccountStore
             e.Fields.GetValueOrDefault("requestedTenant"),
             e.Field("authenticationRecord"),
             e.Field("signedOut") == "true",
-            e.Fields.GetValueOrDefault("browser") is { Length: > 0 } browser ? browser : BrowserChoices.SystemDefaultId))
+            e.Fields.GetValueOrDefault("browser") is { Length: > 0 } browser ? browser : BrowserChoices.SystemDefaultId,
+            AzureClouds.Find(e.Fields.GetValueOrDefault("cloud")).Id))
         .ToList();
 
     public void Save(StoredAccount account)
@@ -41,6 +43,7 @@ public sealed class VaultAccountStore(ICredentialVault vault) : IAccountStore
             ["authenticationRecord"] = account.RecordJson,
             ["signedOut"] = account.SignedOut ? "true" : "false",
             ["browser"] = account.Browser,
+            ["cloud"] = AzureClouds.Find(account.Cloud).Id,
         };
         if (account.RequestedTenant is { } tenant)
             fields["requestedTenant"] = tenant;

@@ -89,7 +89,7 @@ public sealed class LibSecretStore : ISecretStore
 /// <summary>libsecret's non-variadic *v_sync calls with a GHashTable of attributes and a hand-built SecretSchema.</summary>
 internal sealed class NativeLibSecret : ISecretServiceApi
 {
-    private const string LibSecret = "libsecret-1.so.0";
+    private const string NativeLibraryName = "libsecret-1.so.0";
     private const string GLib = "libglib-2.0.so.0";
     private const int SchemaSize = 592;
     private const int AttributeOffset = 16;
@@ -202,18 +202,18 @@ internal sealed class NativeLibSecret : ISecretServiceApi
         Marshal.FreeCoTaskMem(buffer);
     }
 
-    [DllImport(LibSecret)]
+    [DllImport(NativeLibraryName)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool secret_password_storev_sync(IntPtr schema, IntPtr attributes, [MarshalAs(UnmanagedType.LPUTF8Str)] string collection, [MarshalAs(UnmanagedType.LPUTF8Str)] string label, IntPtr password, IntPtr cancellable, out IntPtr error);
 
-    [DllImport(LibSecret)]
+    [DllImport(NativeLibraryName)]
     private static extern IntPtr secret_password_lookupv_sync(IntPtr schema, IntPtr attributes, IntPtr cancellable, out IntPtr error);
 
-    [DllImport(LibSecret)]
+    [DllImport(NativeLibraryName)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool secret_password_clearv_sync(IntPtr schema, IntPtr attributes, IntPtr cancellable, out IntPtr error);
 
-    [DllImport(LibSecret)]
+    [DllImport(NativeLibraryName)]
     private static extern void secret_password_free(IntPtr password);
 
     [DllImport(GLib)]

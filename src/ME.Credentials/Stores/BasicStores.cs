@@ -68,6 +68,8 @@ public static class SecretStores
             return WindowsCredentialStore.Create(service);
         if (OperatingSystem.IsLinux())
             return LibSecretStore.Create(service);
+        if (OperatingSystem.IsAndroid())
+            return new UnavailableSecretStore("Android Keystore", "On Android the app head creates the store (SealedSecretStore over the Android Keystore). Until then secrets can't be saved here.");
         if (OperatingSystem.IsBrowser())
             return new UnavailableSecretStore("browser storage", "In the browser, create the store with BrowserVault.CreateAsync (ME.Credentials.Browser), which loads lfme-vault.js. Until then secrets can't be saved here; sign in with Entra instead.");
         return new UnavailableSecretStore("secure store", "This platform has no supported secure store, so secrets can't be saved.");

@@ -6,6 +6,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
              xmlns:accounts="using:Acornsoft.MessageExplorer.Shell.Accounts"
+             xmlns:brokers="using:Acornsoft.MessageExplorer.Brokers"
              x:Class="Acornsoft.MessageExplorer.Shell.Views.AccountsView"
              x:DataType="vm:AccountsViewModel">
   <UserControl.Styles>
@@ -27,6 +28,14 @@
       <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
         <TextBlock Text="Accounts" FontSize="16" FontWeight="SemiBold" />
         <TextBlock x:Name="AccountsSummaryText" Text="{Binding Summary}" Opacity="0.8" />
+        <TextBlock Text="Cloud" Margin="0,6,0,0" />
+        <ComboBox x:Name="CloudBox" ItemsSource="{Binding Clouds}" SelectedItem="{Binding SelectedCloud}" HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="brokers:AzureCloud">
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
         <TextBlock Text="Tenant (optional)" Margin="0,6,0,0" />
         <TextBox x:Name="TenantBox" Text="{Binding TenantText}" Watermark="Any work or school account" />
         <TextBlock Text="Sign in with" Margin="0,6,0,0" />
@@ -61,6 +70,7 @@
                 <Border Classes="account">
                   <StackPanel Spacing="3">
                     <TextBlock Text="{Binding Username}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding CloudText}" Opacity="0.7" FontSize="12" />
                     <TextBlock Text="{Binding TenantText}" Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
                     <ComboBox ItemsSource="{Binding Browsers}" SelectedItem="{Binding Browser}" HorizontalAlignment="Stretch" FontSize="12"

@@ -13,9 +13,10 @@ namespace Acornsoft.MessageExplorer.Shell;
 /// <c>--collection &lt;folder&gt;</c> opens a test-job collection, <c>--tab accounts|logins|queues|topics|jobs|move</c> picks the tab (Move mode itself stays off; no option turns it on),
 /// <c>--synthetic-demo</c> (or <c>LFME_SYNTHETIC_DEMO=1</c>) adds and connects the synthetic demo provider,
 /// <c>--pace &lt;simulated seconds per second&gt;</c> picks a pace, <c>--run</c> starts the selected job, and
-/// <c>--exit-after-run &lt;file&gt;</c> writes the finished report to the file and quits (a smoke check).
+/// <c>--exit-after-run &lt;file&gt;</c> writes the finished report to the file and quits (a smoke check), and
+/// <c>--phone-view</c> shows the phone and tablet shell (the Android head's screen) in a phone-sized window.
 /// </summary>
-public sealed record StartupOptions(string? Collection, int? Tab, bool SyntheticDemo, double? Pace = null, bool Run = false, string? ExitAfterRunReport = null)
+public sealed record StartupOptions(string? Collection, int? Tab, bool SyntheticDemo, double? Pace = null, bool Run = false, string? ExitAfterRunReport = null, bool PhoneView = false)
 {
     /// <summary>Open the default bundled sample when no collection was given. The tab is left alone.</summary>
     public StartupOptions WithDefaultCollection(string? samplesFolder)
@@ -36,6 +37,7 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
         double? pace = null;
         var run = false;
         string? report = null;
+        var phone = false;
         for (var i = 0; i < args.Count; i++)
         {
             switch (args[i])
@@ -67,10 +69,13 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
                 case "--exit-after-run" when i + 1 < args.Count:
                     report = args[++i];
                     break;
+                case "--phone-view":
+                    phone = true;
+                    break;
             }
         }
 
-        return new StartupOptions(collection, tab ?? (collection is null ? null : MainViewModel.JobsTab), demo, pace, run, report);
+        return new StartupOptions(collection, tab ?? (collection is null ? null : MainViewModel.JobsTab), demo, pace, run, report, phone);
     }
 
     public void Apply(MainViewModel main)

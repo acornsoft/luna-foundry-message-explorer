@@ -31,12 +31,13 @@ public sealed record AccountServices(
     /// Real Entra sign-in; accounts and logins in the vault (metadata in the config folder, secrets in this
     /// platform's secure store). Moves 0.6.0 account files into the vault before anything reads them.
     /// </summary>
-    public static AccountServices ForThisComputer(Func<string, string?> environment)
+    /// <param name="secrets">The platform secret store; null picks this OS's (the Android head passes its Keystore store).</param>
+    public static AccountServices ForThisComputer(Func<string, string?> environment, ISecretStore? secrets = null)
     {
         var configDirectory = AppPaths.ConfigDirectory(environment);
         Directory.CreateDirectory(configDirectory);
         var vault = new CredentialVault(
-            SecretStores.ForCurrentPlatform(),
+            secrets ?? SecretStores.ForCurrentPlatform(),
             new FileLoginMetadataStore(Path.Combine(configDirectory, "logins.json")),
             log: message => Trace.WriteLine("lfme vault: " + message));
         var store = new VaultAccountStore(vault);

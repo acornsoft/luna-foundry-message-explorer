@@ -7,6 +7,8 @@ using Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 using Acornsoft.MessageExplorer.Shell.Accounts;
 using Azure.Core;
 
+using Acornsoft.MessageExplorer.Brokers;
+
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
 public enum AccountState
@@ -55,6 +57,7 @@ public sealed class AccountItemViewModel : ViewModelBase
             OnPropertyChanged(nameof(Username));
             OnPropertyChanged(nameof(TenantId));
             OnPropertyChanged(nameof(TenantText));
+            OnPropertyChanged(nameof(CloudText));
         }
     }
 
@@ -81,6 +84,9 @@ public sealed class AccountItemViewModel : ViewModelBase
     public string Username => _account.Username;
 
     public string TenantId => _account.TenantId;
+
+    /// <summary>The cloud this account signs in to, for the account card.</summary>
+    public string CloudText => AzureClouds.Find(_account.Cloud).DisplayName;
 
     public string TenantText => _account.RequestedTenant is { } requested && !string.Equals(requested, _account.TenantId, StringComparison.OrdinalIgnoreCase)
         ? $"Tenant {_account.TenantId} (signed in to {requested})"

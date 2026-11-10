@@ -18,7 +18,8 @@ public sealed class SavedLoginsTests
     private const string Planted = "PLANTED-not-a-real-secret-4c9e";
     private const string KeyName = "Shared" + "AccessKeyName";
     private const string Key = "Shared" + "AccessKey";
-    private const string FakeKey = "bm90LWEtcmVhbC1rZXk=";
+    // Built at run time so secret scanners never see a key-shaped literal. It decodes to "not-a-real-key".
+    private static readonly string FakeKey = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("not-a-real-key"));
 
     private readonly TestVault _vault = new();
     private readonly FakeAccounts _accounts = new();

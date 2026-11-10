@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Avalonia" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Android" Version="11.3.22" />
     <PackageVersion Include="Avalonia.Controls.DataGrid" Version="11.3.13" />
     <PackageVersion Include="Avalonia.Desktop" Version="11.3.22" />
     <PackageVersion Include="Avalonia.Headless.XUnit" Version="11.3.22" />

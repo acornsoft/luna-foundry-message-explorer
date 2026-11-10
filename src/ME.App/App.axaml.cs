@@ -14,6 +14,12 @@ namespace Acornsoft.MessageExplorer.Shell;
 
 public partial class App : Application
 {
+    /// <summary>
+    /// Set by a mobile head (Android) before start-up: the platform secret store behind the credential vault.
+    /// Desktop heads leave it null and get the OS store for their platform.
+    /// </summary>
+    public static Func<Credentials.ISecretStore>? PlatformSecretStore { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -31,8 +37,18 @@ public partial class App : Application
             if (options.ExitAfterRunReport is { } report)
                 ExitAfterRun(desktop, main.Jobs, report);
             options.Apply(main);
-            desktop.MainWindow = new MainWindow { DataContext = main };
+            desktop.MainWindow = options.PhoneView
+                ? new Avalonia.Controls.Window { Title = "Message Explorer (phone view)", Width = 412, Height = 860, Content = new Views.MobileShellView { DataContext = main } }
+                : new MainWindow { DataContext = main };
             _ = accounts.ImportLegacyAsync();
+            _ = main.Accounts.RestoreAsync();
+        }
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
+        {
+            // Mobile: saved logins and accounts only. No plugin processes, and Move mode is not offered.
+            var accounts = AccountServices.ForThisComputer(Environment.GetEnvironmentVariable, PlatformSecretStore?.Invoke());
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(false), new DispatcherUiScheduler(), null, null, accounts, MoveServices.InMemory());
+            single.MainView = new Views.MobileShellView { DataContext = main };
             _ = main.Accounts.RestoreAsync();
         }
 

@@ -46,6 +46,16 @@ internal sealed class FakeArmReader : IArmReader
 
     public HashSet<string> FailingSubscriptions { get; } = [];
 
+    /// <summary>Every cloud a caller switched this reader to, in order.</summary>
+    public List<string> CloudsAsked { get; } = [];
+
+    public IArmReader ForCloud(AzureCloud cloud)
+    {
+        lock (CloudsAsked)
+            CloudsAsked.Add(cloud.Id);
+        return this;
+    }
+
     public async IAsyncEnumerable<TenantRef> ListTenantsAsync(TokenCredential credential, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Token(credential, null);

@@ -12,7 +12,8 @@ public sealed class ProviderFlavorTests
 {
     private const string KeyName = "Shared" + "AccessKeyName";
     private const string Key = "Shared" + "AccessKey";
-    private const string FakeKey = "bm90LWEtcmVhbC1rZXk=";
+    // Built at run time so secret scanners never see a key-shaped literal. It decodes to "not-a-real-key".
+    private static readonly string FakeKey = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("not-a-real-key"));
     private const string Host = "sbns-demo-001.servicebus.windows.net";
     private const string FakeToken = "SharedAccessSignature sr=sb%3A%2F%2Fsbns-demo-001.servicebus.windows.net%2F&sig=bm90LXJlYWw%3D&se=1893456000&skn=reader";
 

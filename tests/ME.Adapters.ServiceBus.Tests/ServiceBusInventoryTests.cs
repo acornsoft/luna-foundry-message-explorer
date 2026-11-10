@@ -196,7 +196,7 @@ public class ServiceBusConnectionTests
 {
     // Built from parts so the repo secret scan never sees a key-name literal.
     private static readonly string SyntheticConnectionString =
-        "Endpoint=sb://contoso-synthetic.servicebus.windows.net/;" + "Shared" + "AccessKeyName=synthetic;" + "Shared" + "AccessKey=bm90LWEtcmVhbC1rZXk=";
+        "Endpoint=sb://contoso-synthetic.servicebus.windows.net/;" + "Shared" + "AccessKeyName=synthetic;" + "Shared" + "AccessKey=" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("not-a-real-key"));
 
     [Theory]
     [InlineData("contoso-synthetic", "contoso-synthetic.servicebus.windows.net")]

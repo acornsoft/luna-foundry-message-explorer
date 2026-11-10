@@ -3,6 +3,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+using Acornsoft.MessageExplorer.Brokers;
 using Azure.Core;
 
 namespace Acornsoft.MessageExplorer.Shell.Accounts;
@@ -18,15 +19,20 @@ public sealed record StoredAccount(
     string? RequestedTenant,
     string RecordJson,
     bool SignedOut = false,
-    string Browser = BrowserChoices.SystemDefaultId);
+    string Browser = BrowserChoices.SystemDefaultId,
+    string Cloud = AzureClouds.PublicId);
 
 /// <summary>
 /// How one sign-in reaches the user: the browser to open, and callbacks that hand the sign-in link (for
-/// Copy sign-in link) or the device code message (for Sign in with a code) to the screen.
+/// Copy sign-in link) or the device code message (for Sign in with a code) to the screen. <see cref="Cloud"/>
+/// is where the account lives (public, US Government, China); null means the public cloud.
 /// </summary>
-public sealed record SignInPrompt(BrowserChoice Browser, Action<Uri>? LinkReady = null, Action<string>? DeviceCode = null)
+public sealed record SignInPrompt(BrowserChoice Browser, Action<Uri>? LinkReady = null, Action<string>? DeviceCode = null, AzureCloud? Cloud = null)
 {
     public static SignInPrompt Default { get; } = new(BrowserChoices.SystemDefault);
+
+    /// <summary>The cloud to sign in to: <see cref="Cloud"/>, or the public cloud.</summary>
+    public AzureCloud TargetCloud => Cloud ?? AzureClouds.Public;
 }
 
 /// <summary>A signed-in account and the credential that gets its tokens.</summary>
@@ -39,7 +45,7 @@ public interface IAccountAuthenticator
     string ClientId { get; }
 
     /// <summary>
-    /// Opens the sign-in page in <see cref="SignInPrompt.Browser"/> and waits on the localhost redirect.
+    /// Opens the sign-in page of <see cref="SignInPrompt.TargetCloud"/> in <see cref="SignInPrompt.Browser"/> and waits on the localhost redirect.
     /// <paramref name="tenant"/> null means any work or school account. Cancelling the token stops the
     /// wait and frees the localhost listener.
     /// </summary>

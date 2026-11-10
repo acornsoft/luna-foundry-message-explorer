@@ -16,11 +16,25 @@ namespace Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 /// <see cref="IArmReader"/> over Azure.ResourceManager. Only list and get calls (HTTP GET). No create,
 /// update, delete, key listing or key regeneration; the no-mutation guard checks the compiled IL.
 /// </summary>
-public sealed class ArmReader : IArmReader
+public sealed class ArmReader(AzureCloud? cloud = null) : IArmReader
 {
+    /// <summary>The cloud this reader talks to. Public unless the account picked another.</summary>
+    public AzureCloud Cloud { get; } = cloud ?? AzureClouds.Public;
+
+    public IArmReader ForCloud(AzureCloud cloud) => ReferenceEquals(cloud, Cloud) || cloud.Id == Cloud.Id ? this : new ArmReader(cloud);
+
+    /// <summary>ArmClient options for <paramref name="cloud"/>: its ARM endpoint and token audience.</summary>
+    public static ArmClientOptions ClientOptions(AzureCloud cloud)
+    {
+        ArgumentNullException.ThrowIfNull(cloud);
+        return new ArmClientOptions { Environment = new ArmEnvironment(cloud.ArmEndpoint, cloud.ArmAudience) };
+    }
+
+    private ArmClient Client(TokenCredential credential) => new(credential, default, ClientOptions(Cloud));
+
     public async IAsyncEnumerable<TenantRef> ListTenantsAsync(TokenCredential credential, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var arm = new ArmClient(credential);
+        var arm = Client(credential);
         await foreach (var tenant in arm.GetTenants().GetAllAsync(cancellationToken).ConfigureAwait(false))
         {
             var id = tenant.Data.TenantId?.ToString();
@@ -32,7 +46,7 @@ public sealed class ArmReader : IArmReader
 
     public async IAsyncEnumerable<SubscriptionRef> ListSubscriptionsAsync(TokenCredential credential, string tenantId, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var arm = new ArmClient(new TenantScopedCredential(credential, tenantId));
+        var arm = Client(new TenantScopedCredential(credential, tenantId));
         await foreach (var subscription in arm.GetSubscriptions().GetAllAsync(cancellationToken).ConfigureAwait(false))
         {
             var data = subscription.Data;
@@ -45,19 +59,20 @@ public sealed class ArmReader : IArmReader
 
     public async IAsyncEnumerable<NamespaceRef> ListNamespacesAsync(TokenCredential credential, SubscriptionRef subscription, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var arm = new ArmClient(new TenantScopedCredential(credential, subscription.TenantId));
+        var arm = Client(new TenantScopedCredential(credential, subscription.TenantId));
         var resource = arm.GetSubscriptionResource(Azure.ResourceManager.Resources.SubscriptionResource.CreateResourceIdentifier(subscription.SubscriptionId));
         await foreach (var ns in resource.GetServiceBusNamespacesAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             var data = ns.Data;
             yield return new NamespaceRef(
                 data.Name,
-                HostOf(data.ServiceBusEndpoint) ?? data.Name + ServiceBusBrokerProvider.DefaultSuffix,
+                HostOf(data.ServiceBusEndpoint) ?? Cloud.NamespaceHost(data.Name),
                 ns.Id.ToString(),
                 ns.Id.ResourceGroupName ?? string.Empty,
                 data.Location.DisplayName ?? data.Location.Name,
                 subscription.SubscriptionId,
-                subscription.TenantId);
+                subscription.TenantId,
+                Cloud.Id);
         }
     }
 
@@ -91,7 +106,7 @@ public sealed class ArmReader : IArmReader
     }
 
     private static ServiceBusNamespaceResource Namespace(TokenCredential credential, NamespaceRef serviceBusNamespace) =>
-        new ArmClient(new TenantScopedCredential(credential, serviceBusNamespace.TenantId))
+        new ArmClient(new TenantScopedCredential(credential, serviceBusNamespace.TenantId), default, ClientOptions(AzureClouds.Find(serviceBusNamespace.Cloud)))
             .GetServiceBusNamespaceResource(new ResourceIdentifier(serviceBusNamespace.ResourceId));
 
     private static EntityCounts Counts(MessageCountDetails? details, long? total) => details is null

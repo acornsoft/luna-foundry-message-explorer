@@ -4,6 +4,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 using System.Text.Json;
+using Acornsoft.MessageExplorer.Brokers;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Identity.Client;
@@ -16,14 +17,17 @@ namespace Acornsoft.MessageExplorer.Shell.Accounts;
 /// default, a browser the user picked, or no browser at all (copy the link, or sign in with a code). The
 /// localhost redirect lands on MSAL's loopback listener whichever browser completes it; cancelling the token
 /// stops that listener. Tokens stay in MSAL's cache in the OS secure store (Keychain on macOS); the app keeps
-/// only an AuthenticationRecord-shaped JSON (who and where, no token).
+/// only an AuthenticationRecord-shaped JSON (who and where, no token). Each account signs in at its own
+/// cloud's authority host (public, US Government, China) and asks for that cloud's Resource Manager scope,
+/// for browser and device code sign-in alike.
 /// </summary>
 public sealed class EntraAuthenticator : IAccountAuthenticator
 {
-    /// <summary>Azure Resource Manager, for listing tenants, subscriptions and namespaces.</summary>
-    public static readonly string[] ArmScopes = ["https://management.azure.com/.default"];
+    /// <summary>Azure Resource Manager in the public cloud, for listing tenants, subscriptions and namespaces.</summary>
+    public static readonly string[] ArmScopes = [AzureClouds.Public.ArmScope];
 
-    public const string AuthorityHost = "https://login.microsoftonline.com/";
+    /// <summary>The public cloud's authority host. Other clouds use <see cref="AzureCloud.AuthorityHost"/>.</summary>
+    public static readonly string AuthorityHost = AzureClouds.Public.AuthorityHost.AbsoluteUri;
     public const string RedirectUri = "http://localhost";
 
     private readonly EntraOptions _options;
@@ -45,48 +49,79 @@ public sealed class EntraAuthenticator : IAccountAuthenticator
 
     public string ClientId => _options.ClientId;
 
-    public static string Authority(string? tenant) => AuthorityHost + (string.IsNullOrWhiteSpace(tenant) ? EntraOptions.AnyWorkAccountTenant : tenant.Trim());
+    /// <summary>The public cloud authority for <paramref name="tenant"/> (null: any work or school account).</summary>
+    public static string Authority(string? tenant) => Authority(AzureClouds.Public, tenant);
+
+    /// <summary>The authority for <paramref name="tenant"/> at <paramref name="cloud"/>'s sign-in host.</summary>
+    public static string Authority(AzureCloud cloud, string? tenant)
+    {
+        ArgumentNullException.ThrowIfNull(cloud);
+        return cloud.AuthorityHost.AbsoluteUri + (string.IsNullOrWhiteSpace(tenant) ? EntraOptions.AnyWorkAccountTenant : tenant.Trim());
+    }
+
+    /// <summary>The Resource Manager scope sign-in asks for in <paramref name="cloud"/>.</summary>
+    public static string[] ScopesFor(AzureCloud cloud)
+    {
+        ArgumentNullException.ThrowIfNull(cloud);
+        return [cloud.ArmScope];
+    }
+
+    /// <summary>The MSAL public client for one cloud and tenant: that cloud's authority and the localhost redirect.</summary>
+    public static IPublicClientApplication BuildApp(EntraOptions options, AzureCloud cloud, string? tenant)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return PublicClientApplicationBuilder.Create(options.ClientId)
+            .WithAuthority(Authority(cloud, tenant))
+            .WithRedirectUri(RedirectUri)
+            .Build();
+    }
 
     public async Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prompt);
         var requested = string.IsNullOrWhiteSpace(tenant) ? null : tenant.Trim();
-        var app = await AppAsync(requested).ConfigureAwait(false);
-        var builder = app.AcquireTokenInteractive(ArmScopes)
+        var cloud = prompt.TargetCloud;
+        var app = await AppAsync(cloud, requested).ConfigureAwait(false);
+        _log.Write($"interactive sign-in at {cloud.AuthorityHost.Host}");
+        var builder = app.AcquireTokenInteractive(ScopesFor(cloud))
             .WithUseEmbeddedWebView(false)
             .WithPrompt(Prompt.SelectAccount)
             .WithSystemWebViewOptions(WebView(prompt, _launcher, _log));
         if (!string.IsNullOrWhiteSpace(loginHint))
             builder = builder.WithLoginHint(loginHint);
         var result = await builder.ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        return new SignedInAccount(ToStored(result, requested, prompt.Browser.Id), new MsalAccountCredential(app, result.Account));
+        return new SignedInAccount(ToStored(result, requested, prompt.Browser.Id, cloud), new MsalAccountCredential(app, result.Account));
     }
 
     public async Task<SignedInAccount> SignInWithDeviceCodeAsync(string? tenant, SignInPrompt prompt, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prompt);
         var requested = string.IsNullOrWhiteSpace(tenant) ? null : tenant.Trim();
-        var app = await AppAsync(requested).ConfigureAwait(false);
-        var result = await app.AcquireTokenWithDeviceCode(ArmScopes, code =>
+        var cloud = prompt.TargetCloud;
+        var app = await AppAsync(cloud, requested).ConfigureAwait(false);
+        _log.Write($"device code sign-in at {cloud.AuthorityHost.Host}");
+        var result = await app.AcquireTokenWithDeviceCode(ScopesFor(cloud), code =>
         {
             _log.Write("device code shown (expires " + code.ExpiresOn.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + ")");
             prompt.DeviceCode?.Invoke(code.Message);
             return Task.CompletedTask;
         }).ExecuteAsync(cancellationToken).ConfigureAwait(false);
-        return new SignedInAccount(ToStored(result, requested, prompt.Browser.Id), new MsalAccountCredential(app, result.Account));
+        return new SignedInAccount(ToStored(result, requested, prompt.Browser.Id, cloud), new MsalAccountCredential(app, result.Account));
     }
 
     public async Task<SignedInAccount> SignInSilentAsync(StoredAccount account, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
-        var app = await AppAsync(account.RequestedTenant).ConfigureAwait(false);
+        var cloud = AzureClouds.Find(account.Cloud);
+        var scopes = ScopesFor(cloud);
+        var app = await AppAsync(cloud, account.RequestedTenant).ConfigureAwait(false);
         var msalAccount = await app.GetAccountAsync(account.Id).ConfigureAwait(false)
             ?? (await app.GetAccountsAsync().ConfigureAwait(false)).FirstOrDefault(a => string.Equals(a.Username, account.Username, StringComparison.OrdinalIgnoreCase))
-            ?? throw new AuthenticationRequiredException("No saved sign-in for this account. Sign in again.", new TokenRequestContext(ArmScopes));
+            ?? throw new AuthenticationRequiredException("No saved sign-in for this account. Sign in again.", new TokenRequestContext(scopes));
         var credential = new MsalAccountCredential(app, msalAccount);
 
         // Proves the cached sign-in still works. Throws AuthenticationRequiredException when it does not.
-        await credential.GetTokenAsync(new TokenRequestContext(ArmScopes), cancellationToken).ConfigureAwait(false);
+        await credential.GetTokenAsync(new TokenRequestContext(scopes), cancellationToken).ConfigureAwait(false);
         return new SignedInAccount(account with { SignedOut = false }, credential);
     }
 
@@ -125,26 +160,22 @@ public sealed class EntraAuthenticator : IAccountAuthenticator
             ["clientId"] = clientId,
         });
 
-    private StoredAccount ToStored(AuthenticationResult result, string? requestedTenant, string browserId)
+    private StoredAccount ToStored(AuthenticationResult result, string? requestedTenant, string browserId, AzureCloud cloud)
     {
         var home = result.Account.HomeAccountId?.Identifier ?? result.UniqueId;
-        var authority = new Uri(AuthorityHost).Host;
-        var json = RecordJson(result.Account.Username, authority, home, result.TenantId, _options.ClientId);
-        return new StoredAccount(home, result.Account.Username, result.TenantId, requestedTenant, json, Browser: browserId);
+        var json = RecordJson(result.Account.Username, cloud.AuthorityHost.Host, home, result.TenantId, _options.ClientId);
+        return new StoredAccount(home, result.Account.Username, result.TenantId, requestedTenant, json, Browser: browserId, Cloud: cloud.Id);
     }
 
-    private async Task<IPublicClientApplication> AppAsync(string? tenant)
+    private async Task<IPublicClientApplication> AppAsync(AzureCloud cloud, string? tenant)
     {
-        var authority = Authority(tenant);
+        var authority = Authority(cloud, tenant);
         await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_apps.TryGetValue(authority, out var existing))
                 return existing;
-            var app = PublicClientApplicationBuilder.Create(_options.ClientId)
-                .WithAuthority(authority)
-                .WithRedirectUri(RedirectUri)
-                .Build();
+            var app = BuildApp(_options, cloud, tenant);
             if (await CacheAsync().ConfigureAwait(false) is { } cache)
                 cache.RegisterCache(app.UserTokenCache);
             _apps[authority] = app;
