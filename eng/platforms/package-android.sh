@@ -14,6 +14,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 out="${1:-$root/artifacts/platforms}"
+mkdir -p "$out"
+out="$(cd "$out" && pwd)"
 project="$root/src/ME.App.Android"
 version="$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' "$root/Directory.Build.props")"
 sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/android-sdk}}"
@@ -29,13 +31,14 @@ apk="$(find "$project/bin/Release" -name '*-Signed.apk' | head -1)"
 listing="$(unzip -l "$apk" | awk '{print $4}')"
 missing=0
 for abi in arm64-v8a x86_64; do
-  for lib in libmonosgen-2.0.so libSkiaSharp.so libHarfBuzzSharp.so "libassemblies.$abi.blob.so"; do
+  for lib in libmonosgen-2.0.so libSkiaSharp.so libHarfBuzzSharp.so; do
     grep -qx "lib/$abi/$lib" <<< "$listing" || { echo "APK is missing lib/$abi/$lib" >&2; missing=1; }
   done
+  # The managed code ships as an assembly store; its file name differs between Android workload versions.
+  grep -qE "^lib/$abi/libassembl[^/]*\.so$|^lib/$abi/lib_[^/]*\.dll\.so$|^assemblies/.*$abi" <<< "$listing" || { echo "APK has no managed assemblies for $abi" >&2; missing=1; }
 done
 grep -qx "classes.dex" <<< "$listing" || { echo "APK is missing classes.dex" >&2; missing=1; }
-[[ $missing -eq 0 ]] || exit 1
+if [[ $missing -ne 0 ]]; then grep -E "^lib/|^assemblies/" <<< "$listing" >&2; exit 1; fi
 
-mkdir -p "$out"
 cp "$apk" "$out/LunaFoundryMessageExplorer-$version-android-debugsigned.apk"
 ls -l "$out" | grep -F android

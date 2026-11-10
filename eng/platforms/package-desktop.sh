@@ -15,6 +15,8 @@ set -euo pipefail
 rid="${1:?usage: package-desktop.sh <rid> [out-dir]}"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 out="${2:-$root/artifacts/platforms}"
+mkdir -p "$out"
+out="$(cd "$out" && pwd)"
 version="$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' "$root/Directory.Build.props")"
 name="LunaFoundryMessageExplorer-$version-$rid"
 stage="$out/$name"
