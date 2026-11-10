@@ -17,6 +17,21 @@
       <Setter Property="Background" Value="#33C62828" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
+    <Style Selector="TextBlock.passed">
+      <Setter Property="Foreground" Value="#2E7D32" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.failed">
+      <Setter Property="Foreground" Value="#C62828" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.late">
+      <Setter Property="Foreground" Value="#B26A00" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.pending">
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
     <Style Selector="TextBlock.state">
       <Setter Property="Margin" Value="0,16" />
       <Setter Property="TextWrapping" Value="Wrap" />

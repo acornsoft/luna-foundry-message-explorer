@@ -8,9 +8,10 @@ using Acornsoft.MessageExplorer.Brokers;
 
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
-public sealed class QueueRowViewModel
+/// <summary>One queue, topic, or subscription row. Counts the broker does not report show as "-".</summary>
+public sealed class EntityRowViewModel
 {
-    public QueueRowViewModel(EntitySnapshot snapshot)
+    public EntityRowViewModel(EntitySnapshot snapshot)
     {
         Snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
     }
@@ -30,6 +31,10 @@ public sealed class QueueRowViewModel
     public string Status => Snapshot.Status ?? "Unknown";
 
     public long? SizeInBytes => Snapshot.SizeInBytes;
+
+    public int? SubscriptionCount => Snapshot.SubscriptionCount;
+
+    public string SubscriptionCountText => SubscriptionCount?.ToString("N0", CultureInfo.InvariantCulture) ?? "-";
 
     public string ActiveText => Count(Active);
 

@@ -5,10 +5,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+        xmlns:views="using:Acornsoft.MessageExplorer.Shell.Views"
         x:Class="Acornsoft.MessageExplorer.Shell.MainWindow"
         x:DataType="vm:MainViewModel"
-        Width="1180"
-        Height="720"
+        Width="1440"
+        Height="860"
         Title="{Binding Title}">
   <DockPanel Margin="16">
     <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,12">
@@ -62,61 +63,70 @@
       </StackPanel>
     </Border>
 
-    <!-- Queues -->
-    <DockPanel DataContext="{Binding Queues}" x:DataType="vm:QueuesViewModel">
-      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-        <StackPanel Spacing="2">
-          <TextBlock Text="Queues" FontSize="16" FontWeight="SemiBold" />
-          <TextBlock x:Name="SummaryText" Text="{Binding Summary}" Opacity="0.8" />
-          <TextBlock Text="{Binding SortText}" Opacity="0.6" FontSize="12" IsVisible="{Binding HasRows}" />
-        </StackPanel>
-        <Button Grid.Column="1" x:Name="RefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top" />
-      </Grid>
+    <TabControl x:Name="MainTabs" SelectedIndex="{Binding SelectedTab}">
+      <TabItem x:Name="QueuesTab" Header="Queues">
+          <DockPanel DataContext="{Binding Queues}" x:DataType="vm:QueuesViewModel">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+              <StackPanel Spacing="2">
+                <TextBlock Text="Queues" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock x:Name="SummaryText" Text="{Binding Summary}" Opacity="0.8" />
+                <TextBlock Text="{Binding SortText}" Opacity="0.6" FontSize="12" IsVisible="{Binding HasRows}" />
+              </StackPanel>
+              <Button Grid.Column="1" x:Name="RefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top" />
+            </Grid>
 
-      <Panel>
-        <TextBlock x:Name="NotConnectedText" Classes="state" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" />
-        <StackPanel IsVisible="{Binding IsLoading}" Spacing="8">
-          <TextBlock x:Name="LoadingText" Classes="state" Text="{Binding LoadingText}" />
-          <ProgressBar IsIndeterminate="True" />
-        </StackPanel>
-        <TextBlock x:Name="EmptyText" Classes="state" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
-        <TextBlock x:Name="ErrorText" Classes="state error" Text="{Binding ErrorMessage}" IsVisible="{Binding IsError}" />
+            <Panel>
+              <TextBlock x:Name="NotConnectedText" Classes="state" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" />
+              <StackPanel IsVisible="{Binding IsLoading}" Spacing="8">
+                <TextBlock x:Name="LoadingText" Classes="state" Text="{Binding LoadingText}" />
+                <ProgressBar IsIndeterminate="True" />
+              </StackPanel>
+              <TextBlock x:Name="EmptyText" Classes="state" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
+              <TextBlock x:Name="ErrorText" Classes="state error" Text="{Binding ErrorMessage}" IsVisible="{Binding IsError}" />
 
-        <DataGrid x:Name="QueuesGrid"
-                  ItemsSource="{Binding Rows}"
-                  IsVisible="{Binding HasRows}"
-                  IsReadOnly="True"
-                  CanUserSortColumns="True"
-                  CanUserResizeColumns="True"
-                  GridLinesVisibility="Horizontal"
-                  Sorting="OnQueuesGridSorting">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Queue" x:DataType="vm:QueueRowViewModel" Binding="{Binding Name}" SortMemberPath="Name" Width="2*" />
-            <DataGridTextColumn Header="Active" x:DataType="vm:QueueRowViewModel" Binding="{Binding ActiveText}" SortMemberPath="Active" />
-            <DataGridTemplateColumn Header="Dead-letter" SortMemberPath="DeadLetter">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:QueueRowViewModel">
-                  <Border Classes.deadletter="{Binding DeadLetterAboveZero}" Padding="6,2" Margin="4,2">
-                    <TextBlock Classes.deadletter="{Binding DeadLetterAboveZero}" Text="{Binding DeadLetterText}" VerticalAlignment="Center" />
-                  </Border>
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Scheduled" x:DataType="vm:QueueRowViewModel" Binding="{Binding ScheduledText}" SortMemberPath="Scheduled" />
-            <DataGridTemplateColumn Header="Transfer DLQ" SortMemberPath="TransferDeadLetter">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:QueueRowViewModel">
-                  <Border Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Padding="6,2" Margin="4,2">
-                    <TextBlock Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Text="{Binding TransferDeadLetterText}" VerticalAlignment="Center" />
-                  </Border>
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Status" x:DataType="vm:QueueRowViewModel" Binding="{Binding Status}" SortMemberPath="Status" />
-            <DataGridTextColumn Header="Size" x:DataType="vm:QueueRowViewModel" Binding="{Binding SizeText}" SortMemberPath="Size" />
-          </DataGrid.Columns>
-        </DataGrid>
-      </Panel>
-    </DockPanel>
+              <DataGrid x:Name="QueuesGrid"
+                        ItemsSource="{Binding Rows}"
+                        IsVisible="{Binding HasRows}"
+                        IsReadOnly="True"
+                        CanUserSortColumns="True"
+                        CanUserResizeColumns="True"
+                        GridLinesVisibility="Horizontal"
+                        Sorting="OnQueuesGridSorting">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Queue" x:DataType="vm:EntityRowViewModel" Binding="{Binding Name}" SortMemberPath="Name" Width="2*" />
+                  <DataGridTextColumn Header="Active" x:DataType="vm:EntityRowViewModel" Binding="{Binding ActiveText}" SortMemberPath="Active" />
+                  <DataGridTemplateColumn Header="Dead-letter" SortMemberPath="DeadLetter">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:EntityRowViewModel">
+                        <Border Classes.deadletter="{Binding DeadLetterAboveZero}" Padding="6,2" Margin="4,2">
+                          <TextBlock Classes.deadletter="{Binding DeadLetterAboveZero}" Text="{Binding DeadLetterText}" VerticalAlignment="Center" />
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Scheduled" x:DataType="vm:EntityRowViewModel" Binding="{Binding ScheduledText}" SortMemberPath="Scheduled" />
+                  <DataGridTemplateColumn Header="Transfer DLQ" SortMemberPath="TransferDeadLetter">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:EntityRowViewModel">
+                        <Border Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Padding="6,2" Margin="4,2">
+                          <TextBlock Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Text="{Binding TransferDeadLetterText}" VerticalAlignment="Center" />
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Status" x:DataType="vm:EntityRowViewModel" Binding="{Binding Status}" SortMemberPath="Status" />
+                  <DataGridTextColumn Header="Size" x:DataType="vm:EntityRowViewModel" Binding="{Binding SizeText}" SortMemberPath="Size" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </Panel>
+          </DockPanel>
+      </TabItem>
+      <TabItem x:Name="TopicsTab" Header="Topics">
+        <views:TopicsView x:Name="TopicsPanel" DataContext="{Binding Topics}" />
+      </TabItem>
+      <TabItem x:Name="JobsTab" Header="Test jobs">
+        <views:JobsView x:Name="JobsPanel" DataContext="{Binding Jobs}" />
+      </TabItem>
+    </TabControl>
   </DockPanel>
 </Window>

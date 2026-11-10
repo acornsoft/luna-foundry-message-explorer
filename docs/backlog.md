@@ -5,7 +5,7 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 ## Service Bus parity (see [parity matrix](parity-matrix.md))
 
 - Entity tree: queues, topics, subscriptions, with a name filter.
-- Topics grid and subscriptions grid on top of the adapter calls that this PR already builds.
+- Topics grid and subscriptions grid: built in the fifth PR (Topics tab, read-only, per-cell dead-letter highlight).
 - Read-only rules view per subscription.
 - Peek view for active, dead-letter, and scheduled messages, with redacted bodies.
 - Dead-letter view with reason and description.
@@ -32,7 +32,8 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 ## Test jobs
 
 - First slice built in the third PR: job files, stdio JSON-RPC plugin host, in-memory broker, `me-jobs` CLI with JUnit, sample plugins and jobs. See [test jobs design](design/test-jobs.md), section 11.
-- Live view in the app: expected versus actual per correlation ID while a job runs, with plugin events (throttled, retry, dead-lettered). Not started.
+- Jobs panel and live view in the app: built in the fifth PR. Pick a collection, job, environment, and pace; Run and Cancel; expected versus actual per correlation ID with status, hop timeline, latency, plugin event counters, a status filter, and Export JUnit.
+- Live view later: a drawn hop graph (the timeline is text today), saved runs, and comparing two runs.
 - GSL Reg E and order-app sample collections. Stubs only.
 - Replay store, gRPC transport, sending to sandbox brokers behind an allow-list, redaction of saved run records.
 - `hop-relay`: ordering gates and timer-driven reprocessing.

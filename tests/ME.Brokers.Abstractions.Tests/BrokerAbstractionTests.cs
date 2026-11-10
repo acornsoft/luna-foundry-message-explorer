@@ -67,7 +67,7 @@ public class ProviderCatalogTests
     {
         var descriptor = new FakeBrokerProvider().Descriptor;
         Assert.True(descriptor.Supports(BrokerCapabilities.ListQueues | BrokerCapabilities.DeadLetterCounts));
-        Assert.False(descriptor.Supports(BrokerCapabilities.ListQueues | BrokerCapabilities.ListTopics));
+        Assert.False(descriptor.Supports(BrokerCapabilities.ListQueues | BrokerCapabilities.Peek));
     }
 
     private sealed class PlannedButImplemented : IBrokerProvider

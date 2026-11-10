@@ -83,7 +83,7 @@ public class ConnectViewModelTests
         Assert.Equal("contoso-synthetic", provider.LastConnection?.Endpoint);
         Assert.Null(provider.LastConnection?.Secret);
         Assert.True(main.Connect.IsConnected);
-        Assert.Equal(QueueListState.Loaded, main.Queues.State);
+        Assert.Equal(ListState.Loaded, main.Queues.State);
         Assert.Equal(4, main.Queues.Rows.Count);
     }
 
@@ -114,7 +114,7 @@ public class ConnectViewModelTests
         Assert.Equal("That endpoint is not valid.", main.Connect.ValidationMessage);
         Assert.Equal(0, provider.OpenCalls);
         Assert.False(main.Connect.IsConnected);
-        Assert.Equal(QueueListState.NotConnected, main.Queues.State);
+        Assert.Equal(ListState.NotConnected, main.Queues.State);
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class ConnectViewModelTests
         main.Connect.DisconnectCommand.Execute(null);
 
         Assert.False(main.Connect.IsConnected);
-        Assert.Equal(QueueListState.NotConnected, main.Queues.State);
+        Assert.Equal(ListState.NotConnected, main.Queues.State);
         Assert.Empty(main.Queues.Rows);
         Assert.True(provider.Inventory.Disposed);
         Assert.False(main.Queues.RefreshCommand.CanExecute(null));
@@ -204,7 +204,7 @@ public class QueuesViewModelTests
     {
         var vm = new QueuesViewModel();
         await vm.LoadAsync(Inventory());
-        Assert.Equal(QueueListState.Loaded, vm.State);
+        Assert.Equal(ListState.Loaded, vm.State);
         Assert.Equal(2, vm.DeadLetterQueueCount);
         Assert.Equal("4 queues, 2 with dead letters. Read-only.", vm.Summary);
         Assert.Equal(1, vm.PagesRead);
@@ -330,16 +330,16 @@ public class QueuesViewModelTests
     }
 }
 
-public class QueueRowViewModelTests
+public class EntityRowViewModelTests
 {
     [Fact]
     public void Dead_letters_above_zero_are_flagged()
     {
-        Assert.True(new QueueRowViewModel(SyntheticQueues.Queue("a", 0, 1)).HasDeadLetters);
-        Assert.True(new QueueRowViewModel(SyntheticQueues.Queue("b", 0, 0, transferDeadLetter: 1)).HasDeadLetters);
-        Assert.False(new QueueRowViewModel(SyntheticQueues.Queue("c", 9, 0)).HasDeadLetters);
+        Assert.True(new EntityRowViewModel(SyntheticQueues.Queue("a", 0, 1)).HasDeadLetters);
+        Assert.True(new EntityRowViewModel(SyntheticQueues.Queue("b", 0, 0, transferDeadLetter: 1)).HasDeadLetters);
+        Assert.False(new EntityRowViewModel(SyntheticQueues.Queue("c", 9, 0)).HasDeadLetters);
 
-        var transferOnly = new QueueRowViewModel(SyntheticQueues.Queue("d", 0, 0, transferDeadLetter: 2));
+        var transferOnly = new EntityRowViewModel(SyntheticQueues.Queue("d", 0, 0, transferDeadLetter: 2));
         Assert.False(transferOnly.DeadLetterAboveZero);
         Assert.True(transferOnly.TransferDeadLetterAboveZero);
     }
@@ -347,7 +347,7 @@ public class QueueRowViewModelTests
     [Fact]
     public void Text_columns_format_counts_size_and_unknowns()
     {
-        var row = new QueueRowViewModel(SyntheticQueues.Queue("a", 12345, 3, 2, 1, size: 5 * 1024 * 1024));
+        var row = new EntityRowViewModel(SyntheticQueues.Queue("a", 12345, 3, 2, 1, size: 5 * 1024 * 1024));
         Assert.Equal("12,345", row.ActiveText);
         Assert.Equal("3", row.DeadLetterText);
         Assert.Equal("2", row.ScheduledText);
@@ -355,13 +355,13 @@ public class QueueRowViewModelTests
         Assert.Equal("5.0 MB", row.SizeText);
         Assert.Equal("Active", row.Status);
 
-        var unknown = new QueueRowViewModel(new EntitySnapshot(EntityKind.Queue, "u", null, EntityCounts.Unknown, null, null));
+        var unknown = new EntityRowViewModel(new EntitySnapshot(EntityKind.Queue, "u", null, EntityCounts.Unknown, null, null));
         Assert.Equal("-", unknown.ActiveText);
         Assert.Equal("-", unknown.SizeText);
         Assert.Equal("Unknown", unknown.Status);
         Assert.False(unknown.HasDeadLetters);
 
-        Assert.Equal("512 B", new QueueRowViewModel(SyntheticQueues.Queue("s", 0, 0, size: 512)).SizeText);
-        Assert.Equal("2.0 KB", new QueueRowViewModel(SyntheticQueues.Queue("k", 0, 0, size: 2048)).SizeText);
+        Assert.Equal("512 B", new EntityRowViewModel(SyntheticQueues.Queue("s", 0, 0, size: 512)).SizeText);
+        Assert.Equal("2.0 KB", new EntityRowViewModel(SyntheticQueues.Queue("k", 0, 0, size: 2048)).SizeText);
     }
 }

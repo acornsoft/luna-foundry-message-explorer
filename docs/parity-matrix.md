@@ -16,15 +16,15 @@ Read-only first: every write (send, receive, settle, create, delete, purge) stay
 | Connect | Connect with Microsoft Entra ID | Done (this PR) | `DefaultAzureCredential` with a namespace host name. No secret is typed. |
 | Connect | Saved connections list | Planned | Save the host name and sign-in mode only. Secrets go to the OS keychain, never to a settings file. |
 | Connect | More than one broker family | Done (this PR), design | `IBrokerProvider` in `ME.Brokers.Abstractions`. Service Bus is enabled. Kafka and AWS SQS/SNS show as planned and disabled. |
-| Layout | Entity tree on the left, details on the right | Planned | This PR has a Connect panel and a Queues grid. A tree of queues, topics, and subscriptions comes next. |
+| Layout | Entity tree on the left, details on the right | Partial | Connect panel plus Queues, Topics, and Test jobs tabs. A tree of queues, topics, and subscriptions comes later. |
 | Layout | Log pane | Planned | Structured, redacted event log. No message bodies in the log. |
 | Navigation | Filter entities by name | Planned | Client-side filter over the inventory. |
 | Queues | List queues | Done (this PR) | `GetQueuesRuntimePropertiesAsync` paged, joined with `GetQueuesAsync` for status. |
 | Queues | Active, dead-letter, scheduled, transfer dead-letter counts | Done (this PR) | Sortable grid. Dead-letter counts above zero are highlighted. |
 | Queues | Status and size | Done (this PR) | Status from the entity description, size from runtime properties. |
 | Queues | Create, update, delete a queue | Out of scope for observe mode | Infrastructure belongs in Bicep or Terraform. A later admin action may file a change request, not run it. |
-| Topics | List topics with scheduled count, size, subscription count | Done (adapter), Planned (UI) | `ListTopicsAsync` is built and tested. The grid view is planned. |
-| Subscriptions | List subscriptions with counts | Done (adapter), Planned (UI) | `ListSubscriptionsAsync(topic)` is built and tested. |
+| Topics | List topics with scheduled count, size, subscription count | Done | `ListTopicsAsync` feeds the Topics grid (sortable, read-only). |
+| Subscriptions | List subscriptions with counts | Done | Pick a topic to list its subscriptions with active, dead-letter, and transfer dead-letter counts. Non-zero dead-letter cells are highlighted, as in the Queues grid. |
 | Rules | View subscription rules and filters | Planned | Read-only view through `GetRulesAsync`. Editing rules is out of scope for observe mode. |
 | Messages | Peek messages | Planned (UI) | The skeleton peek client exists with a sequence cursor and a cap of 100. Bodies are redacted before display. |
 | Messages | Receive and delete, receive and complete | Out of scope for observe mode | Settlement changes the broker. Admin module only, with approval. |

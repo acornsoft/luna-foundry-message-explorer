@@ -61,6 +61,25 @@ public sealed record RunResult(
     public bool Succeeded => Failed == 0;
 }
 
+/// <summary>A correlation ID sent this step, with the expectations the assertion plugins gave for it.</summary>
+public sealed record SentRecord(string CorrelationId, DateTimeOffset SentAt, IReadOnlyList<JsonObject> Expected);
+
+/// <summary>An <c>event</c> notification from a plugin, for example throttled, retry, deadLettered, duplicateDropped.</summary>
+public sealed record PluginEvent(string Plugin, string Kind, JsonObject Data);
+
+/// <summary>What changed in one pass of the run loop. The live view applies these in order.</summary>
+public sealed record RunStep(
+    DateTimeOffset Now,
+    IReadOnlyList<SentRecord> Sent,
+    IReadOnlyList<Observation> Observed,
+    IReadOnlyList<PluginEvent> Events);
+
+/// <summary>Receives each step of a run as it happens. Awaited, so an observer can pace a run for watching.</summary>
+public interface IRunObserver
+{
+    ValueTask OnStepAsync(RunStep step, CancellationToken cancellationToken);
+}
+
 public sealed class JobRunException(string message, Exception? innerException = null) : Exception(message, innerException);
 
 /// <summary>
@@ -82,7 +101,10 @@ public sealed class JobRunner
         _maxDeliveriesPerStep = maxDeliveriesPerStep;
     }
 
-    public async Task<RunResult> RunAsync(JobDefinition job, CancellationToken cancellationToken = default)
+    public Task<RunResult> RunAsync(JobDefinition job, CancellationToken cancellationToken = default) =>
+        RunAsync(job, null, cancellationToken);
+
+    public async Task<RunResult> RunAsync(JobDefinition job, IRunObserver? observer, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(job);
         if (job.Provider != Loading.JobLoader.InMemoryProvider)
@@ -95,7 +117,7 @@ public sealed class JobRunner
             foreach (var binding in job.Plugins)
                 hosts.Add((binding, await _launcher.LaunchAsync(binding, job, bus, cancellationToken).ConfigureAwait(false)));
 
-            return await RunCoreAsync(job, bus, hosts, _maxDeliveriesPerStep, cancellationToken).ConfigureAwait(false);
+            return await RunCoreAsync(job, bus, hosts, _maxDeliveriesPerStep, observer, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -109,6 +131,7 @@ public sealed class JobRunner
         InMemoryBus bus,
         IReadOnlyList<(PluginBinding Binding, IPluginHost Host)> hosts,
         int maxDeliveriesPerStep,
+        IRunObserver? observer,
         CancellationToken cancellationToken)
     {
         IPluginHost[] With(PluginRole role) => hosts.Where(h => h.Binding.Roles.Contains(role)).Select(h => h.Host).ToArray();
@@ -133,6 +156,7 @@ public sealed class JobRunner
         var end = job.ClockStart + job.Duration;
         var hardStop = end + job.Drain;
         DateTimeOffset? nextTick = job.ClockStart;
+        var eventsSeen = new int[hosts.Count];
 
         for (var step = 0; ; step++)
         {
@@ -142,6 +166,8 @@ public sealed class JobRunner
 
             // Generators tick on clock.step boundaries. Between ticks the clock jumps straight to the next
             // message that becomes visible, so a 5-second hop takes 5 simulated seconds, not one whole step.
+            var stepSent = new List<SentRecord>();
+            var stepObserved = new List<Observation>();
             var ticking = nextTick == now;
             if (ticking)
                 nextTick = now >= end ? null : (now + job.Step > end ? end : now + job.Step);
@@ -158,6 +184,7 @@ public sealed class JobRunner
                         order.Add(message.CorrelationId);
                     }
 
+                    var given = new List<JsonObject>();
                     foreach (var assertion in assertions)
                     {
                         foreach (var expectation in await Call(assertion, () => assertion.ExpectAsync(message, cancellationToken)).ConfigureAwait(false))
@@ -166,8 +193,12 @@ public sealed class JobRunner
                             if (!expected.TryGetValue(key, out var list))
                                 expected[key] = list = [];
                             list.Add((assertion, expectation));
+                            given.Add(expectation);
                         }
                     }
+
+                    if (given.Count > 0)
+                        stepSent.Add(new SentRecord(message.CorrelationId, sentAt[message.CorrelationId], given));
                 }
             }
 
@@ -193,14 +224,29 @@ public sealed class JobRunner
             }
             while (delivered);
 
-            foreach (var observer in observers)
+            foreach (var watcher in observers)
             {
-                foreach (var observation in await Call(observer, () => observer.ObserveAsync(now, cancellationToken)).ConfigureAwait(false))
+                foreach (var observation in await Call(watcher, () => watcher.ObserveAsync(now, cancellationToken)).ConfigureAwait(false))
                 {
                     if (!actual.TryGetValue(observation.CorrelationId, out var list))
                         actual[observation.CorrelationId] = list = [];
                     list.Add(observation);
+                    stepObserved.Add(observation);
                 }
+            }
+
+            if (observer is not null)
+            {
+                var stepEvents = new List<PluginEvent>();
+                for (var h = 0; h < hosts.Count; h++)
+                {
+                    var all = hosts[h].Host.Events;
+                    foreach (var notice in all.Skip(eventsSeen[h]))
+                        stepEvents.Add(new PluginEvent(hosts[h].Host.Info.Name, KindOf(notice), notice));
+                    eventsSeen[h] = all.Count;
+                }
+
+                await observer.OnStepAsync(new RunStep(now, stepSent, stepObserved, stepEvents), cancellationToken).ConfigureAwait(false);
             }
 
             var due = bus.NextAvailableAfter(now);
@@ -241,14 +287,16 @@ public sealed class JobRunner
         {
             foreach (var notice in host.Events)
             {
-                var kind = notice["kind"] is JsonValue value && value.TryGetValue<string>(out var text) ? text : "event";
-                var key = host.Info.Name + "." + kind;
+                var key = host.Info.Name + "." + KindOf(notice);
                 events[key] = events.TryGetValue(key, out var count) ? count + 1 : 1;
             }
         }
 
         return new RunResult(job, records, sentCount, bus.TotalMessages, versions, now, events);
     }
+
+    private static string KindOf(JsonObject notice) =>
+        notice["kind"] is JsonValue value && value.TryGetValue<string>(out var text) ? text : "event";
 
     private static Verdict Combine(IReadOnlyList<Verdict> verdicts)
     {

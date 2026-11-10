@@ -15,5 +15,6 @@
     <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
     <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
     <ProjectReference Include="..\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
+    <ProjectReference Include="..\ME.Jobs\ME.Jobs.csproj" />
   </ItemGroup>
 </Project>

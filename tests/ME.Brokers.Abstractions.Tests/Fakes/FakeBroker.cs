@@ -21,6 +21,24 @@ public static class SyntheticQueues
         Queue("gsl-case-sync", active: 40, deadLetter: 0, transferDeadLetter: 1, size: 5 * 1024 * 1024),
     ];
 
+    public static EntitySnapshot Topic(string name, int subscriptions, long scheduled = 0, string? status = "Active", long? size = 4096) =>
+        new(EntityKind.Topic, name, null, new EntityCounts(null, null, scheduled, null, null), status, size, subscriptions);
+
+    public static EntitySnapshot Subscription(string topic, string name, long active, long deadLetter, long transferDeadLetter = 0, string? status = "Active") =>
+        new(EntityKind.Subscription, name, topic, new EntityCounts(active, deadLetter, null, transferDeadLetter, active + deadLetter + transferDeadLetter), status, null);
+
+    /// <summary>Two topics with subscriptions; one subscription has dead letters, one has transfer dead letters.</summary>
+    public static IReadOnlyList<EntitySnapshot> WithTopics() =>
+    [
+        .. Standard(),
+        Topic("gsl-dispute-events", subscriptions: 3, scheduled: 1),
+        Topic("gsl-ledger-postings", subscriptions: 1),
+        Subscription("gsl-dispute-events", "case-tracker", active: 5, deadLetter: 0),
+        Subscription("gsl-dispute-events", "notice-writer", active: 1, deadLetter: 2),
+        Subscription("gsl-dispute-events", "audit-copy", active: 0, deadLetter: 0, transferDeadLetter: 4),
+        Subscription("gsl-ledger-postings", "reconciler", active: 7, deadLetter: 0),
+    ];
+
     public static IReadOnlyList<EntitySnapshot> Many(int count) =>
         Enumerable.Range(1, count)
             .Select(i => Queue($"synthetic-q-{i:D3}", active: i, deadLetter: i % 7 == 0 ? 1 : 0, scheduled: i % 3))
@@ -63,11 +81,29 @@ public sealed class FakeInventory : IEntityInventory
         return new InventoryResult(queues, pages);
     }
 
-    public Task<InventoryResult> ListTopicsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(new InventoryResult(_entities.Where(entity => entity.Kind == EntityKind.Topic).ToList(), 1));
+    public int TopicCalls { get; private set; }
 
-    public Task<InventoryResult> ListSubscriptionsAsync(string topicName, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new InventoryResult(_entities.Where(entity => entity.Kind == EntityKind.Subscription && entity.Parent == topicName).ToList(), 1));
+    public List<string> SubscriptionCalls { get; } = [];
+
+    public async Task<InventoryResult> ListTopicsAsync(CancellationToken cancellationToken = default)
+    {
+        TopicCalls++;
+        if (Gate is not null)
+            await Gate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (FailWith is not null)
+            throw FailWith;
+        return new InventoryResult(_entities.Where(entity => entity.Kind == EntityKind.Topic).ToList(), 1);
+    }
+
+    public async Task<InventoryResult> ListSubscriptionsAsync(string topicName, CancellationToken cancellationToken = default)
+    {
+        SubscriptionCalls.Add(topicName);
+        if (Gate is not null)
+            await Gate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (FailWith is not null)
+            throw FailWith;
+        return new InventoryResult(_entities.Where(entity => entity.Kind == EntityKind.Subscription && entity.Parent == topicName).ToList(), 1);
+    }
 
     public ValueTask DisposeAsync()
     {
@@ -90,7 +126,7 @@ public sealed class FakeBrokerProvider : IBrokerProvider
         Id,
         "Fake broker",
         ProviderAvailability.Enabled,
-        BrokerCapabilities.ListQueues | BrokerCapabilities.ActiveCounts | BrokerCapabilities.DeadLetterCounts,
+        BrokerCapabilities.ListQueues | BrokerCapabilities.ListTopics | BrokerCapabilities.ListSubscriptions | BrokerCapabilities.ActiveCounts | BrokerCapabilities.DeadLetterCounts | BrokerCapabilities.TransferDeadLetterCounts,
         [AuthMode.Entra, AuthMode.ConnectionString],
         "anything",
         "Synthetic test provider.");

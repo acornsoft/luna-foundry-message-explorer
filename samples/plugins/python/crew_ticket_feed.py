@@ -142,6 +142,7 @@ class Feed:
             "correlationId": ticket,
             "sentAt": message["enqueuedAt"],
             "malformed": bad,
+            "within": self.sla_text,
             "description": text,
         }]}
 

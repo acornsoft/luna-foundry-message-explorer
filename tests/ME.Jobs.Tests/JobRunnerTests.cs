@@ -150,4 +150,53 @@ public sealed class JobRunnerTests
         var error = await Assert.ThrowsAsync<JobRunException>(() => new JobRunner(new FakeLauncher([])).RunAsync(job));
         Assert.Contains("in-memory", error.Message, StringComparison.Ordinal);
     }
+
+    private sealed class RecordingObserver : IRunObserver
+    {
+        public List<RunStep> Steps { get; } = [];
+
+        public ValueTask OnStepAsync(RunStep step, CancellationToken cancellationToken)
+        {
+            Steps.Add(step);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task An_observer_sees_every_send_and_observation_in_clock_order()
+    {
+        var launcher = new FakeLauncher(new() { ["gen"] = () => OneShotGenerator("o-1", "o-2"), ["echo"] = () => Echo(TimeSpan.FromSeconds(7)) });
+        var observer = new RecordingObserver();
+        var result = await new JobRunner(launcher).RunAsync(Job(Bind("gen", PluginRole.Generator, PluginRole.Assertion), Bind("echo", PluginRole.Simulator), Observer("out.q")), observer);
+
+        Assert.Equal(["o-1", "o-2"], observer.Steps.SelectMany(s => s.Sent).Select(s => s.CorrelationId));
+        Assert.Equal(result.Records.SelectMany(r => r.Actual).Count(), observer.Steps.SelectMany(s => s.Observed).Count());
+        Assert.Equal(observer.Steps.Select(s => s.Now).OrderBy(t => t), observer.Steps.Select(s => s.Now));
+        Assert.Contains(observer.Steps, s => s.Now == Start + TimeSpan.FromSeconds(7) && s.Observed.Count == 2);
+    }
+
+    [Fact]
+    public async Task Cancelling_stops_the_run_and_disposes_plugins()
+    {
+        var generator = new FakePlugin("gen", null, PluginRole.Generator) { OnTick = _ => [] };
+        var launcher = new FakeLauncher(new() { ["gen"] = () => generator });
+        using var cancel = new CancellationTokenSource();
+        var observer = new CancelAfter(3, cancel);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new JobRunner(launcher).RunAsync(Job(Bind("gen", PluginRole.Generator)), observer, cancel.Token));
+        Assert.True(generator.Disposed);
+    }
+
+    private sealed class CancelAfter(int steps, CancellationTokenSource cancel) : IRunObserver
+    {
+        private int _seen;
+
+        public ValueTask OnStepAsync(RunStep step, CancellationToken cancellationToken)
+        {
+            if (++_seen == steps)
+                cancel.Cancel();
+            return ValueTask.CompletedTask;
+        }
+    }
 }

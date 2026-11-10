@@ -13,6 +13,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainViewModel main && main.Jobs.Dialogs is null)
+                main.Jobs.Dialogs = new WindowJobsDialogs(this);
+        };
     }
 
     /// <summary>Header clicks sort in the view model, so the order is the same one the tests check.</summary>

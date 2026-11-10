@@ -8,7 +8,7 @@ using Acornsoft.MessageExplorer.Brokers;
 
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
-public enum QueueListState
+public enum ListState
 {
     NotConnected,
     Loading,
@@ -32,8 +32,8 @@ public enum QueueSortColumn
 public sealed class QueuesViewModel : ViewModelBase
 {
     private IEntityInventory? _inventory;
-    private List<QueueRowViewModel> _all = [];
-    private QueueListState _state = QueueListState.NotConnected;
+    private List<EntityRowViewModel> _all = [];
+    private ListState _state = ListState.NotConnected;
     private string? _errorMessage;
     private bool _errorIsRetryable;
     private QueueSortColumn _sortColumn = QueueSortColumn.Name;
@@ -45,11 +45,11 @@ public sealed class QueuesViewModel : ViewModelBase
         RefreshCommand = new AsyncCommand(RefreshAsync, () => _inventory is not null);
     }
 
-    public ObservableCollection<QueueRowViewModel> Rows { get; } = [];
+    public ObservableCollection<EntityRowViewModel> Rows { get; } = [];
 
     public AsyncCommand RefreshCommand { get; }
 
-    public QueueListState State
+    public ListState State
     {
         get => _state;
         private set
@@ -66,15 +66,15 @@ public sealed class QueuesViewModel : ViewModelBase
         }
     }
 
-    public bool IsNotConnected => State == QueueListState.NotConnected;
+    public bool IsNotConnected => State == ListState.NotConnected;
 
-    public bool IsLoading => State == QueueListState.Loading;
+    public bool IsLoading => State == ListState.Loading;
 
-    public bool IsEmpty => State == QueueListState.Empty;
+    public bool IsEmpty => State == ListState.Empty;
 
-    public bool IsError => State == QueueListState.Error;
+    public bool IsError => State == ListState.Error;
 
-    public bool HasRows => State == QueueListState.Loaded;
+    public bool HasRows => State == ListState.Loaded;
 
     public string NotConnectedText => "Not connected. Choose a provider and connect to list queues.";
 
@@ -104,7 +104,7 @@ public sealed class QueuesViewModel : ViewModelBase
 
     public string Summary => State switch
     {
-        QueueListState.Loaded => $"{_all.Count} queue{(_all.Count == 1 ? string.Empty : "s")}, {DeadLetterQueueCount} with dead letters. Read-only.",
+        ListState.Loaded => $"{_all.Count} queue{(_all.Count == 1 ? string.Empty : "s")}, {DeadLetterQueueCount} with dead letters. Read-only.",
         _ => string.Empty,
     };
 
@@ -128,7 +128,7 @@ public sealed class QueuesViewModel : ViewModelBase
         Rows.Clear();
         ErrorMessage = null;
         PagesRead = 0;
-        State = QueueListState.NotConnected;
+        State = ListState.NotConnected;
         RefreshCommand.RaiseCanExecuteChanged();
     }
 
@@ -161,21 +161,21 @@ public sealed class QueuesViewModel : ViewModelBase
         if (_inventory is null)
             return;
 
-        State = QueueListState.Loading;
+        State = ListState.Loading;
         ErrorMessage = null;
         try
         {
             var result = await _inventory.ListQueuesAsync(cancellationToken).ConfigureAwait(true);
-            _all = result.Entities.Where(entity => entity.Kind == EntityKind.Queue).Select(entity => new QueueRowViewModel(entity)).ToList();
+            _all = result.Entities.Where(entity => entity.Kind == EntityKind.Queue).Select(entity => new EntityRowViewModel(entity)).ToList();
             PagesRead = result.PagesRead;
             ApplySort();
             OnPropertyChanged(nameof(DeadLetterQueueCount));
-            State = _all.Count == 0 ? QueueListState.Empty : QueueListState.Loaded;
+            State = _all.Count == 0 ? ListState.Empty : ListState.Loaded;
             OnPropertyChanged(nameof(Summary));
         }
         catch (OperationCanceledException)
         {
-            State = _all.Count == 0 ? QueueListState.Empty : QueueListState.Loaded;
+            State = _all.Count == 0 ? ListState.Empty : ListState.Loaded;
         }
         catch (BrokerException exception)
         {
@@ -193,12 +193,12 @@ public sealed class QueuesViewModel : ViewModelBase
         Rows.Clear();
         ErrorMessage = message;
         ErrorIsRetryable = retryable;
-        State = QueueListState.Error;
+        State = ListState.Error;
     }
 
     private void ApplySort()
     {
-        IEnumerable<QueueRowViewModel> ordered = _sortColumn switch
+        IEnumerable<EntityRowViewModel> ordered = _sortColumn switch
         {
             QueueSortColumn.Name => Order(row => row.Name),
             QueueSortColumn.Active => Order(row => row.Active ?? -1),
@@ -215,7 +215,7 @@ public sealed class QueuesViewModel : ViewModelBase
             Rows.Add(row);
     }
 
-    private IOrderedEnumerable<QueueRowViewModel> Order<TKey>(Func<QueueRowViewModel, TKey> key)
+    private IOrderedEnumerable<EntityRowViewModel> Order<TKey>(Func<EntityRowViewModel, TKey> key)
     {
         var comparer = typeof(TKey) == typeof(string)
             ? (IComparer<TKey>)StringComparer.OrdinalIgnoreCase

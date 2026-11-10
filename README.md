@@ -39,7 +39,7 @@ Admin actions are a separate module, off by default. They file a request. This s
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
 | `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
 | `samples/plugins`, `samples/jobs` | Sample plugins (C# and Python) and sample jobs. Synthetic data only |
-| `src/ME.App` | Avalonia shell: Connect panel (Entra or in-memory connection string) and a sortable Queues grid |
+| `src/ME.App` | Avalonia shell: Connect panel (Entra or in-memory connection string), sortable Queues and Topics grids, and the Test jobs panel with a live run view |
 | `src/ME.App.Desktop` | Desktop entry point |
 | `src/Scenarios`, `tests/Scenarios` | Reserved for the GSL Reg E dispute library and runner (separate PR) |
 | `tests/*` | One test project per core library, plus the shell (view models and headless UI) |
@@ -49,6 +49,8 @@ Borrowed ideas are credited in [docs/ideas-log.md](docs/ideas-log.md). No code i
 ## Service Bus queue list
 
 Connect with Microsoft Entra ID (namespace host name plus `DefaultAzureCredential`) or with a connection string typed at runtime. The connection string is held in memory, shown masked, and cleared after connecting. The queue list reads the management plane only (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged). Listing needs a management read permission on the namespace.
+
+The **Topics** tab lists topics with subscription counts. Pick a topic to list its subscriptions with active, dead-letter, and transfer dead-letter counts; non-zero dead-letter cells are highlighted.
 
 Opt-in integration test: set `ME_SB_NAMESPACE` to a namespace you can read, then run `dotnet test`. CI does not set it, so the test is skipped there.
 
@@ -62,6 +64,22 @@ dotnet src/ME.Jobs.Cli/bin/Release/net8.0/me-jobs.dll run samples/jobs/erp-stand
 ```
 
 Test jobs never send to a real broker. Only `provider: in-memory` is accepted.
+
+### In the app
+
+The **Test jobs** tab picks a collection folder, a job, an environment, and a pace, shows the pinned plugins and the seed, and has Run and Cancel. The live view lists expected versus actual per correlation ID with a status (pending, passed, failed, dead-lettered, late), the hop timeline, latency, plugin event counters, a status filter, a final summary, and Export JUnit.
+
+Startup options (all optional):
+
+```bash
+dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.dll \
+  --collection samples/jobs/crew-stock --pace 600 --run --synthetic-demo
+```
+
+- `--collection <folder>` opens a collection on the Test jobs tab. `--run` starts the default job.
+- `--pace <n>` sets simulated seconds per real second (0 runs as fast as possible).
+- `--tab queues|topics|jobs` picks the tab.
+- `--synthetic-demo` (or `LFME_SYNTHETIC_DEMO=1`) adds an in-memory provider with made-up queues, topics, and subscriptions, and connects to it. It is off by default.
 
 ## Build and test
 
@@ -83,6 +101,6 @@ The desktop head builds with the solution. CI does not launch the window.
 - Scenario execution. The scenario runner returns a plan and sends nothing. (Test jobs run against the in-memory broker only.)
 - MCP Streamable HTTP and Entra sign-in. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
-- Topology, trace, and dead-letter screens. The window is an observe-mode shell.
+- Topology, trace, and dead-letter screens. The window is an observe-mode shell with Queues, Topics, and Test jobs tabs.
 - A Storage Queues adapter. The matrix records the peek verdict only.
 - Web, voice, and non-Azure adapters.

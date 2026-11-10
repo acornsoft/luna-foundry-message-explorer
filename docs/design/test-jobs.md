@@ -405,13 +405,14 @@ Built:
 - `src/ME.Jobs.Cli`: `me-jobs run` and `me-jobs plugin-check`.
 - Sample plugins: `order-generator` (C#, generator and assertion), `erp-standin` (C#, simulator), `hop-relay` (C#, simulator), `hello-generator` and `crew-ticket-feed` (Python).
 - Sample jobs: `erp-standin`, `crew-stock`, `python-hello`.
+- The app (fifth PR): a Test jobs tab runs a job in process through the same runner. The runner streams each step to an `IRunObserver`; the live view queues steps and applies them in one batched UI update at a time, so a 70-message run stays smooth. It shows expected versus actual per correlation ID, a status (pending, passed, failed, dead-lettered, late), the hop timeline and latency, plugin event counters, a status filter, a final summary, and Export JUnit. A pace option slows the simulated clock for watching. The crew-stock sample gives the same JUnit from the panel as from the CLI (a test checks this byte for byte).
 
 Safety: the loader and the runner accept only `provider: in-memory`. `ME.Jobs` and the CLI do not reference any broker SDK or the Service Bus adapter (a test checks this). The Service Bus adapter stays read-only and its no-mutation guard still passes.
 
 Stubs and later work:
 
 - GSL Reg E and order-app sample collections (documented stubs in `samples/jobs/`).
-- Live expected-versus-actual view in the app (backlog).
+- A drawn hop graph in the live view (the hop timeline is text today); saved runs.
 - gRPC transport; in-process .NET plugins beyond the two built-ins.
 - Replay (`IReplayStore`), `replay` and `record-to-job`.
 - Sending to real brokers (sandbox allow-list and approvals).

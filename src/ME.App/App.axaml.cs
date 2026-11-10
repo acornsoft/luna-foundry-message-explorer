@@ -20,7 +20,12 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.MainWindow = new MainWindow { DataContext = new MainViewModel(MainViewModel.DefaultCatalog()) };
+        {
+            var options = StartupOptions.Parse(desktop.Args ?? [], Environment.GetEnvironmentVariable);
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler());
+            options.Apply(main);
+            desktop.MainWindow = new MainWindow { DataContext = main };
+        }
 
         base.OnFrameworkInitializationCompleted();
     }
