@@ -32,7 +32,8 @@ public sealed class SyntheticDemoProvider(InMemoryMoveBroker? broker = null) : I
         ProviderAvailability.Enabled,
         BrokerCapabilities.ListQueues | BrokerCapabilities.ListTopics | BrokerCapabilities.ListSubscriptions
             | BrokerCapabilities.ActiveCounts | BrokerCapabilities.DeadLetterCounts | BrokerCapabilities.ScheduledCounts
-            | BrokerCapabilities.TransferDeadLetterCounts | BrokerCapabilities.EntityStatus | BrokerCapabilities.EntitySize,
+            | BrokerCapabilities.TransferDeadLetterCounts | BrokerCapabilities.EntityStatus | BrokerCapabilities.EntitySize
+            | BrokerCapabilities.Peek,
         [AuthMode.Entra],
         "synthetic-demo",
         "Made-up queues, topics and subscriptions held in memory. Nothing leaves the app.");

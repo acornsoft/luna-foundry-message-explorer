@@ -20,9 +20,19 @@ public partial class App : Application
     /// </summary>
     public static Func<Credentials.ISecretStore>? PlatformSecretStore { get; set; }
 
+    private static int _iconsRegistered;
+
     public override void Initialize()
     {
+        RegisterIcons();
         AvaloniaXamlLoader.Load(this);
+    }
+
+    /// <summary>Font Awesome Free icons for the quick view. Registered once per process (tests start many apps).</summary>
+    public static void RegisterIcons()
+    {
+        if (Interlocked.Exchange(ref _iconsRegistered, 1) == 0)
+            Projektanker.Icons.Avalonia.IconProvider.Current.Register<Projektanker.Icons.Avalonia.FontAwesome.FontAwesomeIconProvider>();
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -33,7 +43,8 @@ public partial class App : Application
             var options = StartupOptions.Parse(desktop.Args ?? [], Environment.GetEnvironmentVariable).WithDefaultCollection(samples);
             var accounts = options.SyntheticDemo ? AccountServices.SyntheticDemo() : AccountServices.ForThisComputer(Environment.GetEnvironmentVariable);
             var move = options.SyntheticDemo ? MoveServices.ForDemo(Demo.SyntheticDemoProvider.SharedBroker) : MoveServices.ForThisComputer(Environment.GetEnvironmentVariable);
-            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts, move);
+            var quick = options.SyntheticDemo ? QuickViewServices.ForDemo(Demo.SyntheticDemoProvider.SharedBroker) : QuickViewServices.Default();
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts, move, quick);
             if (options.ExitAfterRunReport is { } report)
                 ExitAfterRun(desktop, main.Jobs, report);
             options.Apply(main);

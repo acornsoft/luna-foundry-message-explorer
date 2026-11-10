@@ -161,6 +161,7 @@ build_app() {
        "$ROOT/artifacts/plugins/$plugin/$plugin.runtimeconfig.json" "$res/artifacts/plugins/$plugin/"
   done
   cp "$ROOT/LICENSE" "$res/LICENSE.txt" 2>/dev/null || true
+  cp "$ROOT/THIRD-PARTY-NOTICES.md" "$res/THIRD-PARTY-NOTICES.md" 2>/dev/null || true
 }
 
 is_macho() {

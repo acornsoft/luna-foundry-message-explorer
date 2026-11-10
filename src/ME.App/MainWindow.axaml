@@ -160,6 +160,9 @@
       <TabItem x:Name="TopicsTab" Header="Topics">
         <views:TopicsView x:Name="TopicsPanel" DataContext="{Binding Topics}" />
       </TabItem>
+      <TabItem x:Name="QuickViewTab" Header="Quick view">
+        <views:QuickView x:Name="QuickViewPanel" DataContext="{Binding QuickView}" />
+      </TabItem>
       <TabItem x:Name="JobsTab" Header="Test jobs">
         <views:JobsView x:Name="JobsPanel" DataContext="{Binding Jobs}" />
       </TabItem>

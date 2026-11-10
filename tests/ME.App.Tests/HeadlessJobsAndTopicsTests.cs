@@ -46,12 +46,12 @@ public class HeadlessJobsAndTopicsTests
             .ToList();
 
     [AvaloniaFact]
-    public void Main_window_opens_on_accounts_then_queues_topics_and_test_jobs_tabs()
+    public void Main_window_opens_on_accounts_then_queues_topics_quick_view_and_test_jobs_tabs()
     {
         var (window, _, _) = Open();
 
         var tabs = window.FindControl<TabControl>("MainTabs")!;
-        Assert.Equal(["Accounts", "Saved logins", "Queues", "Topics", "Test jobs", "Move", "Voice"], tabs.Items.OfType<TabItem>().Select(t => (string)t.Header!));
+        Assert.Equal(["Accounts", "Saved logins", "Queues", "Topics", "Quick view", "Test jobs", "Move", "Voice"], tabs.Items.OfType<TabItem>().Select(t => (string)t.Header!));
         Assert.Equal(MainViewModel.AccountsTab, tabs.SelectedIndex);
     }
 

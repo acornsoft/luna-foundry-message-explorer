@@ -16,6 +16,7 @@ namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 public sealed class MainViewModel : ViewModelBase
 {
     private IEntityInventory? _inventory;
+    private readonly QuickViewServices _quickViewServices;
 
     public MainViewModel(
         ProviderCatalog catalog,
@@ -23,13 +24,16 @@ public sealed class MainViewModel : ViewModelBase
         Func<Jobs.Running.JobRunner>? runnerFactory = null,
         string? samplesFolder = null,
         AccountServices? accounts = null,
-        MoveServices? move = null)
+        MoveServices? move = null,
+        QuickViewServices? quickView = null)
     {
+        _quickViewServices = quickView ?? QuickViewServices.Default();
         ArgumentNullException.ThrowIfNull(catalog);
         var services = accounts ?? AccountServices.None();
         Shell = ShellModel.Observe();
         Queues = new QueuesViewModel();
         Topics = new TopicsViewModel();
+        QuickView = new QuickViewViewModel(scheduler);
         Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance, runnerFactory: runnerFactory, samplesFolder: samplesFolder);
         Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected, services.Vault);
         Accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, OpenFromAccountsAsync, services.SignInLog, browsers: services.Browsers);
@@ -80,6 +84,9 @@ public sealed class MainViewModel : ViewModelBase
 
     public TopicsViewModel Topics { get; }
 
+    /// <summary>The Quick view tab: entity tree, lane cards, cascading peek sections and a detail drawer.</summary>
+    public QuickViewViewModel QuickView { get; }
+
     /// <summary>Test jobs. Independent of the connection: jobs run against the in-memory broker only.</summary>
     public JobsViewModel Jobs { get; }
 
@@ -89,16 +96,21 @@ public sealed class MainViewModel : ViewModelBase
     public const int LoginsTab = 1;
     public const int QueuesTab = 2;
     public const int TopicsTab = 3;
-    public const int JobsTab = 4;
-    public const int MoveTab = 5;
-    public const int VoiceTab = 6;
+    public const int QuickViewTab = 4;
+    public const int JobsTab = 5;
+    public const int MoveTab = 6;
+    public const int VoiceTab = 7;
 
     private int _selectedTab;
 
     public int SelectedTab
     {
         get => _selectedTab;
-        set => Set(ref _selectedTab, value);
+        set
+        {
+            if (Set(ref _selectedTab, value) && value == QuickViewTab)
+                _ = QuickView.EnsureLoadedAsync();
+        }
     }
 
     /// <summary>The production catalog: Service Bus enabled, Kafka and AWS SQS/SNS listed as planned.</summary>
@@ -138,7 +150,18 @@ public sealed class MainViewModel : ViewModelBase
         var connection = Connect.LastConnection;
         var actor = connection?.Credential is not null ? Connect.SelectedAccount?.Username : null;
         await Move.LoadAsync(inventory, MoveServicesFor(inventory, connection), actor ?? ActorFromLabel()).ConfigureAwait(true);
+        QuickView.Attach(inventory, NamespaceLabel(inventory, connection), _quickViewServices.Resolve(inventory, connection));
+        if (SelectedTab == QuickViewTab)
+            await QuickView.EnsureLoadedAsync().ConfigureAwait(true);
     }
+
+    private static string NamespaceLabel(IEntityInventory inventory, BrokerConnection? connection) => inventory switch
+    {
+        Adapters.ServiceBus.Arm.ArmEntityInventory arm => arm.Namespace.Name,
+        _ when inventory.Provider.Id == SyntheticDemoProvider.Id => SyntheticDemoProvider.Namespace,
+        _ when connection?.Endpoint is { Length: > 0 } endpoint => endpoint.Split('.')[0],
+        _ => inventory.Provider.DisplayName,
+    };
 
     private string? ActorFromLabel() => Connect.ConnectedTo is { } text && text.LastIndexOf(" as ", StringComparison.Ordinal) is var at and >= 0 ? text[(at + 4)..] : null;
 
@@ -150,12 +173,15 @@ public sealed class MainViewModel : ViewModelBase
             return;
         await Queues.RefreshCommand.ExecuteAsync().ConfigureAwait(true);
         await Topics.RefreshCommand.ExecuteAsync().ConfigureAwait(true);
+        if (QuickView.IsConnected && SelectedTab == QuickViewTab)
+            await QuickView.RefreshAsync().ConfigureAwait(true);
     }
 
     private void OnDisconnected()
     {
         Queues.Clear();
         Topics.Clear();
+        _ = QuickView.ClearAsync();
         _ = Move.ClearAsync();
         _ = DisposeInventoryAsync();
     }

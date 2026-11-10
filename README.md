@@ -131,6 +131,10 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 
 `lfme-mcp` is a read-only MCP server over stdio with four tools: `list_entities`, `get_entity`, `check_limits` and `summarize_dead_letters`. It speaks MCP 2026-07-28 and the older `initialize` handshake. It reads counts only. A Cursor plugin scaffold, never published, is in `plugins/cursor/lfme-readonly`. See [MCP server](docs/mcp-server.md).
 
+## Quick view
+
+The Quick view tab is a split view: the entity tree on the left, a strip of lane cards (Active, Dead-letter, Scheduled, Transfer dead-letter) whose counts you click to jump to that section, sections that cascade open as rows, and a message detail drawer. Counts come from runtime properties. Each section peeks the top N messages (25 by default, 1 to 100) only when it is opened, with one sequence cursor per sub-queue and "load more". It is peek only, bodies are masked, and any provider can plug in a browser. Icons are Font Awesome Free (see [third-party notices](THIRD-PARTY-NOTICES.md)). See [Quick view](docs/quick-view.md).
+
 ## Grok Voice
 
 The Voice tab answers questions about the connected namespace out loud, push-to-talk, using the same four read-only tools as `lfme-mcp`. It can never move anything. The xAI key lives only in the vault (Saved logins > xAI). Message bodies are redacted by default, and the voice picker offers xAI's built-in voices only. See [Grok Voice](docs/voice.md).
@@ -157,12 +161,12 @@ The desktop head builds with the solution. CI does not launch the window.
 
 ## Not in this skeleton
 
-- Azure SDK clients. Adapters talk to interfaces. A production peek transport is not wired, and no cloud call is made.
+- Azure SDK clients outside the Quick view and Move mode. Inventory adapters talk to interfaces.
 - The Event Grid template is not deployed.
 - Machine-learning PII detection. The local net is schema rules, a pattern scrubber, and an echo scrub of values those rules already removed.
 - Scenario execution. The scenario runner returns a plan and sends nothing. (Test jobs run against the in-memory broker only.)
 - MCP Streamable HTTP. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
-- Topology, trace, and dead-letter screens. The window is an observe-mode shell with Accounts, Queues, Topics, and Test jobs tabs.
+- Topology and trace screens.
 - A Storage Queues adapter. The matrix records the peek verdict only.
 - Web and non-Azure adapters. A platform audio backend for the Voice tab (questions are typed until one is added).
