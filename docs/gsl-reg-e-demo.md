@@ -24,7 +24,7 @@ property. There are no real people, accounts, or cases.
 | The subscription id in `LFME_ALLOWED_SUBSCRIPTIONS` | The sandbox gate fails closed. Real subscription ids stay out of the repository. |
 
 The gate also checks that the namespace is on `src/ME.Scenarios/Sandbox/allowed-namespaces.txt`, has
-`disableLocalAuth=true`, and is tagged `env=test` or `dataClass=synthetic`.
+`disableLocalAuth=true`, and is tagged `env=test`, or `env=dev` together with `dataClass=synthetic`. `dataClass=synthetic` with `env=prod` (or any other env) is refused.
 
 ```bash
 export LFME_SUBSCRIPTION=<subscription id>

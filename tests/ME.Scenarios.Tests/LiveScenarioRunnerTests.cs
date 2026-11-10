@@ -54,6 +54,7 @@ public class LiveScenarioRunnerTests
 
     [Theory]
     [InlineData("env-prod")]
+    [InlineData("env-prod-synthetic")]
     [InlineData("local-auth")]
     [InlineData("other-namespace")]
     [InlineData("other-subscription")]
@@ -63,6 +64,7 @@ public class LiveScenarioRunnerTests
         broker.Facts = variant switch
         {
             "env-prod" => broker.Facts with { Tags = new Dictionary<string, string> { ["env"] = "prod" } },
+            "env-prod-synthetic" => broker.Facts with { Tags = new Dictionary<string, string> { ["env"] = "prod", ["dataClass"] = "synthetic" } },
             "local-auth" => broker.Facts with { DisableLocalAuth = false },
             "other-namespace" => broker.Facts with { NamespaceName = "sbns-somewhere-else" },
             _ => broker.Facts with { SubscriptionId = "11111111-1111-1111-1111-111111111111" },
@@ -72,6 +74,8 @@ public class LiveScenarioRunnerTests
         Assert.False(report.Allowed);
         Assert.Empty(broker.Sent);
         Assert.Contains("Blocked:", output.ToString(), StringComparison.Ordinal);
+        if (variant is "env-prod" or "env-prod-synthetic")
+            Assert.Contains("Accept env=test, or env=dev together with dataClass=synthetic", report.BlockReason, StringComparison.Ordinal);
     }
 
     [Fact]

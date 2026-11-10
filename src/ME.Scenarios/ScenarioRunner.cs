@@ -271,7 +271,7 @@ public static class SandboxGate
         if (policy.Namespaces.Count == 0 || policy.Subscriptions.Count == 0)
             return SandboxDecision.Block("Allow-list is empty.");
         if (!request.TaggedTest)
-            return SandboxDecision.Block("Namespace is not tagged env=test.");
+            return SandboxDecision.Block("Namespace is not a sandbox. Accept env=test, or env=dev together with dataClass=synthetic.");
         if (!request.DisableLocalAuth)
             return SandboxDecision.Block("disableLocalAuth must be true.");
         if (!policy.Namespaces.Contains(request.NamespaceName))

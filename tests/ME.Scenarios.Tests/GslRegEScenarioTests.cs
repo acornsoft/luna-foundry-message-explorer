@@ -163,13 +163,41 @@ public class GslRegEScenarioTests
     }
 
     [Theory]
-    [InlineData("env", "test", true)]
-    [InlineData("dataClass", "synthetic", true)]
-    [InlineData("env", "dev", false)]
-    [InlineData("env", "prod", false)]
-    [InlineData("dataClass", "real", false)]
-    public void Sandbox_tags(string key, string value, bool expected) =>
-        Assert.Equal(expected, SandboxTags.IsSandbox(new Dictionary<string, string> { [key] = value }));
+    [InlineData("test", null, true)]
+    [InlineData("test", "synthetic", true)]
+    [InlineData("test", "real", true)]
+    [InlineData("dev", "synthetic", true)]
+    [InlineData("dev", null, false)]
+    [InlineData("dev", "real", false)]
+    [InlineData("prod", "synthetic", false)]
+    [InlineData("prod", null, false)]
+    [InlineData("staging", "synthetic", false)]
+    [InlineData(null, "synthetic", false)]
+    [InlineData(null, "real", false)]
+    [InlineData(null, null, false)]
+    public void Sandbox_tags(string? env, string? dataClass, bool expected)
+    {
+        var tags = new Dictionary<string, string>();
+        if (env is not null)
+            tags["env"] = env;
+        if (dataClass is not null)
+            tags["dataClass"] = dataClass;
+        Assert.Equal(expected, SandboxTags.IsSandbox(tags));
+    }
+
+    [Fact]
+    public void Prod_plus_synthetic_is_not_a_sandbox()
+    {
+        var tags = new Dictionary<string, string> { ["env"] = "prod", ["dataClass"] = "synthetic" };
+        Assert.False(SandboxTags.IsSandbox(tags));
+
+        var policy = Policy();
+        var request = new SandboxRequest("sbns-gsl-dev-eastus-001", "00000000-0000-0000-0000-000000000001", SandboxTags.IsSandbox(tags), true);
+        var decision = SandboxGate.Evaluate(request, policy);
+        Assert.False(decision.Allowed);
+        Assert.Equal("Namespace is not a sandbox. Accept env=test, or env=dev together with dataClass=synthetic.", decision.Reason);
+        Assert.DoesNotContain("Namespace is not tagged env=test.", decision.Reason, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void Extra_subscriptions_extend_only_subscriptions()

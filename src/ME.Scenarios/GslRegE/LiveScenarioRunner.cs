@@ -53,14 +53,16 @@ public interface IScenarioBroker
 public static class SandboxTags
 {
     /// <summary>
-    /// env=test (the skeleton rule) or dataClass=synthetic. The second form is new in this change and is a
-    /// reviewer decision: the GSL dev namespace is tagged env=dev, dataClass=synthetic.
+    /// A namespace is a sandbox when it is tagged env=test, or env=dev together with dataClass=synthetic.
+    /// dataClass=synthetic alone is not enough: env=prod (or any other env) with that tag is refused.
+    /// The GSL dev namespace is tagged env=dev, dataClass=synthetic.
     /// </summary>
     public static bool IsSandbox(IReadOnlyDictionary<string, string> tags)
     {
         ArgumentNullException.ThrowIfNull(tags);
-        return (tags.TryGetValue("env", out var env) && env == "test")
-            || (tags.TryGetValue("dataClass", out var dataClass) && dataClass == "synthetic");
+        tags.TryGetValue("env", out var env);
+        tags.TryGetValue("dataClass", out var dataClass);
+        return env == "test" || (env == "dev" && dataClass == "synthetic");
     }
 }
 
