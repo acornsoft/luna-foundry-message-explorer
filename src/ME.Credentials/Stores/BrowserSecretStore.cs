@@ -3,15 +3,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-using System.Security.Cryptography;
-using System.Text;
 using Acornsoft.MessageExplorer.Brokers;
 
 namespace Acornsoft.MessageExplorer.Credentials.Stores;
 
 /// <summary>
-/// The browser calls the web store needs: a non-extractable WebCrypto AES-GCM key kept in IndexedDB, and an
-/// IndexedDB table of encrypted records. A WASM app head supplies the real one; tests use a fake.
+/// The browser calls the web store needs, as provided by <c>lfme-vault.js</c>: a non-extractable WebCrypto
+/// AES-GCM 256 key kept in IndexedDB, and encrypt, decrypt and delete over an IndexedDB table of records.
+/// The module picks a fresh 96-bit IV for every write and binds each record to its login ID (associated
+/// data). The browser project supplies the real one through [JSImport]; tests use a fake.
 /// </summary>
 public interface IBrowserCryptoInterop
 {
@@ -20,28 +20,23 @@ public interface IBrowserCryptoInterop
     /// <summary>Creates the key once (extractable: false) and keeps the CryptoKey object in IndexedDB.</summary>
     Task EnsureKeyAsync(string keyName, CancellationToken cancellationToken);
 
-    Task<byte[]> EncryptAsync(string keyName, byte[] iv, byte[] plaintext, byte[] associatedData, CancellationToken cancellationToken);
+    /// <summary>Encrypts with a fresh IV and stores only { version, iv, ciphertext } under the login ID.</summary>
+    Task EncryptAsync(string keyName, string id, string plaintext, CancellationToken cancellationToken);
 
-    /// <summary>Throws when the record was changed or belongs to another ID (GCM tag check).</summary>
-    Task<byte[]> DecryptAsync(string keyName, byte[] iv, byte[] ciphertext, byte[] associatedData, CancellationToken cancellationToken);
+    /// <summary>Null when nothing is stored. Throws when the record was changed or belongs to another ID.</summary>
+    Task<string?> DecryptAsync(string keyName, string id, CancellationToken cancellationToken);
 
-    Task PutRecordAsync(string id, byte[] record, CancellationToken cancellationToken);
-
-    Task<byte[]?> GetRecordAsync(string id, CancellationToken cancellationToken);
-
-    Task DeleteRecordAsync(string id, CancellationToken cancellationToken);
+    Task DeleteAsync(string id, CancellationToken cancellationToken);
 }
 
 /// <summary>
-/// The web backend. Never puts a raw secret in localStorage: each secret is AES-GCM encrypted with a
-/// non-extractable WebCrypto key, with the login ID as associated data, and only the ciphertext goes to
-/// IndexedDB. Script running in the same origin can still ask the browser to decrypt, so this is weaker
-/// than an OS store and the UI says so. Entra sign-in is the preferred way to log in on the web.
+/// The web backend. Never puts a raw secret in localStorage or sessionStorage: each secret is AES-GCM
+/// encrypted by the browser with a non-extractable key, with the login ID as associated data, and only the
+/// ciphertext goes to IndexedDB. Script running in the same origin can still ask the browser to decrypt, so
+/// this is weaker than an OS store and the UI says so. Entra sign-in is the preferred way to log in on the web.
 /// </summary>
 public sealed class BrowserSecretStore(IBrowserCryptoInterop browser, string keyName = "lfme-logins") : ISecretStore
 {
-    private const byte Version = 1;
-    private const int IvBytes = 12;
     private bool? _available;
 
     public string Name => "browser storage (weaker than the OS store)";
@@ -49,7 +44,7 @@ public sealed class BrowserSecretStore(IBrowserCryptoInterop browser, string key
     public SecretProtection Protection => SecretProtection.BrowserProtected;
 
     public string? UnavailableReason => _available == false
-        ? "This browser has no WebCrypto or IndexedDB here (private window or old browser), so secrets can't be saved."
+        ? "This browser has no WebCrypto or IndexedDB here (private window, old browser, or not a secure page), so secrets can't be saved."
         : null;
 
     /// <summary>Call once at startup. Until it returns true, every write is refused.</summary>
@@ -71,50 +66,37 @@ public sealed class BrowserSecretStore(IBrowserCryptoInterop browser, string key
 
     public async Task WriteAsync(string key, RuntimeSecret secret, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(secret);
         Ready();
-        var iv = RandomNumberGenerator.GetBytes(IvBytes);
-        var plaintext = Encoding.UTF8.GetBytes(secret.Reveal());
         try
         {
-            var ciphertext = await browser.EncryptAsync(keyName, iv, plaintext, Encoding.UTF8.GetBytes(key), cancellationToken).ConfigureAwait(false);
-            await browser.PutRecordAsync(key, [Version, .. iv, .. ciphertext], cancellationToken).ConfigureAwait(false);
+            await browser.EncryptAsync(keyName, key, secret.Reveal(), cancellationToken).ConfigureAwait(false);
         }
-        finally
+        catch (Exception exception) when (exception is not (OperationCanceledException or SecretStoreException))
         {
-            Array.Clear(plaintext);
+            // Browser errors don't carry the secret, but say it plainly rather than pass them through.
+            throw new SecretStoreException("The secret could not be saved in browser storage.");
         }
     }
 
     public async Task<RuntimeSecret?> ReadAsync(string key, CancellationToken cancellationToken = default)
     {
         Ready();
-        var record = await browser.GetRecordAsync(key, cancellationToken).ConfigureAwait(false);
-        if (record is null)
-            return null;
-        if (record.Length <= 1 + IvBytes || record[0] != Version)
-            throw new SecretStoreException("A saved secret in browser storage is damaged. Save the login again.");
-        byte[] plaintext;
+        string? plaintext;
         try
         {
-            plaintext = await browser.DecryptAsync(keyName, record[1..(1 + IvBytes)], record[(1 + IvBytes)..], Encoding.UTF8.GetBytes(key), cancellationToken).ConfigureAwait(false);
+            plaintext = await browser.DecryptAsync(keyName, key, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is CryptographicException or InvalidOperationException)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             throw new SecretStoreException("A saved secret in browser storage could not be decrypted. Save the login again.");
         }
 
-        try
-        {
-            return new RuntimeSecret(Encoding.UTF8.GetString(plaintext));
-        }
-        finally
-        {
-            Array.Clear(plaintext);
-        }
+        return plaintext is null ? null : new RuntimeSecret(plaintext);
     }
 
     public Task DeleteAsync(string key, CancellationToken cancellationToken = default) =>
-        _available == true ? browser.DeleteRecordAsync(key, cancellationToken) : Task.CompletedTask;
+        _available == true ? browser.DeleteAsync(key, cancellationToken) : Task.CompletedTask;
 
     private void Ready()
     {

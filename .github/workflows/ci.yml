@@ -35,6 +35,22 @@ jobs:
           sudo apt-get install -y -q gnome-keyring libsecret-1-0 dbus-x11
           bash eng/ci/linux-keyring-tests.sh
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Browser vault tests (headless Chromium, real WebCrypto and IndexedDB, C# through JSImport)
+        working-directory: tests/browser-vault
+        env:
+          LFME_INTEROP_DIR: ${{ runner.temp }}/interop-app
+          LFME_REQUIRE_INTEROP: "1"
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          dotnet publish interop-app/InteropApp.csproj --configuration Release --output "$LFME_INTEROP_DIR"
+          npm test
+
   windows-credentials:
     name: Windows Credential Manager (unit + integration)
     runs-on: windows-latest

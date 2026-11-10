@@ -4,6 +4,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 using System.Security.Cryptography;
+using System.Text;
 using Acornsoft.MessageExplorer.Credentials.Stores;
 
 namespace Acornsoft.MessageExplorer.Credentials.Tests;
@@ -122,11 +123,15 @@ internal sealed class FakeSecretService(bool running = true) : ISecretServiceApi
 }
 
 /// <summary>Stands in for WebCrypto + IndexedDB: a key the test never reads, AES-GCM, records in a dictionary.</summary>
+/// <summary>Mirrors lfme-vault.js with .NET AES-GCM: fresh IV per write, login ID as associated data.</summary>
 internal sealed class FakeBrowserCrypto(bool available = true) : IBrowserCryptoInterop
 {
     private readonly Dictionary<string, byte[]> _keys = [];
 
+    /// <summary>What IndexedDB would hold: 12-byte IV followed by ciphertext and tag.</summary>
     public Dictionary<string, byte[]> Records { get; } = [];
+
+    public List<byte[]> IvsUsed { get; } = [];
 
     public Task<bool> IsAvailableAsync(CancellationToken cancellationToken) => Task.FromResult(available);
 
@@ -137,33 +142,30 @@ internal sealed class FakeBrowserCrypto(bool available = true) : IBrowserCryptoI
         return Task.CompletedTask;
     }
 
-    public Task<byte[]> EncryptAsync(string keyName, byte[] iv, byte[] plaintext, byte[] associatedData, CancellationToken cancellationToken)
+    public Task EncryptAsync(string keyName, string id, string plaintext, CancellationToken cancellationToken)
     {
+        var iv = RandomNumberGenerator.GetBytes(12);
+        IvsUsed.Add(iv);
+        var plain = Encoding.UTF8.GetBytes(plaintext);
         using var aes = new AesGcm(_keys[keyName], 16);
-        var cipher = new byte[plaintext.Length];
+        var cipher = new byte[plain.Length];
         var tag = new byte[16];
-        aes.Encrypt(iv, plaintext, cipher, tag, associatedData);
-        return Task.FromResult<byte[]>([.. cipher, .. tag]);
-    }
-
-    public Task<byte[]> DecryptAsync(string keyName, byte[] iv, byte[] ciphertext, byte[] associatedData, CancellationToken cancellationToken)
-    {
-        using var aes = new AesGcm(_keys[keyName], 16);
-        var plain = new byte[ciphertext.Length - 16];
-        aes.Decrypt(iv, ciphertext[..^16], ciphertext[^16..], plain, associatedData);
-        return Task.FromResult(plain);
-    }
-
-    public Task PutRecordAsync(string id, byte[] record, CancellationToken cancellationToken)
-    {
-        Records[id] = record;
+        aes.Encrypt(iv, plain, cipher, tag, Encoding.UTF8.GetBytes(id));
+        Records[id] = [.. iv, .. cipher, .. tag];
         return Task.CompletedTask;
     }
 
-    public Task<byte[]?> GetRecordAsync(string id, CancellationToken cancellationToken) =>
-        Task.FromResult(Records.TryGetValue(id, out var r) ? r : null);
+    public Task<string?> DecryptAsync(string keyName, string id, CancellationToken cancellationToken)
+    {
+        if (!Records.TryGetValue(id, out var record))
+            return Task.FromResult<string?>(null);
+        using var aes = new AesGcm(_keys[keyName], 16);
+        var plain = new byte[record.Length - 12 - 16];
+        aes.Decrypt(record[..12], record[12..^16], record[^16..], plain, Encoding.UTF8.GetBytes(id));
+        return Task.FromResult<string?>(Encoding.UTF8.GetString(plain));
+    }
 
-    public Task DeleteRecordAsync(string id, CancellationToken cancellationToken)
+    public Task DeleteAsync(string id, CancellationToken cancellationToken)
     {
         Records.Remove(id);
         return Task.CompletedTask;

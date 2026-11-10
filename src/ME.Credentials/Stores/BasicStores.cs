@@ -69,7 +69,7 @@ public static class SecretStores
         if (OperatingSystem.IsLinux())
             return LibSecretStore.Create(service);
         if (OperatingSystem.IsBrowser())
-            return new UnavailableSecretStore("browser storage", "The web app's protected browser store is not wired up yet, so secrets can't be saved here. Sign in with Entra instead.");
+            return new UnavailableSecretStore("browser storage", "In the browser, create the store with BrowserVault.CreateAsync (ME.Credentials.Browser), which loads lfme-vault.js. Until then secrets can't be saved here; sign in with Entra instead.");
         return new UnavailableSecretStore("secure store", "This platform has no supported secure store, so secrets can't be saved.");
     }
 }

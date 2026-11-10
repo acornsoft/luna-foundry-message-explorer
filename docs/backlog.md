@@ -14,7 +14,7 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 - Entra accounts and namespace discovery: built in the seventh PR (Accounts tab, several accounts, ARM GETs across tenants and subscriptions).
 - Per-account removal from the shared token cache (needs MSAL directly; Azure.Identity has no call for it).
 - Choose which signed-in account a typed namespace or endpoint-only string uses: built in the seventh PR.
-- iOS and browser (WebAssembly) app heads, and the browser crypto bridge for the web secret store (needs a decision on the no-script rule).
+- iOS and browser (WebAssembly) app heads. The browser secret store itself (lfme-vault.js through [JSImport]) is built and tested in headless Chromium.
 - Test connection for Kafka, RabbitMQ, AWS and Event Hubs logins, once those providers exist.
 - Export inventory to JSON or CSV.
 - Azure Monitor metrics charts.

@@ -40,6 +40,7 @@ public sealed class CredentialVaultTests
         Assert.DoesNotContain(Planted, _metadata.Json, StringComparison.Ordinal);
         Assert.Contains("rabbit-demo.example", _metadata.Json, StringComparison.Ordinal);
         Assert.Contains("\"RabbitMqPassword\"", _metadata.Json, StringComparison.Ordinal);
+        Assert.Contains("\"displayName\": ", _metadata.Json, StringComparison.Ordinal);
     }
 
     [Fact]

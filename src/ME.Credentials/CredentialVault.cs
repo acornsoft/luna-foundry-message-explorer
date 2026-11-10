@@ -17,12 +17,8 @@ namespace Acornsoft.MessageExplorer.Credentials;
 /// </summary>
 public sealed partial class CredentialVault : ICredentialVault
 {
-    private static readonly JsonSerializerOptions Json = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() },
-    };
+    // Source-generated, so the vault also works in a trimmed WebAssembly app.
+    private static readonly MetadataJson Json = MetadataJson.Default;
 
     private readonly ISecretStore _secrets;
     private readonly ILoginMetadataStore _metadata;
@@ -238,7 +234,7 @@ public sealed partial class CredentialVault : ICredentialVault
         {
             var next = _entries.ToList();
             change(next);
-            _metadata.Save(JsonSerializer.Serialize(new Document(1, next.Select(Stored.From).ToList()), Json));
+            _metadata.Save(JsonSerializer.Serialize(new Document(1, next.Select(Stored.From).ToList()), Json.Document));
             _entries = next;
         }
 
@@ -252,7 +248,7 @@ public sealed partial class CredentialVault : ICredentialVault
             return [];
         try
         {
-            var document = JsonSerializer.Deserialize<Document>(text, Json);
+            var document = JsonSerializer.Deserialize(text, Json.Document);
             return document?.Logins.Where(s => Enum.IsDefined(s.Kind)).Select(s => s.ToEntry()).ToList() ?? [];
         }
         catch (JsonException)
@@ -261,6 +257,10 @@ public sealed partial class CredentialVault : ICredentialVault
             return [];
         }
     }
+
+    [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, UseStringEnumConverter = true)]
+    [JsonSerializable(typeof(Document))]
+    private sealed partial class MetadataJson : JsonSerializerContext;
 
     private sealed record Document(int Version, List<Stored> Logins);
 

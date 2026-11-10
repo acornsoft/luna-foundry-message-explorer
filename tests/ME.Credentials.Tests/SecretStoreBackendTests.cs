@@ -108,6 +108,11 @@ public sealed class SecretStoreBackendTests
         var record = browser.Records["login-1"];
         Assert.DoesNotContain("fake-password", Encoding.UTF8.GetString(record), StringComparison.Ordinal);
         Assert.Equal("fake-password-not-real", (await store.ReadAsync("login-1"))!.Reveal());
+        Assert.Null(await store.ReadAsync("login-none"));
+        await store.WriteAsync("login-1", Secret);
+        Assert.NotEqual(browser.IvsUsed[0], browser.IvsUsed[1]);
+        await store.DeleteAsync("login-1");
+        Assert.Null(await store.ReadAsync("login-1"));
         Assert.Equal(SecretProtection.BrowserProtected, store.Protection);
         Assert.Contains("weaker than the OS store", store.Name, StringComparison.Ordinal);
     }
@@ -120,8 +125,9 @@ public sealed class SecretStoreBackendTests
         await store.InitializeAsync();
         await store.WriteAsync("login-1", Secret);
 
-        browser.Records["login-2"] = browser.Records["login-1"];
-        await Assert.ThrowsAsync<SecretStoreException>(() => store.ReadAsync("login-2"));
+        browser.Records["login-2"] = browser.Records["login-1"].ToArray();
+        var moved = await Assert.ThrowsAsync<SecretStoreException>(() => store.ReadAsync("login-2"));
+        Assert.DoesNotContain("fake-password", moved.Message, StringComparison.Ordinal);
 
         browser.Records["login-1"][^1] ^= 0xFF;
         await Assert.ThrowsAsync<SecretStoreException>(() => store.ReadAsync("login-1"));

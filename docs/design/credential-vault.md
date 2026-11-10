@@ -53,10 +53,24 @@ so the vault logic is tested against fakes and the native calls are tested on re
 | iOS | Keychain | The same code; items use `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` (not backed up, not moved to another device) | OS store, device-bound | Unit tests with a fake keychain, including the accessibility attribute | Anything on a device or simulator: there is no iOS app head yet |
 | Windows | Credential Manager | `CredWriteW`, `CredReadW`, `CredDeleteW` (advapi32), generic credentials, `CRED_PERSIST_LOCAL_MACHINE` (never roams); Windows encrypts them with DPAPI for the current user | OS store, per user | Unit tests with a fake; integration test on the `windows-latest` CI runner | Very long secrets: Credential Manager caps a secret at 2,560 bytes, and the app refuses longer ones with a plain message |
 | Linux | Secret Service (GNOME Keyring, KWallet's Secret Service, and others) | libsecret (`secret_password_storev_sync` and friends) over D-Bus, in the default collection, with attributes `application`, `service`, `login` | OS store, unlocked with the user's session | Unit tests with a fake; integration test on `ubuntu-latest` against GNOME Keyring in a private D-Bus session; fail closed proven on the build box (no D-Bus session: the store reports "No Secret Service keyring is running" and saving is refused) | KWallet and other Secret Service providers |
-| Web (Avalonia browser) | IndexedDB, encrypted | AES-GCM with a **non-extractable** WebCrypto key kept in IndexedDB; a fresh 12-byte IV per write; the login ID as associated data, so a record can't be moved to another login | **Browser-protected (weaker than OS store)**, and the UI says so. Anyone who can run script in the page's origin can ask the browser to decrypt | Unit tests against a fake crypto bridge (real AES-GCM): round trip, tamper detection, wrong-login detection, nothing stored in plain text | Everything in a real browser: the script bridge isn't written (see below), and there is no browser app head yet |
+| Web (Avalonia browser) | IndexedDB, encrypted | `lfme-vault.js` (one ES module, the approved JS exception below): AES-GCM 256 with a **non-extractable** WebCrypto key kept as a CryptoKey in IndexedDB; a fresh 96-bit IV for every write; the login ID as associated data, so a record can't be moved to another login. C# calls it through `[JSImport]` (`ME.Credentials.Browser`, `BrowserVault.CreateAsync`) | **Browser-protected (weaker than OS store)**, and the UI says so. Anyone who can run script in the page's origin can ask the browser to decrypt | Unit tests against a fake; real headless Chromium in the Linux CI job (Playwright): round trip, the key is non-extractable (`exportKey` rejects for raw and jwk), a unique IV per write, delete, no plaintext in any IndexedDB record, nothing in localStorage or sessionStorage, no console output, no requests beyond the page and the module, and changed or moved records refused. End to end: the C# store and vault, compiled to WebAssembly, round-trip through `[JSImport]` into the real module in the same job | The browser app head: there is no Avalonia browser app yet, so the store has run only inside a test-only WebAssembly page |
 
 Entra on the web should not store anything long-lived: sign in with an MSAL-style flow and keep tokens in
 memory or session storage only. Raw secrets never go in `localStorage`.
+
+## The browser module: an approved exception
+
+The project doesn't use script in general (test-job plugins still may not use JS or a JS engine). David
+approved one narrow exception for the web credential vault: WebCrypto and IndexedDB have no .NET API in
+the browser, and the only way to keep a key the page itself can't read out is a non-extractable CryptoKey,
+which only script can create. The exception is kept small and checkable:
+
+- One ES module, `src/ME.Credentials.Browser/wwwroot/lfme-vault.js`, MPL-2.0, about 130 lines.
+- Exports `isAvailable`, `ensureKey`, `encrypt`, `decrypt` and `remove` (delete), nothing else.
+- No localStorage or sessionStorage, no console output, no network calls, no third-party libraries. The
+  browser test fails if any of these appear.
+- Record shape in IndexedDB: `{ v: 1, iv, ct }` under the login ID. The key is stored as a CryptoKey object,
+  never as bytes.
 
 ## The app
 
@@ -79,10 +93,10 @@ memory or session storage only. Raw secrets never go in `localStorage`.
 
 ## Follow-ups (not in this change)
 
-- **iOS and browser app heads.** The backends exist behind the contract and are unit-tested, but there is
-  no iOS or WebAssembly app project yet.
-- **The browser crypto bridge.** `IBrowserCryptoInterop` needs a small script module that calls WebCrypto
-  and IndexedDB. The project's no-script rule rules it out today, so this needs a decision first.
+- **iOS and browser app heads.** The backends exist behind the contract, but there is no iOS or browser
+  (WebAssembly) app project yet.
+- **The browser app head** still needs building; it serves `lfme-vault.js` next to the page and calls
+  `BrowserVault.CreateAsync()` at startup.
 - **Server-side Key Vault** as an option for the web: later, not built.
 - **Removing one account from the MSAL `lfme` token cache** (Azure.Identity has no call for it).
 
