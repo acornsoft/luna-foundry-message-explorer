@@ -148,6 +148,60 @@ public class CliAppTests
         Assert.Single(broker.DeadLetters);
     }
 
+    [Fact]
+    public async Task Peek_without_run_is_a_usage_error_and_prints_no_foreign_dead_letters()
+    {
+        const string foreignId = "GSL-DSP-FOREIGN-99";
+        const string foreignDescription = "secret-from-another-producer: body text in the description";
+        var (app, broker, output, _) = Make();
+        broker.DeadLetters.Add(new(
+            999,
+            "foreign-msg",
+            foreignId,
+            "reg-e.deadlines.computed",
+            "MaxDeliveryCountExceeded",
+            foreignDescription,
+            10,
+            DateTimeOffset.UnixEpoch,
+            "{}",
+            new Dictionary<string, object>()));
+
+        Assert.Equal(2, await app.RunAsync(["dlq", "peek", "gsl-reg-e-dispute", .. Coordinates]));
+        var text = output.ToString();
+        Assert.Contains("needs --run", text, StringComparison.Ordinal);
+        Assert.DoesNotContain(foreignId, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(foreignDescription, text, StringComparison.Ordinal);
+        Assert.DoesNotContain("seq 999", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Peek_with_run_hides_dead_letters_from_other_runs()
+    {
+        const string foreignId = "GSL-DSP-FOREIGN-99";
+        const string foreignDescription = "secret-from-another-producer: body text in the description";
+        var (app, broker, output, _) = Make();
+        Assert.Equal(0, await app.RunAsync(["scenario", "run", "gsl-reg-e-dispute", "--run-id", "t1", "--send", .. Coordinates]));
+        broker.DeadLetters.Add(new(
+            999,
+            "foreign-msg",
+            foreignId,
+            "reg-e.deadlines.computed",
+            "MaxDeliveryCountExceeded",
+            foreignDescription,
+            10,
+            DateTimeOffset.UnixEpoch,
+            "{}",
+            new Dictionary<string, object> { ["lfmeRunId"] = "other-run" }));
+
+        output.GetStringBuilder().Clear();
+        Assert.Equal(0, await app.RunAsync(["dlq", "peek", "gsl-reg-e-dispute", "--run", "t1", .. Coordinates]));
+        var text = output.ToString();
+        Assert.Contains("Dead-letters for run t1 (peek, nothing locked): 3", text, StringComparison.Ordinal);
+        Assert.DoesNotContain(foreignId, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(foreignDescription, text, StringComparison.Ordinal);
+        Assert.DoesNotContain("seq 999", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("other-run", text, StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task Real_subscription_must_be_allow_listed_through_the_environment()

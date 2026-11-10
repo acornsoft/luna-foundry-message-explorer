@@ -19,12 +19,12 @@ internal sealed class CliApp
 
           lfme scenario list
           lfme scenario run <scenario-id> --subscription <id> --resource-group <rg> [--run-id <id>] [--settle-seconds 90] [--send]
-          lfme dlq peek <scenario-id> --subscription <id> --resource-group <rg> [--run <run-id>]
+          lfme dlq peek <scenario-id> --subscription <id> --resource-group <rg> --run <run-id>
           lfme dlq resubmit <scenario-id> --subscription <id> --resource-group <rg> (--run <run-id> | --sequence 3,7) [--yes] [--send]
 
         Auth is Microsoft Entra through DefaultAzureCredential (az login works). No keys or connection strings.
         scenario run is a dry run by default (gate, plan, and counts; nothing is sent). Pass --send to write to the queue.
-        Resubmit needs both --yes and --send.
+        Resubmit needs both --yes and --send. dlq peek needs --run so it only shows that run's dead-letters.
         --subscription and --resource-group can come from LFME_SUBSCRIPTION and LFME_RESOURCE_GROUP.
         The sandbox gate also needs the subscription in LFME_ALLOWED_SUBSCRIPTIONS (comma-separated).
         Add --tcp to use AMQP on port 5671 instead of WebSockets on 443.
@@ -107,15 +107,17 @@ internal sealed class CliApp
 
     private async Task<int> PeekAsync(CliArgs args, CancellationToken cancellationToken)
     {
+        if (!args.Options.TryGetValue("run", out var run) || string.IsNullOrWhiteSpace(run))
+            throw new CliUsageException("lfme dlq peek needs --run so it only shows dead-letters from that run.");
+
         var (_, target, _, broker) = Prepare(args);
         await using var _ = broker as IAsyncDisposable;
         var counts = await broker.GetCountsAsync(cancellationToken).ConfigureAwait(false);
         _out.WriteLine($"{target.FullyQualifiedNamespace}/{target.Queue}: {counts}");
-        var run = args.Options.TryGetValue("run", out var r) ? r : null;
         var letters = (await broker.PeekDeadLettersAsync(LiveScenarioRunner.PeekCap, cancellationToken).ConfigureAwait(false))
-            .Where(m => run is null || m.RunId == run)
+            .Where(m => m.RunId == run)
             .ToList();
-        _out.WriteLine($"Dead-letters{(run is null ? "" : " for run " + run)} (peek, nothing locked): {letters.Count}");
+        _out.WriteLine($"Dead-letters for run {run} (peek, nothing locked): {letters.Count}");
         foreach (var group in letters.GroupBy(m => m.DeadLetterReason ?? "(none)"))
         {
             _out.WriteLine($"  {group.Key}: {group.Count()}");

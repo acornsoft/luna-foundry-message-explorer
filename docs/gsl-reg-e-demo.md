@@ -49,7 +49,7 @@ Expected result of a run: 12 consumed, 3 dead-lettered (`MissingDisputeId`, `Inc
 `SchemaViolation`), and "Every message ended where the scenario expected." After `--yes --send`, the first two come back
 fixed and are consumed. The bad date stays: the fixer never guesses a date or a flag.
 
-`lfme dlq peek` without `--run` shows the whole dead-letter subqueue, including messages the scenario did not send.
+`lfme dlq peek` requires `--run` and only shows dead-letters from that run, so descriptions and correlation ids from other messages are not printed.
 `lfme dlq resubmit --sequence 1,2,3` can resubmit listed sequence numbers, but still needs `--yes` and `--send`. Resubmit never takes the whole queue.
 
 ## What a fix does
