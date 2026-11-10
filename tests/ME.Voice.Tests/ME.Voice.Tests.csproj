@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Voice\ME.Voice.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\ME.Adapters.ServiceBus.Tests\MutationScanner.cs" Link="Guard\MutationScanner.cs" />
+  </ItemGroup>
+</Project>
