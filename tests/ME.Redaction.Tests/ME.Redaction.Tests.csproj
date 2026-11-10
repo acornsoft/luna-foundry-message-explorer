@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Redaction\ME.Redaction.csproj" />
+    <PackageReference Include="FsCheck.Xunit" />
+  </ItemGroup>
+</Project>
