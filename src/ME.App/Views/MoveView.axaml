@@ -1,0 +1,93 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.MoveView"
+             x:DataType="vm:MoveViewModel">
+  <UserControl.Styles>
+    <Style Selector="TreeViewItem" x:DataType="vm:MoveTreeNode">
+      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,10">
+      <TextBlock Text="Move messages" FontSize="16" FontWeight="SemiBold" />
+      <TextBlock x:Name="MoveOffText" Text="{Binding OffText}" IsVisible="{Binding IsOff}" TextWrapping="Wrap" Classes="state" />
+      <TextBlock x:Name="MoveNoNamespaceText" Text="{Binding NoNamespaceText}" IsVisible="{Binding !HasNamespace}" TextWrapping="Wrap" Opacity="0.8" />
+      <TextBlock x:Name="MoveRefusalText" Classes="error" Text="{Binding RefusalText}" IsVisible="{Binding IsRefused}" TextWrapping="Wrap" />
+      <TextBlock Text="Pick a source in the tree, then drag its messages (or the source itself for the oldest ones) onto a queue or topic. Or choose a target and press Move to… (Ctrl+M). Every move asks first, keeps message IDs, sessions and order, and is written to the audit log."
+                 TextWrapping="Wrap" Opacity="0.8" IsVisible="{Binding CanWork}" />
+    </StackPanel>
+
+    <Grid ColumnDefinitions="300,16,*" IsEnabled="{Binding CanWork}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Sources and drop targets" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TreeView x:Name="MoveTree" ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedSource}" DragDrop.AllowDrop="True">
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate x:DataType="vm:MoveTreeNode" ItemsSource="{Binding Children}">
+              <Border Classes.droptarget="{Binding IsDropTarget}" BorderThickness="1" CornerRadius="4" Padding="4,1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Classes.deadletter="{Binding IsDeadLetter}" />
+                  <TextBlock Text="{Binding CountText}" Opacity="0.7" />
+                </StackPanel>
+              </Border>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </DockPanel>
+
+      <DockPanel Grid.Column="2">
+        <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,6">
+          <TextBlock x:Name="MessagesTitleText" Text="{Binding MessagesTitle}" FontWeight="SemiBold" />
+          <TextBlock Text="Message IDs, sessions and dead-letter reasons only. Bodies are never read here." Opacity="0.6" FontSize="12" />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+          <TextBlock x:Name="SelectionText" Text="{Binding SelectionText}" Opacity="0.8" />
+          <WrapPanel ItemSpacing="8" LineSpacing="6">
+            <TextBlock Text="Oldest" VerticalAlignment="Center" />
+            <TextBox x:Name="MoveCountBox" Text="{Binding CountText}" Width="70" />
+            <TextBlock Text="Target" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <ComboBox x:Name="MoveTargetBox" ItemsSource="{Binding TargetChoices}" SelectedItem="{Binding SelectedTarget}" MinWidth="240" PlaceholderText="Choose where to move" />
+            <Button x:Name="MoveToButton" Content="Move to…" Command="{Binding MoveToCommand}" HotKey="Ctrl+M" />
+            <Button x:Name="MoveCancelButton" Content="Cancel move" Command="{Binding CancelCommand}" IsVisible="{Binding IsBusy}" />
+            <Button x:Name="MoveRefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" />
+          </WrapPanel>
+          <TextBlock x:Name="MoveStatusText" Text="{Binding Status}" IsVisible="{Binding HasStatus}" Classes.error="{Binding StatusIsError}" TextWrapping="Wrap" />
+          <TextBlock x:Name="AuditText" Text="{Binding AuditText}" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border BorderBrush="#40808080" BorderThickness="1" CornerRadius="4">
+          <DockPanel>
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="56,140,90,190,76,*" Margin="8,4">
+              <TextBlock Text="Seq" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="1" Text="Message ID" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="2" Text="Session" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="3" Text="Enqueued" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="4" Text="Deliveries" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="5" Text="Dead-letter reason" FontWeight="SemiBold" />
+            </Grid>
+            <ListBox x:Name="MoveMessageList" ItemsSource="{Binding Messages}" SelectionMode="Multiple,Toggle" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="OnMessagesSelectionChanged">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:MoveMessageRow">
+                  <Grid ColumnDefinitions="56,140,90,190,76,*">
+                    <TextBlock Text="{Binding SequenceText}" />
+                    <TextBlock Grid.Column="1" Text="{Binding MessageId}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="2" Text="{Binding SessionText}" />
+                    <TextBlock Grid.Column="3" Text="{Binding EnqueuedText}" />
+                    <TextBlock Grid.Column="4" Text="{Binding DeliveryText}" />
+                    <TextBlock Grid.Column="5" Text="{Binding ReasonText}" Classes="deadletter" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Border>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

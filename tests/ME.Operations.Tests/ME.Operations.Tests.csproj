@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Operations\ME.Operations.csproj" />
+    <!-- Built first so the all-assemblies guard finds their output. -->
+    <ProjectReference Include="..\..\src\ME.App\ME.App.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.App.Desktop\ME.App.Desktop.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Jobs.Cli\ME.Jobs.Cli.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Headless\ME.Headless.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Mcp\ME.Mcp.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Scenarios\ME.Scenarios.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Admin\ME.Admin.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Adapters.EventHubs\ME.Adapters.EventHubs.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\ME.Adapters.EventGrid\ME.Adapters.EventGrid.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\ME.Adapters.ServiceBus.Tests\MutationScanner.cs" Link="Guard\MutationScanner.cs" />
+  </ItemGroup>
+</Project>

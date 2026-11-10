@@ -1,0 +1,268 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-license:
+    name: build, test, and license check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build
+        run: dotnet build MessageExplorer.sln --configuration Release
+
+      - name: Test
+        run: dotnet test MessageExplorer.sln --configuration Release --no-build --verbosity normal
+
+      - name: License check
+        run: bash eng/check-license.sh
+
+      - name: Secret Service integration test (GNOME Keyring, throwaway keyring)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gnome-keyring libsecret-1-0 dbus-x11
+          bash eng/ci/linux-keyring-tests.sh
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Browser vault tests (headless Chromium, real WebCrypto and IndexedDB, C# through JSImport)
+        working-directory: tests/browser-vault
+        env:
+          LFME_INTEROP_DIR: ${{ runner.temp }}/interop-app
+          LFME_REQUIRE_INTEROP: "1"
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          dotnet publish interop-app/InteropApp.csproj --configuration Release --output "$LFME_INTEROP_DIR"
+          npm test
+
+  windows-credentials:
+    name: Windows Credential Manager (unit + integration)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Credential tests against the real Credential Manager
+        shell: pwsh
+        env:
+          LFME_SECURE_STORE_TESTS: "1"
+        run: dotnet test tests/ME.Credentials.Tests/ME.Credentials.Tests.csproj --configuration Release --verbosity normal
+
+  macos-dmg-linux:
+    name: macOS DMG built on Linux (ad-hoc signed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Packaging tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q hfsprogs zlib1g-dev libbz2-dev
+          bash eng/macos/install-linux-tools.sh .tools/macos
+
+      - name: Package
+        run: LFME_MAC_TOOLS="$PWD/.tools/macos" bash eng/package-macos.sh --out artifacts/dist
+
+      - name: Verify DMGs
+        run: |
+          export LFME_MAC_TOOLS="$PWD/.tools/macos"
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-arm64.dmg arm64
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-x64.dmg x64
+
+      - name: Upload DMGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: lfme-dmg-built-on-linux
+          path: |
+            artifacts/dist/*.dmg
+            artifacts/dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  macos-dmg:
+    name: macOS DMG on a Mac (package, verify, launch)
+    runs-on: macos-latest
+    needs: macos-dmg-linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Keychain integration test (SecItem add, read, replace, delete under a test service)
+        env:
+          LFME_SECURE_STORE_TESTS: "1"
+        run: dotnet test tests/ME.Credentials.Tests/ME.Credentials.Tests.csproj --configuration Release --verbosity normal
+
+      - name: Package with codesign and hdiutil
+        run: bash eng/package-macos.sh --out artifacts/dist
+
+      - name: Verify DMGs
+        run: |
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-arm64.dmg arm64
+          bash eng/macos/verify-dmg.sh artifacts/dist/*-x64.dmg x64
+
+      - name: Launch the arm64 app and run the bundled sample
+        run: bash eng/macos/smoke-test.sh artifacts/dist/*-arm64.dmg artifacts/smoke/mac-built-arm64.txt artifacts/smoke/mac-built-arm64.png
+
+      - name: Download the DMGs built on Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: lfme-dmg-built-on-linux
+          path: artifacts/linux-built
+
+      - name: Verify and launch the arm64 DMG built on Linux
+        run: |
+          bash eng/macos/verify-dmg.sh artifacts/linux-built/*-arm64.dmg arm64
+          bash eng/macos/smoke-test.sh artifacts/linux-built/*-arm64.dmg artifacts/smoke/linux-built-arm64.txt artifacts/smoke/linux-built-arm64.png
+
+      - name: Launch the x64 app under Rosetta
+        continue-on-error: true
+        run: bash eng/macos/smoke-test.sh artifacts/dist/*-x64.dmg artifacts/smoke/mac-built-x64.txt "" arch -x86_64
+
+      - name: Upload DMGs and smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lfme-dmg-built-on-mac
+          path: |
+            artifacts/dist/*.dmg
+            artifacts/dist/SHA256SUMS.txt
+            artifacts/smoke/
+          if-no-files-found: warn
+
+  desktop-platforms:
+    name: Desktop build (${{ matrix.rid }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [osx-x64, win-x64, win-arm64, linux-x64, linux-arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish and check the ${{ matrix.rid }} app
+        run: bash eng/platforms/package-desktop.sh ${{ matrix.rid }} artifacts/platforms
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: lfme-${{ matrix.rid }}
+          path: artifacts/platforms/*
+          if-no-files-found: error
+
+  android-apk:
+    name: Android APK (arm64 and x64, debug-signed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 for the Android head
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: "17"
+
+      - name: Android workload and SDK platform
+        working-directory: src/ME.App.Android
+        run: |
+          dotnet workload install android --skip-sign-check
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: Build and check the APK
+        run: bash eng/platforms/package-android.sh artifacts/platforms
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: lfme-android-apk
+          path: artifacts/platforms/*.apk
+          if-no-files-found: error
+
+  headless-container:
+    name: Headless container (read-only, synthetic)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the lfme image
+        run: docker build -f eng/container/Dockerfile -t lfme:ci .
+
+      - name: Runs as non-root
+        run: |
+          user="$(docker image inspect lfme:ci --format '{{.Config.User}}')"
+          echo "image user: $user"
+          [[ -n "$user" && "$user" != "0" && "$user" != "root" ]]
+
+      - name: Inventory and check on a read-only file system
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" && chmod 777 "$RUNNER_TEMP/out"
+          docker run --rm --read-only lfme:ci inventory --synthetic
+          docker run --rm --read-only lfme:ci check --synthetic --max-dead-letter 10
+          set +e
+          docker run --rm --read-only -v "$RUNNER_TEMP/out:/out" lfme:ci check --synthetic --max-dead-letter 0 --out /out/report.json --summary /out/summary.md
+          code=$?
+          set -e
+          [[ $code -eq 3 ]] || { echo "expected exit 3 for a breached limit, got $code"; exit 1; }
+          python3 -c "import json,sys; r=json.load(open(sys.argv[1])); assert r['readOnly'] and len(r['breaches'])==2, r" "$RUNNER_TEMP/out/report.json"
+          cat "$RUNNER_TEMP/out/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Refuses a secret on the command line
+        run: |
+          set +e
+          out="$(docker run --rm lfme:ci inventory --connection-string "Endpoint=sb://sbns-demo-001.servicebus.windows.net/;placeholder" 2>&1)"
+          code=$?
+          set -e
+          echo "$out"
+          [[ $code -eq 64 ]] && ! grep -q placeholder <<< "$out"
+
+      - name: The example workflow parses
+        run: python3 -c "import yaml; yaml.safe_load(open('docs/examples/github-actions/servicebus-health.yml'))"
