@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MPL-2.0
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+job: erp-day
+description: >
+  Forty synthetic orders over six hours plus a burst of fifteen at 12:00, like an end-of-day batch.
+  About 5% hit a credit hold. The ERP stand-in throttles the burst, has a few transient faults with
+  backoff, and dead-letters orders with no lines after five deliveries.
+seed: 424242
+clock:
+  start: "2026-03-02T09:00:00Z"
+  step: PT5M
+  duration: PT8H
+  drain: PT24H
+target:
+  send: "{{ ordersCreated }}"
+plugins:
+  - use: order-generator@0.2.0
+    roles: [generator, assertion]
+    config:
+      count: 40
+      window: PT6H
+      burst: { count: 15, at: PT3H, within: PT3M }
+      malformedRate: 0.05
+      deadLetterSink: "{{ ordersCreated }}/$deadletterqueue"
+  - use: erp-standin@0.2.0
+    role: simulator
+    config:
+      subscribe: "{{ ordersCreated }}"
+      shipDelay: "{{ shipDelay }}"
+      failureRate: 0.05
+      failureCode: CREDIT_HOLD
+      faults:
+        throttle: { limit: 8, window: PT10M, retryAfter: PT2M }
+        transientRate: 0.03
+        backoff: PT30S
+        backoffCap: PT10M
+        maxDeliveries: 5
+  - use: bus-observer@1.0.0
+    role: observer
+    config:
+      sinks: [orders.confirmed, orders.shipped, orders.rejected, "{{ ordersCreated }}/$deadletterqueue"]

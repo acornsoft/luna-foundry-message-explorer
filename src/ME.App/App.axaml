@@ -1,0 +1,29 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Acornsoft.MessageExplorer.Shell.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <Style Selector="TextBlock.deadletter">
+      <Setter Property="Foreground" Value="#C62828" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="Border.deadletter">
+      <Setter Property="Background" Value="#33C62828" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TextBlock.state">
+      <Setter Property="Margin" Value="0,16" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="FontSize" Value="15" />
+    </Style>
+    <Style Selector="TextBlock.error">
+      <Setter Property="Foreground" Value="#C62828" />
+    </Style>
+  </Application.Styles>
+</Application>

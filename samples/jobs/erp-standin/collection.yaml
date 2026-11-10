@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MPL-2.0
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+collection: erp-standin
+description: Synthetic orders against an ERP-like stand-in. Synthetic data only.
+defaults:
+  environment: local
+plugins:
+  order-generator:
+    version: "0.2.0"
+    command: ["dotnet", "../../../artifacts/plugins/OrderGenerator/OrderGenerator.dll"]
+  erp-standin:
+    version: "0.2.0"
+    command: ["dotnet", "../../../artifacts/plugins/ErpStandin/ErpStandin.dll"]
+  bus-observer:
+    version: "1.0.0"
+    builtin: true
