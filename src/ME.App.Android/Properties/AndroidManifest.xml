@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <!-- allowBackup=false: sealed secrets are bound to this device's Keystore key and must not be restored elsewhere. -->
+  <application android:label="Message Explorer" android:allowBackup="false" android:fullBackupContent="false" />
+</manifest>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Jobs\ME.Jobs.csproj" />
+    <ProjectReference Include="..\..\src\ME.Jobs.Cli\ME.Jobs.Cli.csproj" />
+    <!-- Build the sample plugins first. The tests start them as processes. -->
+    <ProjectReference Include="..\..\samples\plugins\OrderGenerator\OrderGenerator.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\samples\plugins\ErpStandin\ErpStandin.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>
