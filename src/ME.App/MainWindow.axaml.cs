@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Views.SecretGuard.Attach(ConnectionStringBox);
         DataContextChanged += (_, _) =>
         {
             if (DataContext is MainViewModel main && main.Jobs.Dialogs is null)

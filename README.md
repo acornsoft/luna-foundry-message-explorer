@@ -53,7 +53,7 @@ The **Accounts** tab opens first. Choose **Add account** and sign in with Micros
 - One account, tenant, or subscription that fails (an expired sign-in, a tenant that needs MFA, no access) shows its own error row. The others still load.
 - **Sign out** keeps the account in the list, signed out. **Remove** forgets it.
 - Sign-in uses `InteractiveBrowserCredential` with the system browser and tenant `organizations` (any work or school account), or the tenant you type. The client ID is the public Azure CLI application, `04b07795-8ddb-461a-bbee-02f9e1bf7b46`. Set `LFME_ENTRA_CLIENT_ID`, or `entraClientId` in `settings.json` in the config folder, to use another public client app.
-- The app keeps each account's `AuthenticationRecord` (user name, tenant, account ID; no token) in the config folder, under `accounts/`. Tokens go in the MSAL token cache named `lfme`, which is kept in the OS secure store (Keychain on macOS). On the next launch, accounts sign in silently.
+- The app keeps each account's `AuthenticationRecord` (user name, tenant, account ID; no token) as an Entra login in `logins.json` in the config folder. Tokens go in the MSAL token cache named `lfme`, which is kept in the OS secure store (Keychain on macOS). On the next launch, accounts sign in silently.
 - Config folder: `~/Library/Application Support/LunaFoundryMessageExplorer` on macOS, `~/.local/share/LunaFoundryMessageExplorer` on Linux, `%LOCALAPPDATA%\LunaFoundryMessageExplorer` on Windows. `LFME_CONFIG_DIR` overrides it.
 - Limit: Remove and Sign out forget the account in the app. Azure.Identity has no call that deletes one account from the shared `lfme` token cache. To clear it on macOS, delete the `lfme` item in Keychain Access.
 
@@ -66,14 +66,18 @@ One paste box takes every flavor and says which one it found:
 | Namespace key | `Endpoint=sb://…/;…KeyName=…;…Key=…` | Queues and topics with counts |
 | Entity key | the same plus `EntityPath=orders` | Only that entity. An entity-level key can't read namespace lists or counts, so the grid says so |
 | SAS token | `SharedAccessSignature sr=…&sig=…&se=…&skn=…`, bare or as `SharedAccessSignature=` in a string | Namespace-wide token: queues and topics. Entity token: that entity only |
-| Endpoint only | `Endpoint=sb://…/` | Your signed-in Entra account (the first one on the Accounts tab) |
+| Endpoint only | `Endpoint=sb://…/` | The signed-in Entra account you pick |
 | Emulator | `…;UseDevelopmentEmulator=true` | The local Service Bus emulator |
 
-The string is shown masked and cleared after connecting. Tick **Save to Keychain** (the OS secure store: Keychain on macOS, the system keyring on Linux, Windows protected storage on Windows) to keep it under a name. Saved strings are never written to a plain file. When the secure store is not available, saving is turned off and says why. The masked form (keys and signatures as `***`) is the only form that reaches the UI or a log.
+The string is shown masked and cleared after connecting. Tick **Save** to keep it as a saved login: the secret goes only to the OS secure store (Keychain on macOS and iOS, Credential Manager on Windows, the Secret Service keyring on Linux) and the name and endpoint to `logins.json`. When there is no secure store, saving a string is turned off and says why; nothing falls back to a file. The masked form (keys and signatures as `***`) is the only form that reaches the UI or a log.
+
+## Saved logins
+
+The **Saved logins** tab keeps logins for every system in one list: Entra accounts, Service Bus and Event Hubs strings and namespaces, Kafka (SASL or mutual TLS), RabbitMQ, AWS SQS and SNS (access key or profile), and the emulator. Each row shows the system, name, kind and when it was last used. Add, Edit, Rename, Delete (with a confirm) and a read-only Test connection. Secrets are masked, can't be copied, and are never shown again. Logins that use Entra record which signed-in account they use. Version 0.6.0's saved strings and account files move in on first launch. How each platform stores secrets, and what has been proven on each, is in [docs/design/credential-vault.md](docs/design/credential-vault.md).
 
 ## Service Bus queue list
 
-A typed namespace connects with Microsoft Entra ID: your signed-in account, or `DefaultAzureCredential` when no account is signed in. Typed namespaces and connection strings read the data-plane management API (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged), which needs a management read permission on the namespace. A namespace picked on the Accounts tab reads the same counts through ARM instead, so the Reader role is enough.
+A typed namespace connects with Microsoft Entra ID: the signed-in account you pick, or `DefaultAzureCredential` when no account is signed in. Typed namespaces and connection strings read the data-plane management API (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged), which needs a management read permission on the namespace. A namespace picked on the Accounts tab reads the same counts through ARM instead, so the Reader role is enough.
 
 The no-mutation guard reads the compiled adapter IL. Service Bus send, receive, settle, create, update, and delete calls fail the build. ARM calls must be property reads or an allow-listed list or get; create, update, delete, key listing, and key regeneration fail the build.
 

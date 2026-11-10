@@ -42,9 +42,12 @@ After that it opens normally.
   of its tenants and subscriptions. Double-click one to open its queues and topics. No Azure CLI needed.
 - **Queues** and **Topics** tabs: read-only grids for the namespace you opened.
   - **Connection string**: paste any flavor (namespace key, entity key, SAS token, endpoint only, or the
-    emulator). The panel says which one it found. Tick **Save to Keychain** to keep it; it goes only into
-    your login Keychain, never a file.
-  - **Microsoft Entra ID**: type a namespace. It uses your first signed-in account.
+    emulator). The panel says which one it found. Tick **Save to Keychain** to keep it; the secret goes only
+    into your login Keychain, never a file.
+  - **Microsoft Entra ID**: type a namespace and pick which signed-in account to use.
+- **Saved logins** tab: every saved login (Service Bus, Event Hubs, Kafka, RabbitMQ, AWS, the emulator and
+  your Entra accounts) with Add, Edit, Rename, Delete and a read-only Test connection. Secrets are kept in
+  the Keychain under `LunaFoundryMessageExplorer.logins`, masked, and never shown or copied.
 
 ## First sign-in: what you approve
 
@@ -60,14 +63,16 @@ After that it opens normally.
   them. Type that tenant in **Tenant (optional)** and add the account again.
 - macOS asks whether the app may use the Keychain the first time it saves the token cache (`lfme`) or a
   connection string. Choose **Always Allow**.
-- Account records (no tokens) are in `~/Library/Application Support/LunaFoundryMessageExplorer/accounts`.
+- Login and account records (no secrets, no tokens) are in
+  `~/Library/Application Support/LunaFoundryMessageExplorer/logins.json`. Strings saved by 0.6.0 move from
+  the old `saved-connections` Keychain item into Saved logins on first launch.
 
 ## Build the DMGs yourself
 
 ```bash
 eng/package-macos.sh                 # both architectures, into artifacts/dist
 eng/package-macos.sh --rid osx-arm64 # one architecture
-eng/macos/verify-dmg.sh artifacts/dist/LunaFoundryMessageExplorer-0.5.0-arm64.dmg arm64
+eng/macos/verify-dmg.sh artifacts/dist/LunaFoundryMessageExplorer-0.6.1-arm64.dmg arm64
 ```
 
 On a Mac it uses `codesign` and `hdiutil`. On Linux, first run `eng/macos/install-linux-tools.sh`

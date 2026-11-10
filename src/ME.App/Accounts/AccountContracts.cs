@@ -45,20 +45,10 @@ public interface IAccountStore
     void Delete(string id);
 }
 
-/// <summary>
-/// Saved connection strings, kept only in the OS secure store (Keychain on macOS, the Secret Service
-/// keyring on Linux, DPAPI on Windows). Never in a plain file.
-/// </summary>
-public interface ISecretVault
+/// <summary>The connection strings saved by version 0.6.0 in one secure-store item. Read once, imported, then cleared.</summary>
+public interface ILegacySavedConnections
 {
-    /// <summary>Null when the vault works; otherwise a plain reason why saving is off.</summary>
-    string? UnavailableReason { get; }
+    IReadOnlyDictionary<string, string> ReadAll();
 
-    IReadOnlyList<string> Names();
-
-    string? Read(string name);
-
-    void Write(string name, string value);
-
-    void Delete(string name);
+    void Clear();
 }

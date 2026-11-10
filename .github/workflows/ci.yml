@@ -29,6 +29,30 @@ jobs:
       - name: License check
         run: bash eng/check-license.sh
 
+      - name: Secret Service integration test (GNOME Keyring, throwaway keyring)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gnome-keyring libsecret-1-0 dbus-x11
+          bash eng/ci/linux-keyring-tests.sh
+
+  windows-credentials:
+    name: Windows Credential Manager (unit + integration)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Credential tests against the real Credential Manager
+        shell: pwsh
+        env:
+          LFME_SECURE_STORE_TESTS: "1"
+        run: dotnet test tests/ME.Credentials.Tests/ME.Credentials.Tests.csproj --configuration Release --verbosity normal
+
   macos-dmg-linux:
     name: macOS DMG built on Linux (ad-hoc signed)
     runs-on: ubuntu-latest
@@ -81,6 +105,11 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
+      - name: Keychain integration test (SecItem add, read, replace, delete under a test service)
+        env:
+          LFME_SECURE_STORE_TESTS: "1"
+        run: dotnet test tests/ME.Credentials.Tests/ME.Credentials.Tests.csproj --configuration Release --verbosity normal
 
       - name: Package with codesign and hdiutil
         run: bash eng/package-macos.sh --out artifacts/dist

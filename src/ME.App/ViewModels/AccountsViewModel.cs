@@ -80,10 +80,11 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     /// <summary>Every namespace from every signed-in account, in one list.</summary>
     public IReadOnlyList<NamespaceRef> Namespaces => Accounts.SelectMany(a => a.Namespaces).ToList();
 
-    /// <summary>The first signed-in account's credential, for a typed namespace or an endpoint-only string.</summary>
-    public TokenCredential? DefaultCredential => Accounts.FirstOrDefault(a => a.Credential is not null)?.Credential;
-
-    public string? DefaultUsername => Accounts.FirstOrDefault(a => a.Credential is not null)?.Username;
+    /// <summary>Every signed-in account, for the account picker on the Connect panel and in Saved logins.</summary>
+    public IReadOnlyList<AccountChoice> SignedInAccounts => Accounts
+        .Where(a => a.IsSignedIn)
+        .Select(a => new AccountChoice(a.Id, a.Username, a.Credential!))
+        .ToList();
 
     public DiscoveryNode? SelectedNode
     {
@@ -255,8 +256,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
             SelectedNode = null;
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(Namespaces));
-        OnPropertyChanged(nameof(DefaultCredential));
-        OnPropertyChanged(nameof(DefaultUsername));
+        OnPropertyChanged(nameof(SignedInAccounts));
     }
 
     private static DiscoveryNode BuildAccountNode(AccountItemViewModel account)

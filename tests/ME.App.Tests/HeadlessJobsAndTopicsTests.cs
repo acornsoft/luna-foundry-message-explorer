@@ -51,7 +51,7 @@ public class HeadlessJobsAndTopicsTests
         var (window, _, _) = Open();
 
         var tabs = window.FindControl<TabControl>("MainTabs")!;
-        Assert.Equal(["Accounts", "Queues", "Topics", "Test jobs"], tabs.Items.OfType<TabItem>().Select(t => (string)t.Header!));
+        Assert.Equal(["Accounts", "Saved logins", "Queues", "Topics", "Test jobs"], tabs.Items.OfType<TabItem>().Select(t => (string)t.Header!));
         Assert.Equal(MainViewModel.AccountsTab, tabs.SelectedIndex);
     }
 

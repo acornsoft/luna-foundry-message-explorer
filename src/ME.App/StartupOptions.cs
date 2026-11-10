@@ -10,7 +10,7 @@ namespace Acornsoft.MessageExplorer.Shell;
 
 /// <summary>
 /// Command-line options for the desktop app:
-/// <c>--collection &lt;folder&gt;</c> opens a test-job collection, <c>--tab accounts|queues|topics|jobs</c> picks the tab,
+/// <c>--collection &lt;folder&gt;</c> opens a test-job collection, <c>--tab accounts|logins|queues|topics|jobs</c> picks the tab,
 /// <c>--synthetic-demo</c> (or <c>LFME_SYNTHETIC_DEMO=1</c>) adds and connects the synthetic demo provider,
 /// <c>--pace &lt;simulated seconds per second&gt;</c> picks a pace, <c>--run</c> starts the selected job, and
 /// <c>--exit-after-run &lt;file&gt;</c> writes the finished report to the file and quits (a smoke check).
@@ -47,6 +47,7 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
                     tab = args[++i].ToLowerInvariant() switch
                     {
                         "accounts" => MainViewModel.AccountsTab,
+                        "logins" => MainViewModel.LoginsTab,
                         "queues" => MainViewModel.QueuesTab,
                         "topics" => MainViewModel.TopicsTab,
                         "jobs" => MainViewModel.JobsTab,

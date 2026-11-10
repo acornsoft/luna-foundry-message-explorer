@@ -4,6 +4,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Tests;
+using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.Credentials;
+using Acornsoft.MessageExplorer.Credentials.Stores;
 using Acornsoft.MessageExplorer.Shell.Accounts;
 using Azure.Identity;
 
@@ -67,17 +70,50 @@ internal sealed class MemoryAccountStore : IAccountStore
     public void Delete(string id) => Saved.Remove(id);
 }
 
-internal sealed class MemoryVault : ISecretVault
+/// <summary>A real CredentialVault over in-memory secrets and metadata, with its log captured.</summary>
+internal sealed class TestVault
 {
-    public Dictionary<string, string> Items { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public TestVault(string? unavailable = null, ISecretStore? store = null)
+    {
+        Store = store ?? (unavailable is null ? Secrets : new UnavailableSecretStore("test secure store", unavailable));
+        Vault = new CredentialVault(Store, Metadata, log: Log.Add);
+    }
 
-    public string? UnavailableReason { get; init; }
+    public MemorySecretStore Secrets { get; } = new();
 
-    public IReadOnlyList<string> Names() => Items.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    public ISecretStore Store { get; }
 
-    public string? Read(string name) => Items.GetValueOrDefault(name);
+    public MemoryLoginMetadataStore Metadata { get; } = new();
 
-    public void Write(string name, string value) => Items[name] = value;
+    public List<string> Log { get; } = [];
 
-    public void Delete(string name) => Items.Remove(name);
+    public CredentialVault Vault { get; }
+}
+
+/// <summary>The 0.6.0 saved strings, in memory.</summary>
+internal sealed class FakeLegacy(Dictionary<string, string> items) : ILegacySavedConnections
+{
+    public Dictionary<string, string> Items { get; } = items;
+
+    public IReadOnlyDictionary<string, string> ReadAll() => new Dictionary<string, string>(Items);
+
+    public void Clear() => Items.Clear();
+}
+
+/// <summary>A browser-style store for UI labels: secrets in memory, protection reported as browser-protected.</summary>
+internal sealed class FakeBrowserStore : ISecretStore
+{
+    private readonly MemorySecretStore _inner = new();
+
+    public string Name => "browser storage (weaker than the OS store)";
+
+    public SecretProtection Protection => SecretProtection.BrowserProtected;
+
+    public string? UnavailableReason => null;
+
+    public Task WriteAsync(string key, RuntimeSecret secret, CancellationToken cancellationToken = default) => _inner.WriteAsync(key, secret, cancellationToken);
+
+    public Task<RuntimeSecret?> ReadAsync(string key, CancellationToken cancellationToken = default) => _inner.ReadAsync(key, cancellationToken);
+
+    public Task DeleteAsync(string key, CancellationToken cancellationToken = default) => _inner.DeleteAsync(key, cancellationToken);
 }

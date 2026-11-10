@@ -7,6 +7,7 @@ using Acornsoft.MessageExplorer.Adapters.ServiceBus;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Tests;
 using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.Credentials;
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -23,7 +24,7 @@ public class HeadlessAccountsTests
     private const string Key = "Shared" + "AccessKey";
     private const string FakeKey = "bm90LWEtcmVhbC1rZXk=";
 
-    private static (MainWindow Window, MainViewModel Main, FakeAuthenticator Auth, MemoryVault Vault) Open()
+    private static (MainWindow Window, MainViewModel Main, FakeAuthenticator Auth, TestVault Vault) Open()
     {
         var auth = new FakeAuthenticator();
         var arm = new FakeArmReader();
@@ -34,9 +35,9 @@ public class HeadlessAccountsTests
             new NamespaceRef("sbns-demo-001", "sbns-demo-001.servicebus.windows.net", "/subscriptions/sub-demo-a/resourceGroups/rg-demo/providers/Microsoft.ServiceBus/namespaces/sbns-demo-001", "rg-demo", "East US", "sub-demo-a", Contoso),
         ];
         arm.Entities["sbns-demo-001"] = [new EntitySnapshot(EntityKind.Queue, "orders", null, new EntityCounts(2, 1, 0, 0, 3), "Active", 100)];
-        var vault = new MemoryVault();
+        var vault = new TestVault();
         var catalog = new ProviderCatalog([new ServiceBusBrokerProvider()], ProviderCatalog.PlannedProviders);
-        var main = new MainViewModel(catalog, accounts: new AccountServices(auth, new MemoryAccountStore(), arm, vault));
+        var main = new MainViewModel(catalog, accounts: new AccountServices(auth, new MemoryAccountStore(), arm, vault.Vault));
         var window = new MainWindow { DataContext = main };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -144,36 +145,65 @@ public class HeadlessAccountsTests
         await main.Connect.ConnectCommand.ExecuteAsync();
         Settle(window);
 
-        Assert.Equal(text, vault.Items["demo reader"]);
-        Assert.Equal(["demo reader"], main.Connect.SavedConnections);
+        var login = Assert.Single(vault.Vault.List());
+        Assert.Equal(("demo reader", LoginKind.ServiceBusConnectionString), (login.DisplayName, login.Kind));
+        Assert.Equal("sbns-demo-001.servicebus.windows.net", login.Field("endpoint"));
+        Assert.Equal(text, (await vault.Vault.ReadSecretAsync(login.Id))!.Reveal());
+        Assert.DoesNotContain(FakeKey, vault.Metadata.Json, StringComparison.Ordinal);
+        Assert.Equal(login.Id, Assert.Single(main.Connect.SavedConnections).Id);
         Assert.Empty(main.Connect.ConnectionString);
         Assert.DoesNotContain(FakeKey, main.Connect.ConnectedTo, StringComparison.Ordinal);
         Assert.True(Find<ComboBox>(window, "SavedConnectionsBox").IsEffectivelyVisible);
+        Assert.Contains(main.Logins.Items, i => i.Name == "demo reader");
 
         main.Connect.DisconnectCommand.Execute(null);
-        main.Connect.SelectedSaved = "demo reader";
+        main.Connect.SelectedSaved = main.Connect.SavedConnections[0];
         await main.Connect.ConnectSavedCommand.ExecuteAsync();
         Assert.True(main.Connect.IsConnected);
         Assert.Empty(main.Connect.ConnectionString);
-
-        main.Connect.DisconnectCommand.Execute(null);
-        main.Connect.SelectedSaved = "demo reader";
-        main.Connect.DeleteSavedCommand.Execute(null);
-        Assert.Empty(vault.Items);
-        Assert.Empty(main.Connect.SavedConnections);
+        Assert.NotNull(vault.Vault.Find(login.Id)!.LastUsed);
     }
 
     [AvaloniaFact]
-    public void Saving_is_off_with_a_plain_reason_when_the_secure_store_is_missing()
+    public void Saving_a_string_is_off_with_a_plain_reason_when_the_secure_store_is_missing()
     {
         var catalog = new ProviderCatalog([new ServiceBusBrokerProvider()], ProviderCatalog.PlannedProviders);
-        var vault = new MemoryVault { UnavailableReason = "No secure store here." };
-        var main = new MainViewModel(catalog, accounts: new AccountServices(new FakeAuthenticator(), new MemoryAccountStore(), new FakeArmReader(), vault));
+        var vault = new TestVault("No secure store here.");
+        var main = new MainViewModel(catalog, accounts: new AccountServices(new FakeAuthenticator(), new MemoryAccountStore(), new FakeArmReader(), vault.Vault));
 
+        main.Connect.UseConnectionString = true;
         main.Connect.SaveConnection = true;
 
         Assert.False(main.Connect.CanSave);
         Assert.False(main.Connect.SaveConnection);
         Assert.Equal("No secure store here.", main.Connect.SaveNote);
+        Assert.Contains("No secure store here.", main.Logins.StoreText, StringComparison.Ordinal);
+    }
+
+    [AvaloniaFact]
+    public void The_saved_logins_tab_lists_rows_and_its_secret_box_is_masked_with_copy_blocked()
+    {
+        var (window, main, _, vault) = Open();
+        vault.Vault.AddAsync(new LoginDraft("Kafka dev (demo)", LoginKind.KafkaSasl, new Dictionary<string, string> { ["bootstrapServers"] = "kafka-demo.contoso.example:9093", ["mechanism"] = "PLAIN", ["username"] = "demo" }), new RuntimeSecret("fake-kafka-demo")).GetAwaiter().GetResult();
+        main.SelectedTab = MainViewModel.LoginsTab;
+        main.Logins.Selected = main.Logins.Items[0];
+        main.Logins.EditCommand.Execute(null);
+        Settle(window);
+
+        Assert.True(Find<ListBox>(window, "LoginsList").IsEffectivelyVisible);
+        var secretBox = Find<TextBox>(window, "SecretBox");
+        Assert.Equal('•', secretBox.PasswordChar);
+        Assert.False(secretBox.RevealPassword);
+        main.Logins.Editor!.Secret = "typed-but-never-copied";
+        var copy = new Avalonia.Interactivity.RoutedEventArgs(TextBox.CopyingToClipboardEvent);
+        secretBox.RaiseEvent(copy);
+        Assert.True(copy.Handled);
+        var cut = new Avalonia.Interactivity.RoutedEventArgs(TextBox.CuttingToClipboardEvent);
+        secretBox.RaiseEvent(cut);
+        Assert.True(cut.Handled);
+        var buttons = window.GetVisualDescendants().OfType<Button>().Select(b => b.Content as string ?? string.Empty);
+        Assert.DoesNotContain(buttons, b => b.Contains("Reveal", StringComparison.OrdinalIgnoreCase) || b.Contains("Copy", StringComparison.OrdinalIgnoreCase) || b.Contains("Show", StringComparison.OrdinalIgnoreCase));
+        var shown = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text ?? string.Empty);
+        Assert.DoesNotContain(shown, t => t.Contains("fake-kafka-demo", StringComparison.Ordinal) || t.Contains("typed-but-never-copied", StringComparison.Ordinal));
     }
 }

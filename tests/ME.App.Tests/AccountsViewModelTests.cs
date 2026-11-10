@@ -245,17 +245,19 @@ public sealed class AccountsViewModelTests
     }
 
     [Fact]
-    public async Task Only_namespace_rows_can_be_opened_and_the_first_signed_in_account_is_the_default()
+    public async Task Only_namespace_rows_can_be_opened_and_every_signed_in_account_can_be_picked()
     {
         var accounts = Create();
-        Assert.Null(accounts.DefaultCredential);
+        Assert.Empty(accounts.SignedInAccounts);
         _auth.WillSignIn("alice@contoso.example");
+        await accounts.AddAccountAsync();
+        _auth.WillSignIn("bob@fabrikam.example", Fabrikam);
         await accounts.AddAccountAsync();
 
         accounts.SelectedNode = accounts.Tree[0];
         Assert.False(accounts.OpenCommand.CanExecute(null));
-        Assert.Same(_auth.Credentials["alice"], accounts.DefaultCredential);
-        Assert.Equal("alice@contoso.example", accounts.DefaultUsername);
+        Assert.Equal(["alice@contoso.example", "bob@fabrikam.example"], accounts.SignedInAccounts.Select(a => a.Username));
+        Assert.Same(_auth.Credentials["bob"], accounts.SignedInAccounts[1].Credential);
     }
 
     [Fact]

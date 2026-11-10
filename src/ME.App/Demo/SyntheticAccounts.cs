@@ -6,6 +6,8 @@
 using System.Runtime.CompilerServices;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.Credentials;
+using Acornsoft.MessageExplorer.Credentials.Stores;
 using Acornsoft.MessageExplorer.Shell.Accounts;
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Azure;
@@ -49,12 +51,65 @@ internal static class SyntheticAccounts
 
     public static AccountServices Create()
     {
-        var store = new MemoryAccountStore();
+        var vault = new CredentialVault(new MemorySecretStore(), new MemoryLoginMetadataStore(), Clock.Instance);
+        var store = new VaultAccountStore(vault);
         foreach (var user in TenantsByUser.Keys)
             store.Save(Account(user));
-        var vault = new DemoVault();
-        vault.Write("sbns-demo-001 reader (demo)", "Endpoint=sb://sbns-demo-001.servicebus.windows.net/;" + "Shared" + "AccessKeyName=reader;" + "Shared" + "AccessKey=bm90LWEtcmVhbC1rZXk=");
-        return new AccountServices(new Authenticator(), store, new Arm(), vault);
+        SeedLogins(vault);
+
+        // One 0.6.0-style saved string, so the demo shows it moving into Saved logins on launch.
+        var legacy = new DemoLegacy(new Dictionary<string, string>
+        {
+            ["sbns-demo-001 reader (demo)"] = "Endpoint=sb://sbns-demo-001.servicebus.windows.net/;" + "Shared" + "AccessKeyName=reader;" + "Shared" + "AccessKey=bm90LWEtcmVhbC1rZXk=",
+        });
+        return new AccountServices(new Authenticator(), store, new Arm(), vault, new SyntheticDemoProvider(), legacy);
+    }
+
+    /// <summary>Made-up logins for every system. All secrets are fake.</summary>
+    private static void SeedLogins(CredentialVault vault)
+    {
+        static Dictionary<string, string> F(params (string Key, string Value)[] pairs) => pairs.ToDictionary(p => p.Key, p => p.Value);
+        var alice = Account("alice@contoso.example");
+        var bob = Account("bob@fabrikam.example");
+        var seeds = new (LoginDraft Draft, string? Secret, int? UsedMinutesAgo)[]
+        {
+            (new("Orders namespace (demo)", LoginKind.ServiceBusEntra, F(("namespace", "sbns-demo-002.servicebus.windows.net"), ("accountName", alice.Username)), alice.Id), null, 42),
+            (new("Telemetry hub (demo)", LoginKind.EventHubsEntra, F(("namespace", "evhns-demo-001.servicebus.windows.net"), ("accountName", bob.Username)), bob.Id), null, null),
+            (new("Kafka dev cluster (demo)", LoginKind.KafkaSasl, F(("bootstrapServers", "kafka-demo.contoso.example:9093"), ("mechanism", "SCRAM-SHA-512"), ("username", "demo-reader"))), "fake-kafka-secret-demo", 1500),
+            (new("Kafka mTLS lab (demo)", LoginKind.KafkaMutualTls, F(("bootstrapServers", "kafka-lab.contoso.example:9094"), ("certificatePath", "~/certs/demo-client.pem"), ("keyPath", "~/certs/demo-client.key"))), null, null),
+            (new("RabbitMQ staging (demo)", LoginKind.RabbitMqPassword, F(("host", "rabbit-demo.fabrikam.example"), ("port", "5671"), ("virtualHost", "/"), ("username", "demo-user"))), "fake-rabbit-secret-demo", 4320),
+            (new("AWS sandbox profile (demo)", LoginKind.AwsProfile, F(("profileName", "contoso-sandbox-demo"), ("region", "us-east-1"))), null, null),
+            (new("AWS reader keys (demo)", LoginKind.AwsAccessKey, F(("region", "eu-west-1"), ("accessKeyId", "AKIAEXAMPLEDEMO00001"))), "fake-aws-secret-demo", null),
+            (new("Local emulator (demo)", LoginKind.EmulatorConnectionString, F(("endpoint", "localhost"))), "Endpoint=sb://localhost;" + "Shared" + "AccessKeyName=RootManage" + "Shared" + "AccessKey;" + "Shared" + "AccessKey=ZmFrZS1lbXVsYXRvci1rZXk=;UseDevelopmentEmulator=true;", 10),
+        };
+        foreach (var (draft, secret, usedMinutesAgo) in seeds)
+        {
+            // The memory store finishes at once, so the demo seeds synchronously.
+            var entry = vault.AddAsync(draft, secret is null ? null : new RuntimeSecret(secret)).GetAwaiter().GetResult();
+            if (usedMinutesAgo is { } minutes)
+            {
+                Clock.Instance.Offset = TimeSpan.FromMinutes(-minutes);
+                vault.MarkUsed(entry.Id);
+                Clock.Instance.Offset = TimeSpan.Zero;
+            }
+        }
+    }
+
+    /// <summary>The wall clock, shifted while seeding so "last used" shows a spread of times.</summary>
+    private sealed class Clock : TimeProvider
+    {
+        public static Clock Instance { get; } = new();
+
+        public TimeSpan Offset { get; set; }
+
+        public override DateTimeOffset GetUtcNow() => base.GetUtcNow() + Offset;
+    }
+
+    private sealed class DemoLegacy(Dictionary<string, string> items) : ILegacySavedConnections
+    {
+        public IReadOnlyDictionary<string, string> ReadAll() => new Dictionary<string, string>(items);
+
+        public void Clear() => items.Clear();
     }
 
     private static NamespaceRef Ns(string name, SubscriptionRef subscription, string group, string location) => new(
@@ -134,20 +189,5 @@ internal static class SyntheticAccounts
             foreach (var row in SyntheticDemoProvider.Entities.Where(filter))
                 yield return row;
         }
-    }
-
-    private sealed class DemoVault : ISecretVault
-    {
-        private readonly Dictionary<string, string> _items = new(StringComparer.OrdinalIgnoreCase);
-
-        public string? UnavailableReason => null;
-
-        public IReadOnlyList<string> Names() => _items.Keys.Order(StringComparer.OrdinalIgnoreCase).ToList();
-
-        public string? Read(string name) => _items.GetValueOrDefault(name);
-
-        public void Write(string name, string value) => _items[name] = value;
-
-        public void Delete(string name) => _items.Remove(name);
     }
 }

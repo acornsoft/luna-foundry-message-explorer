@@ -7,24 +7,30 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus;
 using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.Credentials;
 using Acornsoft.MessageExplorer.Shell.Accounts;
 using Azure.Core;
 
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
-/// <summary>The signed-in account that a typed namespace or an endpoint-only string uses.</summary>
+/// <summary>A signed-in Entra account the user can pick for a typed namespace or an endpoint-only string.</summary>
+public sealed record AccountChoice(string Id, string Username, TokenCredential Credential)
+{
+    public override string ToString() => Username;
+}
+
+/// <summary>The signed-in Entra accounts, any of which a connection or saved login can use.</summary>
 public interface IAccountCredentialSource
 {
-    TokenCredential? DefaultCredential { get; }
-
-    string? DefaultUsername { get; }
+    IReadOnlyList<AccountChoice> SignedInAccounts { get; }
 }
 
 /// <summary>
 /// The Connect panel. A pasted connection string lives only in this object's memory, is shown masked,
 /// and is cleared as soon as a connection opens or the user disconnects. One paste box takes every flavor
 /// (namespace key, entity key, SAS token, endpoint only, emulator) and says which one it found. A string
-/// is saved only when asked, and only to the OS secure store.
+/// is saved only when asked, as a login in the credential vault (its secret only in the OS secure store).
+/// A typed namespace or an endpoint-only string uses the Entra account picked in AccountChoices.
 /// </summary>
 public sealed class ConnectViewModel : ViewModelBase
 {
@@ -36,12 +42,17 @@ public sealed class ConnectViewModel : ViewModelBase
     private string _connectionString = string.Empty;
     private string? _validationMessage;
     private string? _connectedTo;
-    private readonly ISecretVault? _vault;
+    private readonly ICredentialVault? _vault;
     private bool _saveConnection;
     private string _saveName = string.Empty;
-    private string? _selectedSaved;
+    private LoginEntry? _selectedSaved;
+    private AccountChoice? _selectedAccount;
+    private IAccountCredentialSource? _accounts;
+    private string? _usingLoginId;
 
-    public ConnectViewModel(ProviderCatalog catalog, Func<IEntityInventory, Task> onConnected, Action onDisconnected, ISecretVault? vault = null)
+    private static readonly LoginKind[] ConnectKinds = [LoginKind.ServiceBusConnectionString, LoginKind.EmulatorConnectionString, LoginKind.ServiceBusEntra];
+
+    public ConnectViewModel(ProviderCatalog catalog, Func<IEntityInventory, Task> onConnected, Action onDisconnected, ICredentialVault? vault = null)
     {
         _vault = vault;
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
@@ -58,15 +69,45 @@ public sealed class ConnectViewModel : ViewModelBase
         ConnectCommand = new AsyncCommand(ConnectAsync, () => CanConnect);
         DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
         ConnectSavedCommand = new AsyncCommand(ConnectSavedAsync, () => SelectedSaved is not null && !IsConnected);
-        DeleteSavedCommand = new RelayCommand(DeleteSaved, () => SelectedSaved is not null);
+        if (_vault is not null)
+            _vault.Changed += (_, _) => ReloadSaved();
         ReloadSaved();
     }
 
     /// <summary>Set by the main view model once accounts exist.</summary>
-    public IAccountCredentialSource? Accounts { get; set; }
+    public IAccountCredentialSource? Accounts
+    {
+        get => _accounts;
+        set
+        {
+            _accounts = value;
+            RefreshAccountText();
+        }
+    }
 
-    public string EntraHint => Accounts?.DefaultUsername is { } user
-        ? $"Uses your signed-in account {user}. No secret is stored."
+    /// <summary>Signed-in accounts to pick from for a typed namespace or an endpoint-only string.</summary>
+    public ObservableCollection<AccountChoice> AccountChoices { get; } = [];
+
+    public AccountChoice? SelectedAccount
+    {
+        get => _selectedAccount;
+        set
+        {
+            if (Set(ref _selectedAccount, value))
+            {
+                OnPropertyChanged(nameof(EntraHint));
+                OnPropertyChanged(nameof(DetectedText));
+            }
+        }
+    }
+
+    public bool HasAccountChoices => AccountChoices.Count > 0;
+
+    /// <summary>The account picker shows for a typed namespace and for an endpoint-only string.</summary>
+    public bool ShowAccountPicker => HasAccountChoices && (UseEntra || Pasted is { Flavor: ConnectionFlavor.EndpointOnly });
+
+    public string EntraHint => SelectedAccount is { } account
+        ? $"Uses {account.Username}. No secret is stored."
         : "Uses your Azure sign-in. Add an account on the Accounts tab to choose which one.";
 
     public IReadOnlyList<ProviderOption> Providers { get; }
@@ -88,6 +129,10 @@ public sealed class ConnectViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(UseEntra));
                 OnPropertyChanged(nameof(Mode));
+                OnPropertyChanged(nameof(ShowAccountPicker));
+                OnPropertyChanged(nameof(CanSave));
+                OnPropertyChanged(nameof(SaveNote));
+                OnPropertyChanged(nameof(SaveLabel));
                 ValidationMessage = null;
                 Refresh();
             }
@@ -117,6 +162,7 @@ public sealed class ConnectViewModel : ViewModelBase
                 OnPropertyChanged(nameof(DetectedText));
                 OnPropertyChanged(nameof(HasDetectedText));
                 OnPropertyChanged(nameof(DetectedIsError));
+                OnPropertyChanged(nameof(ShowAccountPicker));
                 Refresh();
             }
         }
@@ -133,8 +179,8 @@ public sealed class ConnectViewModel : ViewModelBase
         null => null,
         { Error: { } error } => error,
         { Flavor: ConnectionFlavor.EntitySas } input => input.Description + ". Message counts are not available with an entity-level key.",
-        { Flavor: ConnectionFlavor.EndpointOnly } input => Accounts?.DefaultUsername is { } user
-            ? $"{input.FullyQualifiedNamespace} with your Entra account {user}"
+        { Flavor: ConnectionFlavor.EndpointOnly } input => SelectedAccount is { } account
+            ? $"{input.FullyQualifiedNamespace} with your Entra account {account.Username}"
             : input.Description,
         var input => input.Description,
     };
@@ -143,16 +189,23 @@ public sealed class ConnectViewModel : ViewModelBase
 
     public bool DetectedIsError => Pasted is { Error: not null };
 
-    /// <summary>The OS secure store's name on this computer.</summary>
-    public static string SecureStoreName =>
-        OperatingSystem.IsMacOS() ? "Keychain" : OperatingSystem.IsWindows() ? "Windows protected storage" : "system keyring";
+    /// <summary>Where saved secrets go on this computer, for example "macOS Keychain".</summary>
+    public string SecureStoreName => _vault?.SecureStoreName ?? "secure store";
 
-    public bool CanSave => _vault is { UnavailableReason: null };
+    /// <summary>
+    /// A typed namespace saves with no secret, so it needs only the vault. A pasted string needs the
+    /// secure store; with none, saving is refused rather than written to a file.
+    /// </summary>
+    public bool CanSave => _vault is not null && (UseEntra || _vault.SecretsUnavailableReason is null);
 
-    public string SaveLabel => $"Save to {SecureStoreName}";
+    public string SaveLabel => UseEntra ? "Save to Saved logins" : $"Save to {SecureStoreName}";
 
-    public string SaveNote => _vault?.UnavailableReason
-        ?? $"Held in memory only, unless you save it. Saved strings go only to your {SecureStoreName}, never to a file.";
+    public string SaveNote => _vault is null
+        ? "Saving is not available in this window."
+        : UseEntra
+            ? "Saves the namespace and the account to use. No secret is stored."
+            : _vault.SecretsUnavailableReason
+              ?? $"Held in memory only, unless you save it. Saved strings go only to your {SecureStoreName}, never to a file.";
 
     public bool SaveConnection
     {
@@ -166,27 +219,22 @@ public sealed class ConnectViewModel : ViewModelBase
         set => Set(ref _saveName, value ?? string.Empty);
     }
 
-    /// <summary>Names of saved connection strings. The values stay in the secure store until used.</summary>
-    public ObservableCollection<string> SavedConnections { get; } = [];
+    /// <summary>Saved Service Bus logins. Secrets stay in the secure store until used.</summary>
+    public ObservableCollection<LoginEntry> SavedConnections { get; } = [];
 
     public bool HasSavedConnections => SavedConnections.Count > 0;
 
-    public string? SelectedSaved
+    public LoginEntry? SelectedSaved
     {
         get => _selectedSaved;
         set
         {
             if (Set(ref _selectedSaved, value))
-            {
                 ConnectSavedCommand?.RaiseCanExecuteChanged();
-                DeleteSavedCommand?.RaiseCanExecuteChanged();
-            }
         }
     }
 
     public AsyncCommand ConnectSavedCommand { get; }
-
-    public RelayCommand DeleteSavedCommand { get; }
 
     public string? ValidationMessage
     {
@@ -227,7 +275,7 @@ public sealed class ConnectViewModel : ViewModelBase
     public BrokerConnection BuildConnection()
     {
         var provider = SelectedProvider ?? throw new InvalidOperationException("Choose a provider.");
-        var credential = Accounts?.DefaultCredential;
+        var credential = SelectedAccount?.Credential;
         return UseConnectionString
             ? BrokerConnection.WithConnectionString(provider.Id, new RuntimeSecret(ConnectionString), credential)
             : BrokerConnection.WithEntra(provider.Id, NamespaceText, credential);
@@ -279,8 +327,10 @@ public sealed class ConnectViewModel : ViewModelBase
         }
 
         var pasted = Pasted;
-        if (SaveConnection && pasted is { Error: null } && UseConnectionString)
-            Save(pasted);
+        if (SaveConnection)
+            await SaveAsync(pasted).ConfigureAwait(true);
+        if (_usingLoginId is { } used)
+            MarkUsed(used);
 
         ConnectionString = string.Empty;
         ConnectedTo = Describe(provider, connection, pasted);
@@ -289,7 +339,7 @@ public sealed class ConnectViewModel : ViewModelBase
 
     private string Describe(IBrokerProvider provider, BrokerConnection connection, ServiceBusConnectionInput? pasted)
     {
-        var who = connection.Credential is not null && Accounts?.DefaultUsername is { } user ? $" as {user}" : string.Empty;
+        var who = connection.Credential is not null && SelectedAccount is { } account ? $" as {account.Username}" : string.Empty;
         if (connection.Endpoint is { } endpoint)
             return $"{provider.Descriptor.DisplayName}: {endpoint} (Entra{who})";
         if (pasted is { Flavor: ConnectionFlavor.EndpointOnly })
@@ -299,87 +349,147 @@ public sealed class ConnectViewModel : ViewModelBase
             : $"{provider.Descriptor.DisplayName} (connection string, held in memory)";
     }
 
-    private void Save(ServiceBusConnectionInput pasted)
+    private async Task SaveAsync(ServiceBusConnectionInput? pasted)
     {
-        var name = string.IsNullOrWhiteSpace(SaveName) ? pasted.Description : SaveName.Trim();
-        try
+        if (_vault is null)
+            return;
+        var account = SelectedAccount;
+        LoginDraft draft;
+        RuntimeSecret? secret = null;
+        if (UseEntra)
         {
-            _vault!.Write(name, _connectionString.Trim());
+            if (account is null)
+            {
+                ValidationMessage = "Connected. To save this namespace, sign in on the Accounts tab so the login can name its account.";
+                return;
+            }
+
+            var fields = new Dictionary<string, string> { ["namespace"] = NamespaceText.Trim(), ["accountName"] = account.Username };
+            draft = new LoginDraft(Named(NamespaceText.Trim()), LoginKind.ServiceBusEntra, fields, account.Id);
         }
-        catch (Exception exception) when (IsVaultFailure(exception))
+        else if (pasted is { Error: null })
         {
-            ValidationMessage = $"Connected, but the connection string could not be saved to your {SecureStoreName}.";
+            var endpointOnly = pasted.Flavor == ConnectionFlavor.EndpointOnly;
+            draft = LoginMigration.DraftFor(Named(pasted.Description), pasted, endpointOnly ? account?.Id : null, endpointOnly ? account?.Username : null);
+            secret = new RuntimeSecret(_connectionString.Trim());
+        }
+        else
+        {
             return;
         }
 
-        SaveConnection = false;
-        SaveName = string.Empty;
-        ReloadSaved();
-        SelectedSaved = name;
+        try
+        {
+            var saved = await _vault.AddAsync(draft, secret).ConfigureAwait(true);
+            SaveConnection = false;
+            SaveName = string.Empty;
+            ReloadSaved();
+            SelectedSaved = SavedConnections.FirstOrDefault(e => e.Id == saved.Id);
+        }
+        catch (Exception exception) when (exception is LoginRejectedException or SecretStoreException)
+        {
+            ValidationMessage = $"Connected, but the login was not saved: {SecretRedactor.Redact(exception.Message, secret)}";
+        }
     }
+
+    private string Named(string fallback) => string.IsNullOrWhiteSpace(SaveName) ? fallback : SaveName.Trim();
 
     private async Task ConnectSavedAsync()
     {
-        if (SelectedSaved is not { } name || _vault is null)
+        if (SelectedSaved is not { } login || _vault is null)
             return;
-        string? value;
+        ValidationMessage = null;
+        AccountChoice? account = null;
+        if (login.AccountId is { } accountId)
+        {
+            account = AccountChoices.FirstOrDefault(a => a.Id == accountId);
+            if (account is null)
+            {
+                var who = login.Field("accountName") is { Length: > 0 } name ? name : "its Entra account";
+                ValidationMessage = $"'{login.DisplayName}' uses {who}. Sign in as that account on the Accounts tab first.";
+                return;
+            }
+        }
+
+        if (login.Kind == LoginKind.ServiceBusEntra)
+        {
+            UseEntra = true;
+            NamespaceText = login.Field("namespace");
+            SelectedAccount = account;
+        }
+        else
+        {
+            RuntimeSecret? value;
+            try
+            {
+                value = await _vault.ReadSecretAsync(login.Id).ConfigureAwait(true);
+            }
+            catch (SecretStoreException exception)
+            {
+                ValidationMessage = exception.Message;
+                return;
+            }
+
+            if (value is null)
+            {
+                ValidationMessage = $"The secret for '{login.DisplayName}' is missing from your {SecureStoreName}. Edit it on the Saved logins tab.";
+                return;
+            }
+
+            UseConnectionString = true;
+            ConnectionString = value.Reveal();
+            if (account is not null)
+                SelectedAccount = account;
+        }
+
+        SaveConnection = false;
+        _usingLoginId = login.Id;
         try
         {
-            value = _vault.Read(name);
+            await ConnectAsync().ConfigureAwait(true);
         }
-        catch (Exception exception) when (IsVaultFailure(exception))
+        finally
         {
-            value = null;
+            _usingLoginId = null;
         }
-
-        if (value is null)
-        {
-            ValidationMessage = $"'{name}' could not be read from your {SecureStoreName}.";
-            ReloadSaved();
-            return;
-        }
-
-        UseConnectionString = true;
-        SaveConnection = false;
-        ConnectionString = value;
-        await ConnectAsync().ConfigureAwait(true);
     }
 
-    private void DeleteSaved()
+    private void MarkUsed(string id)
     {
-        if (SelectedSaved is not { } name || _vault is null)
-            return;
-        _vault.Delete(name);
-        SelectedSaved = null;
-        ReloadSaved();
+        try
+        {
+            _vault?.MarkUsed(id);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // "Last used" is a convenience; connecting still worked.
+        }
     }
 
     private void ReloadSaved()
     {
+        var selected = SelectedSaved?.Id;
         SavedConnections.Clear();
-        if (CanSave)
-        {
-            try
-            {
-                foreach (var name in _vault!.Names())
-                    SavedConnections.Add(name);
-            }
-            catch (Exception exception) when (IsVaultFailure(exception))
-            {
-                // The list stays empty; connecting by paste still works.
-            }
-        }
-
+        foreach (var login in _vault?.List().Where(e => ConnectKinds.Contains(e.Kind)) ?? [])
+            SavedConnections.Add(login);
+        _selectedSaved = SavedConnections.FirstOrDefault(e => e.Id == selected);
+        OnPropertyChanged(nameof(SelectedSaved));
         OnPropertyChanged(nameof(HasSavedConnections));
+        ConnectSavedCommand?.RaiseCanExecuteChanged();
     }
 
-    private static bool IsVaultFailure(Exception exception) =>
-        exception is InvalidOperationException or IOException or UnauthorizedAccessException
-            or Microsoft.Identity.Client.Extensions.Msal.MsalCachePersistenceException;
+    public override string ToString() => $"Connect: {(IsConnected ? ConnectedTo : "not connected")}, {SavedConnections.Count} saved logins";
 
-    /// <summary>Call when the signed-in accounts change, so hints name the right account.</summary>
+    /// <summary>Call when the signed-in accounts change: refreshes the picker and keeps the choice when it is still signed in.</summary>
     public void RefreshAccountText()
     {
+        var keep = SelectedAccount?.Id;
+        AccountChoices.Clear();
+        foreach (var account in _accounts?.SignedInAccounts ?? [])
+            AccountChoices.Add(account);
+        SelectedAccount = AccountChoices.FirstOrDefault(a => a.Id == keep) ?? AccountChoices.FirstOrDefault();
+        OnPropertyChanged(nameof(HasAccountChoices));
+        OnPropertyChanged(nameof(ShowAccountPicker));
         OnPropertyChanged(nameof(EntraHint));
         OnPropertyChanged(nameof(DetectedText));
     }

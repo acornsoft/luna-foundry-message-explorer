@@ -14,7 +14,7 @@ Read-only first: every write (send, receive, settle, create, delete, purge) stay
 |---|---|---|---|
 | Connect | Connect with a connection string | Done | Masked field. One paste box detects namespace key, entity key (EntityPath), SAS token, endpoint only, and emulator strings. Cleared after connecting. |
 | Connect | Connect with Microsoft Entra ID | Done | Accounts tab: one or more accounts in the system browser, namespaces discovered through ARM across tenants and subscriptions. A typed host name uses the signed-in account. |
-| Connect | Saved connections list | Done | Saved by name in the OS secure store only (Keychain on macOS), never a settings file. Masked in the UI and logs. |
+| Connect | Saved connections list | Done | Saved logins for every system. Secrets only in the OS secure store (Keychain, Credential Manager, Secret Service), never a settings file. Masked in the UI and logs; no reveal, no copy. Read-only Test connection. |
 | Connect | More than one broker family | Done (this PR), design | `IBrokerProvider` in `ME.Brokers.Abstractions`. Service Bus is enabled. Kafka and AWS SQS/SNS show as planned and disabled. |
 | Layout | Entity tree on the left, details on the right | Partial | Connect panel plus Queues, Topics, and Test jobs tabs. A tree of queues, topics, and subscriptions comes later. |
 | Layout | Log pane | Planned | Structured, redacted event log. No message bodies in the log. |

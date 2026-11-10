@@ -5,6 +5,9 @@
 
 using Acornsoft.MessageExplorer.Adapters.ServiceBus;
 using Acornsoft.MessageExplorer.Brokers;
+using Acornsoft.MessageExplorer.Credentials;
+using Acornsoft.MessageExplorer.Credentials.Stores;
+using Acornsoft.MessageExplorer.Shell.Accounts;
 using Acornsoft.MessageExplorer.Shell.Demo;
 using Azure.Identity;
 
@@ -30,15 +33,23 @@ public sealed class MainViewModel : ViewModelBase
         Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected, services.Vault);
         Accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, OpenFromAccountsAsync);
         Connect.Accounts = Accounts;
+        var vault = services.Vault ?? new CredentialVault(
+            new UnavailableSecretStore("secure store", "Saving logins is not available in this window."),
+            new MemoryLoginMetadataStore());
+        var tester = new LoginTester(vault, () => services.TestProvider ?? ServiceBusIn(catalog), () => Accounts);
+        Logins = new LoginsViewModel(vault, tester, () => Accounts);
         Accounts.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(AccountsViewModel.DefaultUsername))
+            if (e.PropertyName == nameof(AccountsViewModel.SignedInAccounts))
                 Connect.RefreshAccountText();
         };
     }
 
     /// <summary>Signed-in Entra accounts and the namespaces each can read.</summary>
     public AccountsViewModel Accounts { get; }
+
+    /// <summary>Saved logins for every system.</summary>
+    public LoginsViewModel Logins { get; }
 
     public ShellModel Shell { get; }
 
@@ -54,9 +65,10 @@ public sealed class MainViewModel : ViewModelBase
     public string Title => Shell.Title;
 
     public const int AccountsTab = 0;
-    public const int QueuesTab = 1;
-    public const int TopicsTab = 2;
-    public const int JobsTab = 3;
+    public const int LoginsTab = 1;
+    public const int QueuesTab = 2;
+    public const int TopicsTab = 3;
+    public const int JobsTab = 4;
 
     private int _selectedTab;
 
@@ -74,6 +86,18 @@ public sealed class MainViewModel : ViewModelBase
             () => new DefaultAzureCredential(includeInteractiveCredentials: true),
             client => new Adapters.ServiceBus.Inventory.AdministrationClientReader(client));
         return new(syntheticDemo ? [serviceBus, new SyntheticDemoProvider()] : [serviceBus], ProviderCatalog.PlannedProviders);
+    }
+
+    private static IBrokerProvider? ServiceBusIn(ProviderCatalog catalog)
+    {
+        try
+        {
+            return catalog.Resolve(ServiceBusBrokerProvider.ProviderId);
+        }
+        catch (BrokerException)
+        {
+            return null;
+        }
     }
 
     private async Task OpenFromAccountsAsync(IEntityInventory inventory, string label)

@@ -31,6 +31,7 @@ public partial class App : Application
                 ExitAfterRun(desktop, main.Jobs, report);
             options.Apply(main);
             desktop.MainWindow = new MainWindow { DataContext = main };
+            _ = accounts.ImportLegacyAsync();
             _ = main.Accounts.RestoreAsync();
         }
 

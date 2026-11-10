@@ -6,6 +6,7 @@
     <ProjectReference Include="..\..\src\ME.App\ME.App.csproj" />
     <ProjectReference Include="..\..\src\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\ME.Jobs\ME.Jobs.csproj" />
+    <ProjectReference Include="..\..\src\ME.Credentials\ME.Credentials.csproj" />
     <ProjectReference Include="..\..\src\ME.Jobs.Cli\ME.Jobs.Cli.csproj" />
     <!-- The desktop head hosts plugins itself in the packaged app (no dotnet on the machine). -->
     <ProjectReference Include="..\..\src\ME.App.Desktop\ME.App.Desktop.csproj" ReferenceOutputAssembly="false" />
