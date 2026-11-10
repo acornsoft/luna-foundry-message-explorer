@@ -25,7 +25,8 @@ public sealed class MainViewModel : ViewModelBase
         string? samplesFolder = null,
         AccountServices? accounts = null,
         MoveServices? move = null,
-        QuickViewServices? quickView = null)
+        QuickViewServices? quickView = null,
+        VoiceServices? voice = null)
     {
         _quickViewServices = quickView ?? QuickViewServices.Default();
         ArgumentNullException.ThrowIfNull(catalog);
@@ -44,7 +45,8 @@ public sealed class MainViewModel : ViewModelBase
         var tester = new LoginTester(vault, () => services.TestProvider ?? ServiceBusIn(catalog), () => Accounts);
         Logins = new LoginsViewModel(vault, tester, () => Accounts);
         Move = new MoveViewModel(MoveMode, move ?? MoveServices.InMemory());
-        Voice = new VoiceViewModel(vault, () => _inventory, () => Connect.ConnectedTo is { Length: > 0 } to ? to : "the connected namespace", scheduler: scheduler);
+        var voiceServices = voice ?? VoiceServices.None();
+        Voice = new VoiceViewModel(vault, () => _inventory, () => Connect.ConnectedTo is { Length: > 0 } to ? to : "the connected namespace", audio: voiceServices.Audio, scheduler: scheduler, tokens: voiceServices.Tokens);
         Move.Moved += (_, _) => _ = RefreshGridsAsync();
         MoveMode.Changed += (_, _) => OnPropertyChanged(nameof(MoveModeOn));
         Accounts.PropertyChanged += (_, e) =>

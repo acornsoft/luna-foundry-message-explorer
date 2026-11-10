@@ -44,7 +44,8 @@ Admin actions are a separate module, off by default. They file a request. Observ
 | `src/ME.ReadTools` | Read-only sources and tools shared by `lfme`, `lfme-mcp` and the app: inventory, limit checks, dead-letter summary |
 | `src/ME.Headless` | `lfme`: headless, read-only inventory and checks for containers and pipelines |
 | `src/ME.McpServer` | `lfme-mcp`: read-only MCP server over stdio |
-| `src/ME.Voice` | Grok Voice session (xAI realtime WebSocket) over the read-only tools, built-in voices, redaction |
+| `src/ME.Voice` | Grok Voice session (xAI realtime WebSocket) over the read-only tools, built-in voices, redaction, short-lived tokens, the push-to-talk audio pipeline |
+| `src/ME.Voice.PortAudio` | Desktop microphone and speaker for the Voice tab (PortAudio) |
 | `plugins/cursor/lfme-readonly` | A Cursor plugin scaffold for `lfme-mcp` (not published) |
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
 | `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
@@ -137,7 +138,7 @@ The Quick view tab is a split view: the entity tree on the left, a strip of lane
 
 ## Grok Voice
 
-The Voice tab answers questions about the connected namespace out loud, push-to-talk, using the same four read-only tools as `lfme-mcp`. It can never move anything. The xAI key lives only in the vault (Saved logins > xAI). Message bodies are redacted by default, and the voice picker offers xAI's built-in voices only. See [Grok Voice](docs/voice.md).
+The Voice tab answers questions about the connected namespace out loud, push-to-talk, using the same four read-only tools as `lfme-mcp`. It can never move anything. The xAI key lives only in the vault (Saved logins > xAI). Message bodies are redacted by default, and the voice picker offers xAI's built-in voices only. On Windows (x64), macOS and Linux the microphone and speaker work through PortAudio; the voice connection uses a short-lived xAI token instead of the key. Typed questions always work. See [Grok Voice](docs/voice.md).
 
 ## Environments
 
@@ -169,4 +170,4 @@ The desktop head builds with the solution. CI does not launch the window.
 - Natural language beyond an allow-listed entity name and a minute window.
 - Topology and trace screens.
 - A Storage Queues adapter. The matrix records the peek verdict only.
-- Web and non-Azure adapters. A platform audio backend for the Voice tab (questions are typed until one is added).
+- Web and non-Azure adapters. Voice audio on Android and Windows on Arm (questions are typed there).

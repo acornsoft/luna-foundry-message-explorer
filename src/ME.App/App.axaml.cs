@@ -20,6 +20,12 @@ public partial class App : Application
     /// </summary>
     public static Func<Credentials.ISecretStore>? PlatformSecretStore { get; set; }
 
+    /// <summary>
+    /// Set by a desktop head before start-up: its microphone and speaker. Left null (Android, tests), the Voice tab
+    /// takes typed questions only.
+    /// </summary>
+    public static Func<Voice.IVoiceAudio>? PlatformVoiceAudio { get; set; }
+
     private static int _iconsRegistered;
 
     public override void Initialize()
@@ -44,7 +50,9 @@ public partial class App : Application
             var accounts = options.SyntheticDemo ? AccountServices.SyntheticDemo() : AccountServices.ForThisComputer(Environment.GetEnvironmentVariable);
             var move = options.SyntheticDemo ? MoveServices.ForDemo(Demo.SyntheticDemoProvider.SharedBroker) : MoveServices.ForThisComputer(Environment.GetEnvironmentVariable);
             var quick = options.SyntheticDemo ? QuickViewServices.ForDemo(Demo.SyntheticDemoProvider.SharedBroker) : QuickViewServices.Default();
-            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts, move, quick);
+            var voice = VoiceServices.ForThisComputer(PlatformVoiceAudio);
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts, move, quick, voice);
+            desktop.Exit += (_, _) => (voice.Audio as IDisposable)?.Dispose();
             if (options.ExitAfterRunReport is { } report)
                 ExitAfterRun(desktop, main.Jobs, report);
             options.Apply(main);

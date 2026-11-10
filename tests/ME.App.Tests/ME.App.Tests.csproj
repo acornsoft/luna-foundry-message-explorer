@@ -20,6 +20,7 @@
     <Compile Include="..\ME.Brokers.Abstractions.Tests\Fakes\FakeBroker.cs" Link="Fakes\FakeBroker.cs" />
     <Compile Include="..\ME.Adapters.ServiceBus.Tests\ArmFakes.cs" Link="Fakes\ArmFakes.cs" />
     <Compile Include="..\ME.Voice.Tests\FakeVoiceSocket.cs" Link="Fakes\FakeVoiceSocket.cs" />
+    <Compile Include="..\ME.Voice.Tests\FakeAudioBackend.cs" Link="Fakes\FakeAudioBackend.cs" />
     <Compile Include="..\ME.Redaction.Tests\SyntheticMessageFactory.cs" Link="Fakes\SyntheticMessageFactory.cs" />
   </ItemGroup>
 </Project>

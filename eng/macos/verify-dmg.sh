@@ -27,6 +27,7 @@ check_plist() {
     grep -q "<key>$key</key><string>$value</string>" "$plist" || fail "Info.plist $key is not $value"
   done
   grep -q '<key>NSHighResolutionCapable</key><true/>' "$plist" || fail "NSHighResolutionCapable is not true"
+  grep -q '<key>NSMicrophoneUsageDescription</key><string>[^<]' "$plist" || fail "NSMicrophoneUsageDescription is missing"
   grep -o '<key>CFBundleShortVersionString</key><string>[^<]*' "$plist" | sed 's/.*<string>/version: /'
   echo "Info.plist: ok"
 }

@@ -10,6 +10,7 @@ using Acornsoft.MessageExplorer.Credentials.Stores;
 using Acornsoft.MessageExplorer.ReadTools;
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Acornsoft.MessageExplorer.Voice;
+using Acornsoft.MessageExplorer.Voice.Audio;
 using Acornsoft.MessageExplorer.Voice.Tests;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
@@ -31,7 +32,7 @@ public sealed class VoiceTests
 
     public VoiceTests() => _vault = new CredentialVault(_store, _metadata);
 
-    private VoiceViewModel Voice(IVoiceAudio? audio = null) => new(_vault, () => _inventory, () => "synthetic", () => _socket, audio);
+    private VoiceViewModel Voice(IVoiceAudio? audio = null, IVoiceTokenMinter? tokens = null) => new(_vault, () => _inventory, () => "synthetic", () => _socket, audio, tokens: tokens);
 
     private Task<LoginEntry> AddKeyAsync(string voice = "eve") =>
         _vault.AddAsync(new LoginDraft("Grok Voice", LoginKind.XaiApiKey, new Dictionary<string, string> { ["voice"] = voice }), new RuntimeSecret(FakeKey));
@@ -170,6 +171,122 @@ public sealed class VoiceTests
         var silent = Voice();
         Assert.False(silent.CanTalk);
         Assert.NotNull(silent.AudioNote);
+    }
+
+    [Fact]
+    public async Task Held_audio_from_a_device_is_sent_in_order_and_the_tail_goes_out_before_the_commit()
+    {
+        await AddKeyAsync();
+        var device = new FakeAudioBackend();
+        using var audio = new PcmVoiceAudio(device);
+        var voice = Voice(audio);
+        await voice.StartCommand.ExecuteAsync();
+
+        await voice.TalkPressedAsync();
+        var spoken = Enumerable.Range(0, 6000).Select(i => (short)i).ToArray();
+        await Task.Run(() =>
+        {
+            foreach (var piece in spoken.Chunk(480))
+                device.Speak(piece);
+        });
+        await voice.TalkReleasedAsync();
+
+        var types = _socket.SentTypes.ToList();
+        Assert.Equal(["session.update", "input_audio_buffer.clear", "input_audio_buffer.append", "input_audio_buffer.append", "input_audio_buffer.append", "input_audio_buffer.commit", "response.create"], types);
+        var sent = _socket.SentJson.Where(j => j["type"]!.GetValue<string>() == "input_audio_buffer.append")
+            .SelectMany(j => Pcm16.FromBytes(Convert.FromBase64String(j["audio"]!.GetValue<string>())));
+        Assert.Equal(spoken, sent);
+        await voice.StopCommand.ExecuteAsync();
+    }
+
+    [Fact]
+    public async Task Answer_audio_plays_and_holding_the_button_again_cuts_it_off()
+    {
+        await AddKeyAsync();
+        var device = new FakeAudioBackend();
+        using var audio = new PcmVoiceAudio(device);
+        var voice = Voice(audio);
+        await voice.StartCommand.ExecuteAsync();
+        var session = (GrokVoiceSession)typeof(VoiceViewModel).GetField("_session", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(voice)!;
+
+        await session.HandleEventAsync(new JsonObject { ["type"] = "response.output_audio.delta", ["delta"] = Convert.ToBase64String(Pcm16.ToBytes(Enumerable.Repeat((short)500, 2400).ToArray())) }.ToJsonString());
+        Assert.Equal(2400, audio.QueuedSamples);
+        Assert.All(device.Pull(100), s => Assert.Equal(500, s));
+
+        await voice.TalkPressedAsync();
+
+        Assert.Equal(0, audio.QueuedSamples);
+        await voice.TalkReleasedAsync();
+        await voice.StopCommand.ExecuteAsync();
+    }
+
+    [Fact]
+    public async Task A_microphone_that_will_not_open_falls_back_to_typed_questions()
+    {
+        await AddKeyAsync();
+        var device = new FakeAudioBackend { CaptureFailure = new InvalidOperationException("permission denied.") };
+        using var audio = new PcmVoiceAudio(device);
+        var voice = Voice(audio);
+        await voice.StartCommand.ExecuteAsync();
+        Assert.True(voice.CanTalk);
+
+        await voice.TalkPressedAsync();
+
+        Assert.False(voice.IsTalking);
+        Assert.False(voice.CanTalk);
+        Assert.Contains("permission denied", voice.AudioNote, StringComparison.Ordinal);
+        Assert.Contains("Type a question", voice.Status, StringComparison.Ordinal);
+        voice.AskText = "How many queues?";
+        Assert.True(voice.AskCommand.CanExecute(null));
+        await voice.StopCommand.ExecuteAsync();
+    }
+
+    [Fact]
+    public async Task With_a_token_minter_the_socket_gets_the_short_lived_token_and_the_panel_says_so()
+    {
+        await AddKeyAsync();
+        var token = "xai-realtime-client-secret-" + Guid.NewGuid().ToString("N");
+        var voice = Voice(tokens: new StaticMinter(token));
+
+        await voice.StartCommand.ExecuteAsync();
+
+        Assert.Equal(token, _socket.BearerKey);
+        Assert.Contains("short-lived token", voice.Credential, StringComparison.Ordinal);
+        Assert.DoesNotContain(token, voice.Credential!, StringComparison.Ordinal);
+        Assert.DoesNotContain(FakeKey, voice.Credential!, StringComparison.Ordinal);
+        await voice.StopCommand.ExecuteAsync();
+        Assert.Null(voice.Credential);
+    }
+
+    [Fact]
+    public async Task A_key_xai_rejects_stops_the_start_with_a_plain_message()
+    {
+        await AddKeyAsync();
+        var voice = Voice(tokens: new StaticMinter(null));
+
+        await voice.StartCommand.ExecuteAsync();
+
+        Assert.False(voice.IsRunning);
+        Assert.Contains("did not accept", voice.Status, StringComparison.Ordinal);
+        Assert.Null(_socket.Endpoint);
+    }
+
+    [Fact]
+    public void A_platform_audio_that_fails_to_start_leaves_typed_questions_and_says_why()
+    {
+        var services = VoiceServices.ForThisComputer(() => throw new DllNotFoundException("libportaudio"));
+
+        Assert.Contains("libportaudio", services.Audio.UnavailableReason, StringComparison.Ordinal);
+        Assert.Same(XaiClientSecrets.Shared, services.Tokens);
+        Assert.Null(VoiceServices.None().Tokens);
+    }
+
+    private sealed class StaticMinter(string? token) : IVoiceTokenMinter
+    {
+        public Task<VoiceToken> MintAsync(RuntimeSecret apiKey, CancellationToken cancellationToken) =>
+            token is null
+                ? throw new VoiceKeyRejectedException("xAI did not accept the saved API key (401).")
+                : Task.FromResult(new VoiceToken(new RuntimeSecret(token), DateTimeOffset.UtcNow.AddMinutes(2)));
     }
 
     [AvaloniaFact]

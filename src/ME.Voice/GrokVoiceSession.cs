@@ -51,12 +51,20 @@ public sealed class GrokVoiceSession : IAsyncDisposable
     private readonly ReadOnlyToolset _tools;
     private readonly VoiceOptions _options;
     private readonly Func<CancellationToken, Task<RuntimeSecret?>> _key;
+    private readonly IVoiceTokenMinter? _tokens;
     private readonly CancellationTokenSource _stop = new();
     private RuntimeSecret? _secret;
+    private RuntimeSecret? _token;
     private Task? _receive;
 
-    public GrokVoiceSession(IVoiceSocket socket, ReadOnlyToolset tools, VoiceOptions options, Func<CancellationToken, Task<RuntimeSecret?>> apiKey)
+    /// <param name="tokens">
+    /// When set, the API key is swapped for a short-lived xAI token before the socket opens, and only the token
+    /// goes on the socket. If xAI can't issue one (other than rejecting the key), the session says so and connects
+    /// with the key, as before.
+    /// </param>
+    public GrokVoiceSession(IVoiceSocket socket, ReadOnlyToolset tools, VoiceOptions options, Func<CancellationToken, Task<RuntimeSecret?>> apiKey, IVoiceTokenMinter? tokens = null)
     {
+        _tokens = tokens;
         _socket = socket ?? throw new ArgumentNullException(nameof(socket));
         _tools = tools ?? throw new ArgumentNullException(nameof(tools));
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -77,12 +85,34 @@ public sealed class GrokVoiceSession : IAsyncDisposable
 
     public VoiceOptions Options => _options;
 
+    /// <summary>True when the socket was opened with a short-lived token rather than the API key.</summary>
+    public bool UsesShortLivedToken => _token is not null;
+
+    /// <summary>When the short-lived token stops working for new connections (null when the key was used).</summary>
+    public DateTimeOffset? TokenExpiresAt { get; private set; }
+
     /// <summary>Reads the key from the vault, connects, and configures the session. Throws <see cref="VoiceKeyMissingException"/> without connecting when there is no key.</summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         _secret = await _key(cancellationToken).ConfigureAwait(false) ?? throw new VoiceKeyMissingException();
+        var credential = _secret;
+        if (_tokens is not null)
+        {
+            try
+            {
+                var token = await _tokens.MintAsync(_secret, cancellationToken).ConfigureAwait(false);
+                _token = token.Value;
+                TokenExpiresAt = token.ExpiresAt;
+                credential = token.Value;
+            }
+            catch (Exception exception) when (exception is HttpRequestException || (exception is TaskCanceledException && !cancellationToken.IsCancellationRequested))
+            {
+                Problem?.Invoke(this, "No short-lived voice token (" + Redact(exception.Message) + "); connecting with the API key instead.");
+            }
+        }
+
         var uri = new Uri($"{Endpoint}?model={Uri.EscapeDataString(_options.Model)}");
-        await _socket.ConnectAsync(uri, _secret, cancellationToken).ConfigureAwait(false);
+        await _socket.ConnectAsync(uri, credential, cancellationToken).ConfigureAwait(false);
         await SendAsync(SessionUpdate(_options), cancellationToken).ConfigureAwait(false);
         _receive = Task.Run(() => ReceiveLoopAsync(_stop.Token), CancellationToken.None);
     }
@@ -187,7 +217,7 @@ public sealed class GrokVoiceSession : IAsyncDisposable
                     break;
                 case "error":
                     var text = json["error"]?["message"]?.GetValue<string>() ?? json["message"]?.GetValue<string>() ?? "The voice service reported an error.";
-                    Problem?.Invoke(this, SecretRedactor.Redact(text, _secret));
+                    Problem?.Invoke(this, Redact(text));
                     break;
             }
         }
@@ -244,9 +274,11 @@ public sealed class GrokVoiceSession : IAsyncDisposable
         }
         catch (Exception exception) when (exception is System.Net.WebSockets.WebSocketException or IOException)
         {
-            Problem?.Invoke(this, "The voice connection closed: " + SecretRedactor.Redact(exception.Message, _secret));
+            Problem?.Invoke(this, "The voice connection closed: " + Redact(exception.Message));
         }
     }
+
+    private string Redact(string? text) => SecretRedactor.Redact(text, _secret, _token);
 
     private Task SendAsync(JsonObject message, CancellationToken cancellationToken) => _socket.SendAsync(message.ToJsonString(), cancellationToken);
 

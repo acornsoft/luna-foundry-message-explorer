@@ -15,21 +15,50 @@ resubmit, purge or delete anything.
    are not offered). The choice is saved on the xAI login as a non-secret field. "Redact message bodies" is on
    by default.
 3. Connect a namespace (Accounts or Saved logins), then **Start session**.
-4. Hold **Hold to talk**, ask, and release. Or type a question and press **Ask**.
+4. Hold **Hold to talk**, ask, and release. Or type a question and press **Ask**. On macOS the first hold asks
+   for microphone permission.
 
 ## How it works
 
-- WebSocket `wss://api.x.ai/v1/realtime?model=grok-voice-latest`, with the key only in the
-  `Authorization: Bearer` header of the upgrade request. No message on the socket carries it.
+- **Sign-in.** When a session starts, the app reads the key from the vault and swaps it for a short-lived xAI
+  token (`POST https://api.x.ai/v1/realtime/client_secrets` with `expires_after.seconds = 120`, answered with
+  `value` and `expires_at`). The WebSocket then opens with only that token in its `Authorization: Bearer` header,
+  so the long-lived key is never on the voice connection. The token only has to be valid when the socket opens.
+  The panel says which was used. If xAI rejects the key (401 or 403), the session doesn't start. If xAI can't
+  issue a token for another reason, the panel says so and connects with the key, as earlier builds did.
+- WebSocket `wss://api.x.ai/v1/realtime?model=grok-voice-latest`. No message on the socket carries the key or
+  the token.
 - `session.update` sets the voice, instructions, `turn_detection: { type: null }` (manual turns, so audio is
   committed when you release the button), PCM16 at 24 kHz both ways, and the four tools as `function` tools.
-- Holding the button sends `input_audio_buffer.clear`, then `input_audio_buffer.append` chunks. Releasing it
-  sends `input_audio_buffer.commit` and `response.create`.
+- **Push-to-talk.** Holding the button stops any answer still playing (barge-in) and sends
+  `input_audio_buffer.clear`. The microphone opens on first use (on macOS that's when the permission prompt
+  appears) and its audio goes out as 100 ms `input_audio_buffer.append` chunks, in order. Releasing it sends the
+  last partial chunk, waits for every chunk to be sent, then sends `input_audio_buffer.commit` and
+  `response.create`.
+- **Playback.** `response.output_audio.delta` audio is decoded and queued for the speaker. Up to 120 seconds are
+  queued; beyond that the oldest audio is dropped. A sample split across two deltas is joined back together.
+- **Typed fallback.** The question box works with or without audio. If there's no microphone or speaker, or
+  one fails to open, the panel shows why, disables the talk button and keeps taking typed questions.
 - When the model calls a tool (`response.function_call_arguments.done`), the app runs it against the
   connected namespace if it is one of the four, and returns a `function_call_output`. Any other name runs
   nothing and gets a refusal. Then it sends `response.create`.
 - Transcripts (`response.output_audio_transcript.delta`, `conversation.item.input_audio_transcription.completed`)
   appear in the Conversation list. The tools used appear on the right.
+
+## Audio devices
+
+- **Library.** PortAudio (MIT-style) through PortAudioSharp2 (Apache-2.0), which ships prebuilt PortAudio for
+  win-x64, linux-x64, linux-arm64, osx-x64 and osx-arm64. Notices are in `THIRD-PARTY-NOTICES.md`.
+- **Format.** Mono, 16-bit, 24 kHz. If a device won't open at 24 kHz, it opens at its own default rate and the
+  app resamples (linear) both ways.
+- **macOS.** `Info.plist` has `NSMicrophoneUsageDescription`, and the hardened-runtime entitlements include
+  `com.apple.security.device.audio-input`. Without the entitlement a signed build gets silence instead of a
+  prompt.
+- **Linux.** PortAudio needs the system's ALSA (`libasound2`) and JACK (`libjack0` or `libjack-jackd2-0`)
+  libraries. If they're missing, the panel says so and takes typed questions.
+- **Not covered.** Windows on Arm and Android have no PortAudio build here, so they use typed questions. The
+  shared code (`ME.Voice.Audio`) has no native dependencies; a platform backend only implements
+  `IAudioBackend`.
 
 ## Redaction
 
@@ -44,18 +73,21 @@ questions as they are.
 
 ## Limits
 
-- **Audio devices.** The panel talks to an `IVoiceAudio` (24 kHz mono PCM16 capture and playback). This build
-  ships no platform audio backend, so on every head the panel says so, the talk button stays disabled, and
-  questions are typed; answers arrive as transcripts. A platform backend plugs into `IVoiceAudio` without other
-  changes.
-- No live xAI call is made in tests or CI. The protocol is tested against a fake socket.
-- The API key is used directly from the desktop app. xAI recommends ephemeral tokens
-  (`POST /v1/realtime/client_secrets`) for client apps; minting one per session is a follow-up.
+- **Not tested on real hardware in CI.** The audio pipeline (chunking, ordering, resampling, playback queue,
+  barge-in, device failures) is tested against a fake device. CI machines have no sound card, so the PortAudio
+  backend is only checked to load and answer its probe without throwing.
+- No live xAI call is made in tests or CI. The protocol and the token exchange are tested against a fake socket
+  and a fake HTTP handler.
+- **The desktop app still holds the API key.** The short-lived token keeps the key off the voice connection,
+  but the app reads the key from the vault to request the token. A server that issues tokens on the app's
+  behalf would keep the key off the machine entirely; that is not part of this build.
 - Tool results go back right away, without waiting for playback to finish, which xAI's docs suggest to avoid
   overlap.
+- There's no keyboard shortcut for push-to-talk yet; use the button.
+- Resampling is linear (good enough for speech, not for music).
 
 ## Sources (xAI public docs, checked November 10, 2026)
 
 - [Voice overview and the built-in voice list](https://docs.x.ai/developers/model-capabilities/audio/voice) (updated October 22, 2026)
 - [Speech to Speech: session parameters, audio formats, custom function tools](https://docs.x.ai/developers/model-capabilities/audio/speech-to-speech)
-- [Voice API reference: realtime client and server messages](https://docs.x.ai/developers/rest-api-reference/inference/voice)
+- [Voice API reference: realtime client and server messages, and `POST /v1/realtime/client_secrets`](https://docs.x.ai/developers/rest-api-reference/inference/voice)

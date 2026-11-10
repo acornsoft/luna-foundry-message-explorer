@@ -19,6 +19,8 @@
     <PackageVersion Include="Mono.Cecil" Version="0.11.6" />
     <!-- MIT. Bundles Font Awesome Free icon data (icons CC BY 4.0). See THIRD-PARTY-NOTICES.md. -->
     <PackageVersion Include="Projektanker.Icons.Avalonia.FontAwesome" Version="9.6.2" />
+    <!-- Voice audio: PortAudio (MIT-style) via PortAudioSharp2 (Apache-2.0). See THIRD-PARTY-NOTICES.md. -->
+    <PackageVersion Include="PortAudioSharp2" Version="1.0.6" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />

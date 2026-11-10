@@ -40,13 +40,17 @@ public sealed class VoiceViewModel : ViewModelBase
     private readonly Func<string> _sourceLabel;
     private readonly Func<IVoiceSocket> _socketFactory;
     private readonly IVoiceAudio _audio;
+    private readonly IVoiceTokenMinter? _tokens;
     private readonly IUiScheduler _ui;
+    private readonly object _appendGate = new();
+    private Task _appends = Task.CompletedTask;
     private GrokVoiceSession? _session;
     private GrokVoice _selectedVoice;
     private bool _redactBodies = true;
     private string _status = "Not started.";
     private string _askText = string.Empty;
     private bool _talking;
+    private string? _credential;
 
     public VoiceViewModel(
         ICredentialVault vault,
@@ -54,8 +58,10 @@ public sealed class VoiceViewModel : ViewModelBase
         Func<string> sourceLabel,
         Func<IVoiceSocket>? socketFactory = null,
         IVoiceAudio? audio = null,
-        IUiScheduler? scheduler = null)
+        IUiScheduler? scheduler = null,
+        IVoiceTokenMinter? tokens = null)
     {
+        _tokens = tokens;
         _vault = vault ?? throw new ArgumentNullException(nameof(vault));
         _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
         _sourceLabel = sourceLabel ?? throw new ArgumentNullException(nameof(sourceLabel));
@@ -106,6 +112,13 @@ public sealed class VoiceViewModel : ViewModelBase
 
     public bool CanTalk => IsRunning && _audio.UnavailableReason is null;
 
+    /// <summary>How the voice connection was authenticated (shown under the status).</summary>
+    public string? Credential
+    {
+        get => _credential;
+        private set => Set(ref _credential, value);
+    }
+
     public bool IsRunning => _session is not null;
 
     public bool IsTalking
@@ -152,7 +165,7 @@ public sealed class VoiceViewModel : ViewModelBase
 
         var label = _sourceLabel();
         var tools = new ReadOnlyToolset(ReadInventoryAsync, label);
-        var session = new GrokVoiceSession(_socketFactory(), tools, new VoiceOptions(SelectedVoice.Id, RedactBodies), ct => _vault.ReadSecretAsync(login.Id, ct));
+        var session = new GrokVoiceSession(_socketFactory(), tools, new VoiceOptions(SelectedVoice.Id, RedactBodies), ct => _vault.ReadSecretAsync(login.Id, ct), _tokens);
         session.Transcript += (_, line) => _ui.Post(() => AddTranscript(line.Speaker, line.Text));
         session.ToolCalled += (_, call) => _ui.Post(() => ToolCalls.Add($"{call.Name}: {call.Summary}"));
         session.Problem += (_, text) => _ui.Post(() => Status = text);
@@ -163,15 +176,18 @@ public sealed class VoiceViewModel : ViewModelBase
             Status = "Connecting...";
             await session.StartAsync().ConfigureAwait(true);
         }
-        catch (Exception exception) when (exception is VoiceKeyMissingException or System.Net.WebSockets.WebSocketException or HttpRequestException or OperationCanceledException)
+        catch (Exception exception) when (exception is VoiceKeyMissingException or VoiceKeyRejectedException or System.Net.WebSockets.WebSocketException or HttpRequestException or OperationCanceledException)
         {
-            Status = exception is VoiceKeyMissingException ? exception.Message : "Could not reach xAI: " + SecretRedactor.Redact(exception.Message);
+            Status = exception is VoiceKeyMissingException or VoiceKeyRejectedException ? exception.Message : "Could not reach xAI: " + SecretRedactor.Redact(exception.Message);
             await session.DisposeAsync().ConfigureAwait(true);
             return;
         }
 
         _session = session;
         _vault.MarkUsed(login.Id);
+        Credential = session.UsesShortLivedToken
+            ? $"Signed in to the voice service with a short-lived token (until {session.TokenExpiresAt!.Value.ToLocalTime():HH:mm}); the API key stayed off the voice connection."
+            : "Signed in to the voice service with the API key.";
         Status = $"Connected with voice {SelectedVoice.Id}. Ask about {label}.";
         RaiseRunning();
     }
@@ -192,6 +208,7 @@ public sealed class VoiceViewModel : ViewModelBase
         }
 
         IsTalking = false;
+        Credential = null;
         Status = "Stopped.";
         RaiseRunning();
     }
@@ -213,19 +230,49 @@ public sealed class VoiceViewModel : ViewModelBase
         IsTalking = true;
         _audio.StopPlayback();
         await session.BeginTalkAsync().ConfigureAwait(true);
-        _audio.StartCapture(chunk => _ = session.AppendAudioAsync(chunk));
+        lock (_appendGate)
+            _appends = Task.CompletedTask;
+        _audio.StartCapture(chunk => QueueAppend(session, chunk));
+        if (_audio.UnavailableReason is { } reason)
+        {
+            IsTalking = false;
+            Status = reason;
+            OnPropertyChanged(nameof(AudioNote));
+            OnPropertyChanged(nameof(CanTalk));
+            return;
+        }
+
         Status = "Listening... release to send.";
     }
 
-    /// <summary>Push-to-talk released.</summary>
+    /// <summary>Push-to-talk released: the last partial chunk and every queued chunk go out before the commit.</summary>
     public async Task TalkReleasedAsync()
     {
         if (!IsTalking || _session is not { } session)
             return;
-        _audio.StopCapture();
         IsTalking = false;
+        _audio.StopCapture();
+        Task pending;
+        lock (_appendGate)
+            pending = _appends;
         Status = "Thinking...";
+        try
+        {
+            await pending.ConfigureAwait(true);
+        }
+        catch (Exception exception) when (exception is System.Net.WebSockets.WebSocketException or IOException or OperationCanceledException or ObjectDisposedException)
+        {
+            Status = "Some audio did not reach xAI: " + SecretRedactor.Redact(exception.Message);
+        }
+
         await session.EndTalkAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Microphone chunks arrive on the audio thread; they are sent one after another, in order.</summary>
+    private void QueueAppend(GrokVoiceSession session, byte[] chunk)
+    {
+        lock (_appendGate)
+            _appends = _appends.ContinueWith(_ => session.AppendAudioAsync(chunk), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap();
     }
 
     private void AddTranscript(VoiceSpeaker speaker, string text)

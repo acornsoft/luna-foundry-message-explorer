@@ -123,6 +123,7 @@ info_plist() {
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSMicrophoneUsageDescription</key><string>Message Explorer listens only while you hold Hold to talk in the Voice tab, and sends that audio to Grok Voice to answer your question.</string>
   <key>NSHumanReadableCopyright</key><string>MPL-2.0. Gotham Savings and Loan (GSL) sample data is synthetic.</string>
 </dict>
 </plist>
