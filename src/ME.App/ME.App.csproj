@@ -18,5 +18,6 @@
     <ProjectReference Include="..\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
     <ProjectReference Include="..\ME.Jobs\ME.Jobs.csproj" />
     <ProjectReference Include="..\ME.Credentials\ME.Credentials.csproj" />
+    <ProjectReference Include="..\ME.Operations\ME.Operations.csproj" />
   </ItemGroup>
 </Project>

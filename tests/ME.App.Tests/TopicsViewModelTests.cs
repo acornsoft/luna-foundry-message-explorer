@@ -212,6 +212,6 @@ public sealed class TopicsViewModelTests
 
         Assert.True(main.Connect.IsConnected);
         Assert.True(main.Queues.HasRows);
-        Assert.Contains(main.Topics.Topics, t => t.Name == "gsl-dispute-events" && t.SubscriptionCount == 3);
+        Assert.Contains(main.Topics.Topics, t => t.Name == "order-events" && t.SubscriptionCount == 3);
     }
 }

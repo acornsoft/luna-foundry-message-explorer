@@ -13,8 +13,18 @@
         Title="{Binding Title}">
   <DockPanel Margin="16">
     <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,12">
-      <TextBlock x:Name="BannerText" Text="{Binding Shell.Banner}" FontSize="18" TextWrapping="Wrap" />
-      <TextBlock x:Name="PolicyText" Text="{Binding Shell.DataPolicy}" TextWrapping="Wrap" Opacity="0.8" />
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="4">
+          <TextBlock x:Name="BannerText" Text="{Binding Shell.Banner}" FontSize="18" TextWrapping="Wrap" IsVisible="{Binding !MoveModeOn}" />
+          <TextBlock x:Name="PolicyText" Text="{Binding Shell.DataPolicy}" TextWrapping="Wrap" Opacity="0.8" />
+        </StackPanel>
+        <ToggleSwitch Grid.Column="1" x:Name="MoveModeToggle" IsChecked="{Binding MoveModeOn}"
+                      OnContent="Move mode on" OffContent="Move mode off" VerticalAlignment="Top"
+                      ToolTip.Tip="Off every time the app starts. While on, drops in the Move tab move messages after you confirm each one." />
+      </Grid>
+      <Border x:Name="MoveModeBanner" Classes="movebanner" IsVisible="{Binding MoveModeOn}">
+        <TextBlock x:Name="MoveModeBannerText" Text="{Binding Move.Banner}" TextWrapping="Wrap" FontWeight="SemiBold" />
+      </Border>
     </StackPanel>
 
     <!-- Connect panel -->
@@ -152,6 +162,9 @@
       </TabItem>
       <TabItem x:Name="JobsTab" Header="Test jobs">
         <views:JobsView x:Name="JobsPanel" DataContext="{Binding Jobs}" />
+      </TabItem>
+      <TabItem x:Name="MoveTab" Header="Move">
+        <views:MoveView x:Name="MovePanel" DataContext="{Binding Move}" />
       </TabItem>
     </TabControl>
   </DockPanel>

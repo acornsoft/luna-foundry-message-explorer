@@ -22,7 +22,8 @@ public sealed class MainViewModel : ViewModelBase
         IUiScheduler? scheduler = null,
         Func<Jobs.Running.JobRunner>? runnerFactory = null,
         string? samplesFolder = null,
-        AccountServices? accounts = null)
+        AccountServices? accounts = null,
+        MoveServices? move = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         var services = accounts ?? AccountServices.None();
@@ -38,6 +39,9 @@ public sealed class MainViewModel : ViewModelBase
             new MemoryLoginMetadataStore());
         var tester = new LoginTester(vault, () => services.TestProvider ?? ServiceBusIn(catalog), () => Accounts);
         Logins = new LoginsViewModel(vault, tester, () => Accounts);
+        Move = new MoveViewModel(MoveMode, move ?? MoveServices.InMemory());
+        Move.Moved += (_, _) => _ = RefreshGridsAsync();
+        MoveMode.Changed += (_, _) => OnPropertyChanged(nameof(MoveModeOn));
         Accounts.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AccountsViewModel.SignedInAccounts))
@@ -52,6 +56,19 @@ public sealed class MainViewModel : ViewModelBase
     public LoginsViewModel Logins { get; }
 
     public ShellModel Shell { get; }
+
+    /// <summary>Off on every launch. Nothing reads it from settings, files or arguments.</summary>
+    public Operations.Move.MoveModeSwitch MoveMode { get; } = new();
+
+    /// <summary>The Move tab: drag-and-drop message moves while Move mode is on.</summary>
+    public MoveViewModel Move { get; }
+
+    /// <summary>The toggle at the top of the window.</summary>
+    public bool MoveModeOn
+    {
+        get => MoveMode.IsOn;
+        set => Move.IsOn = value;
+    }
 
     public ConnectViewModel Connect { get; }
 
@@ -69,6 +86,7 @@ public sealed class MainViewModel : ViewModelBase
     public const int QueuesTab = 2;
     public const int TopicsTab = 3;
     public const int JobsTab = 4;
+    public const int MoveTab = 5;
 
     private int _selectedTab;
 
@@ -112,12 +130,28 @@ public sealed class MainViewModel : ViewModelBase
         _inventory = inventory;
         await Queues.LoadAsync(inventory).ConfigureAwait(true);
         await Topics.LoadAsync(inventory).ConfigureAwait(true);
+        var connection = Connect.LastConnection;
+        var actor = connection?.Credential is not null ? Connect.SelectedAccount?.Username : null;
+        await Move.LoadAsync(inventory, MoveServicesFor(inventory, connection), actor ?? ActorFromLabel()).ConfigureAwait(true);
+    }
+
+    private string? ActorFromLabel() => Connect.ConnectedTo is { } text && text.LastIndexOf(" as ", StringComparison.Ordinal) is var at and >= 0 ? text[(at + 4)..] : null;
+
+    private MoveAccess MoveServicesFor(IEntityInventory inventory, BrokerConnection? connection) => Move.Services.Resolve(inventory, connection);
+
+    private async Task RefreshGridsAsync()
+    {
+        if (_inventory is null)
+            return;
+        await Queues.RefreshCommand.ExecuteAsync().ConfigureAwait(true);
+        await Topics.RefreshCommand.ExecuteAsync().ConfigureAwait(true);
     }
 
     private void OnDisconnected()
     {
         Queues.Clear();
         Topics.Clear();
+        _ = Move.ClearAsync();
         _ = DisposeInventoryAsync();
     }
 

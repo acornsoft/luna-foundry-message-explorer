@@ -18,7 +18,8 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 - Test connection for Kafka, RabbitMQ, AWS and Event Hubs logins, once those providers exist.
 - Export inventory to JSON or CSV.
 - Azure Monitor metrics charts.
-- Admin module actions (send, resubmit) behind approval, with an audit row.
+- Move mode: built in the eighth PR. Drag-and-drop moves (dead-letter to parent, queue to queue, subscription to queue, subscription dead-letter to topic), off on every launch, rights check, confirm per drop, JSONL audit. See [move mode](design/move-mode.md).
+- Move mode later: cross-namespace targets in the UI (the engine supports them), Kafka copy-to-topic, RabbitMQ and SQS transports.
 
 ## New broker providers (behind `IBrokerProvider`)
 

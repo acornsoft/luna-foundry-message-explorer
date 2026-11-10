@@ -270,6 +270,9 @@ public sealed class ConnectViewModel : ViewModelBase
 
     public AsyncCommand ConnectCommand { get; }
 
+    /// <summary>The connection behind the open inventory, in memory only. Move mode opens its own client from it.</summary>
+    public BrokerConnection? LastConnection { get; private set; }
+
     public RelayCommand DisconnectCommand { get; }
 
     public BrokerConnection BuildConnection()
@@ -289,6 +292,7 @@ public sealed class ConnectViewModel : ViewModelBase
         if (IsConnected)
             Disconnect();
         ConnectedTo = $"{inventory.Provider.DisplayName}: {label}";
+        LastConnection = null;
         await _onConnected(inventory).ConfigureAwait(true);
     }
 
@@ -334,6 +338,7 @@ public sealed class ConnectViewModel : ViewModelBase
 
         ConnectionString = string.Empty;
         ConnectedTo = Describe(provider, connection, pasted);
+        LastConnection = connection;
         await _onConnected(inventory).ConfigureAwait(true);
     }
 
@@ -498,6 +503,7 @@ public sealed class ConnectViewModel : ViewModelBase
     {
         ConnectionString = string.Empty;
         ConnectedTo = null;
+        LastConnection = null;
         _onDisconnected();
     }
 

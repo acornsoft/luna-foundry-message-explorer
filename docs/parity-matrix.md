@@ -8,7 +8,7 @@ Status values:
 - **Planned**: on the [backlog](backlog.md).
 - **Out of scope**: we do not plan to build it, for the reason given.
 
-Read-only first: every write (send, receive, settle, create, delete, purge) stays outside observe mode. A write arrives only through the separate admin module with an approval step.
+Read-only first: every write (send, receive, settle, create, delete, purge) stays outside observe mode. The one write path built so far is Move mode (off on every launch, confirm per drop, audit log); see [move mode](design/move-mode.md).
 
 | Area | Feature in Service Bus Explorer | Our status | How we do it on the modern stack |
 |---|---|---|---|
@@ -29,8 +29,9 @@ Read-only first: every write (send, receive, settle, create, delete, purge) stay
 | Messages | Peek messages | Planned (UI) | The skeleton peek client exists with a sequence cursor and a cap of 100. Bodies are redacted before display. |
 | Messages | Receive and delete, receive and complete | Out of scope for observe mode | Settlement changes the broker. Admin module only, with approval. |
 | Messages | Send a message | Planned (admin) | Admin module with approval, synthetic data, and an allowed-namespace list. |
-| Dead letter | View dead-letter messages | Planned | Peek on the dead-letter subqueue. Show reason and description. |
-| Dead letter | Resubmit dead-lettered messages | Planned (admin) | A resubmit is a send plus a settle. Admin module with approval and an audit row. |
+| Dead letter | View dead-letter messages | Partly done | The Move tab lists dead-letter messages (sequence, ID, session, reason) without bodies. A body view with redaction is still planned. |
+| Dead letter | Resubmit dead-lettered messages | Done (Move mode) | Drag dead letters back to their queue or topic. Send plus complete in one transaction, rights check, confirm per drop, JSONL audit. |
+| Messages | Move messages between queues | Done (Move mode) | Queue to queue and subscription to queue, oldest first, sessions kept in order, batches of up to 100. |
 | Sessions | Browse session state and session messages | Planned | Peek by session where the SDK allows it without taking a lock. Accepting a session takes a lock, so that stays out of observe mode. |
 | Scheduled | View scheduled messages | Planned | Peek shows scheduled messages with their enqueue time. |
 | Scheduled | Cancel a scheduled message | Out of scope for observe mode | It is a write. |

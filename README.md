@@ -20,7 +20,11 @@ Read mode is named **Observe**.
 - Event Hubs observe mode reads with `EventHubConsumerClient`-style forward reads on the shared group `cg-message-explorer`. Position stays in memory. There is no checkpoint store and no owner epoch.
 - Event Grid has no read API. A diagnostic subscription is a write. The Bicep file under `src/ME.Admin/Templates` is an owner-applied template. The explorer does not create the subscription.
 
-Admin actions are a separate module, off by default. They file a request. This skeleton does not send, purge, or settle.
+Admin actions are a separate module, off by default. They file a request. Observe mode does not send, purge, or settle.
+
+## Move mode
+
+**Move mode** is the only way the app changes a broker, and it is off every time the app starts. Turn it on at the top of the window; a banner stays up while it is on. On the **Move** tab, drag messages (or a whole source, for the oldest N) from a dead-letter queue, queue or subscription onto a queue or topic, or use **Move to…** (Ctrl+M). Each drop checks send and receive rights, asks you to confirm, moves oldest first (session by session when the source uses sessions) keeping IDs, session, correlation and properties, and writes an audit line per message with no bodies or secrets. Within one namespace each message moves in one transaction; across namespaces it is at-least-once with a duplicate-detection warning. Only `Acornsoft.MessageExplorer.Operations` can mutate; the guard checks every other assembly. See [docs/design/move-mode.md](docs/design/move-mode.md).
 
 ## Layout
 
@@ -29,6 +33,7 @@ Admin actions are a separate module, off by default. They file a request. This s
 | `src/ME.Model` | CloudEvents envelope, observe-mode guard, provider matrix |
 | `src/ME.Redaction` | Schema rules, pattern net, default deny, 16 KB cap |
 | `src/ME.Correlation` | W3C `traceparent` and correlation tokens |
+| `src/ME.Operations` | Move mode: the only assembly that sends, receives, locks or settles. Engine, audit log, in-memory broker, Service Bus transport |
 | `src/ME.Brokers.Abstractions` | Broker-neutral provider contract: `IBrokerProvider`, `IEntityInventory`, capability flags, provider catalog |
 | `src/ME.Adapters.ServiceBus` | Peek client with an explicit sequence cursor, and the read-only Service Bus provider and queue inventory |
 | `src/ME.Adapters.EventHubs` | Read-only consumer, in-memory position |

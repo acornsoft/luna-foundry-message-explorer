@@ -41,5 +41,19 @@
     <Style Selector="TextBlock.error">
       <Setter Property="Foreground" Value="#C62828" />
     </Style>
+    <Style Selector="Border.movebanner">
+      <Setter Property="Background" Value="#FFF3CD" />
+      <Setter Property="BorderBrush" Value="#B26A00" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="Border.movebanner TextBlock">
+      <Setter Property="Foreground" Value="#5C3B00" />
+    </Style>
+    <Style Selector="Border.droptarget">
+      <Setter Property="Background" Value="#332E7D32" />
+      <Setter Property="BorderBrush" Value="#2E7D32" />
+    </Style>
   </Application.Styles>
 </Application>

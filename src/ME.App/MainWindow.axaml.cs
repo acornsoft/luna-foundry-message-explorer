@@ -18,6 +18,8 @@ public partial class MainWindow : Window
         {
             if (DataContext is MainViewModel main && main.Jobs.Dialogs is null)
                 main.Jobs.Dialogs = new WindowJobsDialogs(this);
+            if (DataContext is MainViewModel withMove && withMove.Move.Confirmer is null)
+                withMove.Move.Confirmer = new Views.WindowMoveConfirmer(this);
         };
     }
 

@@ -19,6 +19,9 @@ public sealed class ArmEntityInventory(IArmReader reader, TokenCredential creden
 
     public NamespaceRef Namespace => serviceBusNamespace;
 
+    /// <summary>The signed-in account this inventory reads with. Move mode opens its own client with it.</summary>
+    public TokenCredential Credential => credential;
+
     public Task<InventoryResult> ListQueuesAsync(CancellationToken cancellationToken = default) =>
         ReadAsync(reader.ListQueuesAsync(credential, serviceBusNamespace, cancellationToken), cancellationToken);
 
