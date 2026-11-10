@@ -36,6 +36,9 @@ Admin actions are a separate module, off by default. They file a request. This s
 | `src/ME.Admin` | Role gate, audit row, approval tickets, Event Grid template |
 | `src/ME.Scenarios` | Seeded scenario parser, sandbox gate, kill switch |
 | `src/ME.Mcp` | In-process tool policy: redaction, scopes, no self-approval |
+| `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
+| `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
+| `samples/plugins`, `samples/jobs` | Sample plugins (C# and Python) and sample jobs. Synthetic data only |
 | `src/ME.App` | Avalonia shell: Connect panel (Entra or in-memory connection string) and a sortable Queues grid |
 | `src/ME.App.Desktop` | Desktop entry point |
 | `src/Scenarios`, `tests/Scenarios` | Reserved for the GSL Reg E dispute library and runner (separate PR) |
@@ -48,6 +51,17 @@ Borrowed ideas are credited in [docs/ideas-log.md](docs/ideas-log.md). No code i
 Connect with Microsoft Entra ID (namespace host name plus `DefaultAzureCredential`) or with a connection string typed at runtime. The connection string is held in memory, shown masked, and cleared after connecting. The queue list reads the management plane only (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged). Listing needs a management read permission on the namespace.
 
 Opt-in integration test: set `ME_SB_NAMESPACE` to a namespace you can read, then run `dotnet test`. CI does not set it, so the test is skipped there.
+
+## Test jobs
+
+Synthetic system tests against an in-memory broker. Plugins are separate processes in any language, speaking JSON-RPC over stdio. See [docs/design/test-jobs.md](docs/design/test-jobs.md).
+
+```bash
+dotnet build MessageExplorer.sln -c Release
+dotnet src/ME.Jobs.Cli/bin/Release/net8.0/me-jobs.dll run samples/jobs/erp-standin/jobs/erp-day.job.yaml --junit out/erp-day.xml
+```
+
+Test jobs never send to a real broker. Only `provider: in-memory` is accepted.
 
 ## Build and test
 
@@ -66,7 +80,7 @@ The desktop head builds with the solution. CI does not launch the window.
 - Azure SDK clients. Adapters talk to interfaces. A production peek transport is not wired, and no cloud call is made.
 - The Event Grid template is not deployed.
 - Machine-learning PII detection. The local net is schema rules, a pattern scrubber, and an echo scrub of values those rules already removed.
-- Scenario execution. The runner returns a plan and sends nothing.
+- Scenario execution. The scenario runner returns a plan and sends nothing. (Test jobs run against the in-memory broker only.)
 - MCP Streamable HTTP and Entra sign-in. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
 - Topology, trace, and dead-letter screens. The window is an observe-mode shell.

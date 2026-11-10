@@ -29,9 +29,13 @@ Items are grouped by theme. Nothing here is built unless it says so. Synthetic d
 - Test only against LocalStack. David has no AWS account, so there are no cloud integration tests.
 - Note for design: an SQS receive changes visibility. It is not a peek. Observe mode must not call it.
 
-## Test jobs (third PR, design only)
+## Test jobs
 
-- Language-neutral plugin runner for synthetic system tests. See [test jobs design](design/test-jobs.md).
+- First slice built in the third PR: job files, stdio JSON-RPC plugin host, in-memory broker, `me-jobs` CLI with JUnit, sample plugins and jobs. See [test jobs design](design/test-jobs.md), section 11.
+- Live view in the app: expected versus actual per correlation ID while a job runs, with plugin events (throttled, retry, dead-lettered). Not started.
+- GSL Reg E and order-app sample collections. Stubs only.
+- Replay store, gRPC transport, sending to sandbox brokers behind an allow-list, redaction of saved run records.
+- `hop-relay`: ordering gates and timer-driven reprocessing.
 
 ## Learning
 
