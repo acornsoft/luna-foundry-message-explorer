@@ -9,7 +9,7 @@
 #   eng/macos/smoke-test.sh <file.dmg> <report.txt> [screenshot.png] [arch -x86_64]
 set -euo pipefail
 DMG="$1"; REPORT="$2"; SHOT="${3:-}"; shift $(( $# < 3 ? $# : 3 ))
-LAUNCH=("$@")
+LAUNCH=("$@")  # bash 3.2 on macOS: expand with ${LAUNCH[@]+...} so an empty list is fine under set -u
 APP="Luna Foundry Message Explorer.app"
 EXE="Acornsoft.MessageExplorer.Desktop"
 WORK="$(mktemp -d)"
@@ -21,7 +21,7 @@ rm -f "$REPORT"
 mkdir -p "$(dirname "$REPORT")"
 
 # A slow pace keeps the window up long enough for a screenshot, then the run finishes and the app quits.
-"${LAUNCH[@]}" "$WORK/Applications/$APP/Contents/MacOS/$EXE" --tab jobs --pace 600 --run --exit-after-run "$REPORT" \
+${LAUNCH[@]+"${LAUNCH[@]}"} "$WORK/Applications/$APP/Contents/MacOS/$EXE" --tab jobs --pace 600 --run --exit-after-run "$REPORT" \
   > "$WORK/app.log" 2>&1 &
 pid=$!
 if [[ -n "$SHOT" ]]; then
