@@ -128,10 +128,24 @@ internal static class SyntheticAccounts
     {
         public string ClientId => EntraOptions.AzureCliClientId;
 
-        public Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, CancellationToken cancellationToken)
+        public async Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken)
         {
+            // Synthetic walkthroughs of the failure paths: tenant "demo-wait" waits like a browser that never
+            // returns (until Cancel sign-in or the timeout); "demo-fail" fails like a refused sign-in.
+            prompt.LinkReady?.Invoke(new Uri("https://login.example/demo/authorize"));
+            if (tenant == "demo-wait")
+                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(true);
+            if (tenant == "demo-fail")
+                throw new Azure.Identity.AuthenticationFailedException("AADSTS50011: The redirect URI does not match (synthetic demo error).");
             var user = loginHint ?? "alice@contoso.example";
-            return Task.FromResult(new SignedInAccount(Account(TenantsByUser.ContainsKey(user) ? user : "alice@contoso.example"), new DemoCredential(user)));
+            return new SignedInAccount(Account(TenantsByUser.ContainsKey(user) ? user : "alice@contoso.example") with { Browser = prompt.Browser.Id }, new DemoCredential(user));
+        }
+
+        public async Task<SignedInAccount> SignInWithDeviceCodeAsync(string? tenant, SignInPrompt prompt, CancellationToken cancellationToken)
+        {
+            prompt.DeviceCode?.Invoke("To sign in, use a web browser to open the page https://login.example/device and enter the code DEMO-1234 to authenticate. (synthetic demo)");
+            await Task.Delay(TimeSpan.FromSeconds(tenant == "demo-wait" ? 3600 : 2), cancellationToken).ConfigureAwait(true);
+            return new SignedInAccount(Account("alice@contoso.example"), new DemoCredential("alice@contoso.example"));
         }
 
         public Task<SignedInAccount> SignInSilentAsync(StoredAccount account, CancellationToken cancellationToken) =>

@@ -26,16 +26,94 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     private string _tenantText = string.Empty;
     private string? _message;
     private DiscoveryNode? _selectedNode;
+    private readonly ISignInLog _log;
+    private readonly TimeSpan _signInTimeout;
+    private CancellationTokenSource? _signIn;
 
-    public AccountsViewModel(IAccountAuthenticator authenticator, IAccountStore store, IArmReader arm, Func<IEntityInventory, string, Task> open)
+    /// <summary>How long a browser sign-in may take before it is stopped and the button comes back.</summary>
+    public static readonly TimeSpan DefaultSignInTimeout = TimeSpan.FromMinutes(3);
+
+    public AccountsViewModel(
+        IAccountAuthenticator authenticator,
+        IAccountStore store,
+        IArmReader arm,
+        Func<IEntityInventory, string, Task> open,
+        ISignInLog? log = null,
+        TimeSpan? signInTimeout = null,
+        IReadOnlyList<BrowserChoice>? browsers = null)
     {
+        Browsers = browsers ?? [BrowserChoices.SystemDefault, BrowserChoices.CopyLinkOnly];
+        _selectedBrowser = BrowserChoices.SystemDefault;
         _authenticator = authenticator ?? throw new ArgumentNullException(nameof(authenticator));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _arm = arm ?? throw new ArgumentNullException(nameof(arm));
         _open = open ?? throw new ArgumentNullException(nameof(open));
-        AddAccountCommand = new AsyncCommand(AddAccountAsync);
+        _log = log ?? new MemorySignInLog();
+        _signInTimeout = signInTimeout ?? DefaultSignInTimeout;
+        AddAccountCommand = new AsyncCommand(AddAccountAsync, () => !IsSigningIn);
+        SignInWithCodeCommand = new AsyncCommand(SignInWithCodeAsync, () => !IsSigningIn);
+        CopySignInLinkCommand = new AsyncCommand(CopySignInLinkAsync, () => SignInLink is not null);
+        CancelSignInCommand = new RelayCommand(CancelSignIn, () => IsSigningIn);
         OpenCommand = new AsyncCommand(() => OpenAsync(SelectedNode), () => SelectedNode is { IsNamespace: true });
     }
+
+    private BrowserChoice _selectedBrowser;
+    private Uri? _signInLink;
+    private string? _deviceCodeText;
+
+    /// <summary>System default, each browser found on this computer, then "don't open a browser".</summary>
+    public IReadOnlyList<BrowserChoice> Browsers { get; }
+
+    /// <summary>Where Add account opens the sign-in page. The account remembers it for later sign-ins.</summary>
+    public BrowserChoice SelectedBrowser
+    {
+        get => _selectedBrowser;
+        set => Set(ref _selectedBrowser, value ?? BrowserChoices.SystemDefault);
+    }
+
+    /// <summary>The sign-in link of the sign-in that is waiting. Paste it into any browser on this computer.</summary>
+    public Uri? SignInLink
+    {
+        get => _signInLink;
+        private set
+        {
+            if (Set(ref _signInLink, value))
+            {
+                OnPropertyChanged(nameof(HasSignInLink));
+                CopySignInLinkCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool HasSignInLink => _signInLink is not null;
+
+    /// <summary>The device code instructions while Sign in with a code waits.</summary>
+    public string? DeviceCodeText
+    {
+        get => _deviceCodeText;
+        private set
+        {
+            if (Set(ref _deviceCodeText, value))
+                OnPropertyChanged(nameof(HasDeviceCode));
+        }
+    }
+
+    public bool HasDeviceCode => !string.IsNullOrEmpty(_deviceCodeText);
+
+    /// <summary>Puts text on the clipboard. The view sets it; tests use a fake.</summary>
+    public Func<string, Task>? Clipboard { get; set; }
+
+    public AsyncCommand SignInWithCodeCommand { get; }
+
+    public AsyncCommand CopySignInLinkCommand { get; }
+
+    /// <summary>True while a browser sign-in is waiting. Cancel sign-in stops it.</summary>
+    public bool IsSigningIn => _signIn is not null;
+
+    public RelayCommand CancelSignInCommand { get; }
+
+    /// <summary>Where the sign-in log is, shown with errors. Null in tests and the demo.</summary>
+    public string? LogLocation => _log.Location;
 
     public ObservableCollection<AccountItemViewModel> Accounts { get; } = [];
 
@@ -129,24 +207,151 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     public async Task AddAccountAsync()
     {
         Message = null;
-        SignedInAccount signedIn;
-        try
+        var browser = SelectedBrowser;
+        var outcome = await InteractiveAsync("add account", browser,
+            (prompt, token) => _authenticator.SignInInteractiveAsync(Blank(TenantText), null, prompt, token)).ConfigureAwait(true);
+        if (outcome.Error is { } error)
         {
-            signedIn = await _authenticator.SignInInteractiveAsync(Blank(TenantText), null, CancellationToken.None).ConfigureAwait(true);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            Message = "Sign-in did not finish. " + Explain(exception);
-            return;
-        }
-        catch (OperationCanceledException)
-        {
-            Message = "Sign-in was cancelled.";
+            Message = error;
             return;
         }
 
+        var signedIn = outcome.Account!;
+        signedIn = signedIn with { Account = signedIn.Account with { Browser = browser.Id } };
         var item = Accounts.FirstOrDefault(a => a.Id == signedIn.Account.Id) ?? Track(signedIn.Account);
         await UseAsync(item, signedIn, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    /// <summary>Device code sign-in, for when no browser on this computer fits: enter the code in any browser, on any device.</summary>
+    public async Task SignInWithCodeAsync()
+    {
+        Message = null;
+        var outcome = await InteractiveAsync("sign in with a code", SelectedBrowser,
+            (prompt, token) => _authenticator.SignInWithDeviceCodeAsync(Blank(TenantText), prompt, token)).ConfigureAwait(true);
+        if (outcome.Error is { } error)
+        {
+            Message = error;
+            return;
+        }
+
+        var signedIn = outcome.Account!;
+        var item = Accounts.FirstOrDefault(a => a.Id == signedIn.Account.Id) ?? Track(signedIn.Account);
+        await UseAsync(item, signedIn, CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async Task CopySignInLinkAsync()
+    {
+        if (SignInLink is not { } link || Clipboard is not { } clipboard)
+            return;
+        await clipboard(link.AbsoluteUri).ConfigureAwait(true);
+        _log.Write("sign-in link copied to the clipboard");
+    }
+
+    /// <summary>Stops the browser sign-in that is waiting, so Add account works again at once.</summary>
+    public void CancelSignIn()
+    {
+        if (_signIn is null)
+            return;
+        _log.Write("sign-in cancelled by the user");
+        _userCancelled = true;
+        _signIn.Cancel();
+    }
+
+    private sealed record Outcome(SignedInAccount? Account, string? Error);
+
+    /// <summary>
+    /// One browser sign-in, always bounded: it ends on success, on any error, on Cancel sign-in, or after the
+    /// timeout. The token source is disposed every time, so nothing from a failed try is left to block the next.
+    /// The real error goes to the UI and the sign-in log.
+    /// </summary>
+    private async Task<Outcome> InteractiveAsync(string what, BrowserChoice browser, Func<SignInPrompt, CancellationToken, Task<SignedInAccount>> run)
+    {
+        _signIn?.Cancel();
+        using var attempt = new CancellationTokenSource(_signInTimeout);
+        _signIn = attempt;
+        SignInLink = null;
+        DeviceCodeText = null;
+        SigningInChanged();
+        _log.Write($"{what}: started (client {_authenticator.ClientId}, browser {browser.Name}, timeout {_signInTimeout.TotalSeconds:0}s)");
+        // MSAL calls back on its own thread; the screen is updated on the thread that started the sign-in.
+        var ui = SynchronizationContext.Current;
+        void OnUi(Action action)
+        {
+            if (ui is null || ReferenceEquals(SynchronizationContext.Current, ui))
+                action();
+            else
+                ui.Post(_ => action(), null);
+        }
+
+        // A callback that arrives after this attempt ended (failed, cancelled) is dropped, so a stale link never lingers.
+        var prompt = new SignInPrompt(
+            browser,
+            link => OnUi(() =>
+            {
+                if (ReferenceEquals(_signIn, attempt))
+                    SignInLink = link;
+            }),
+            text => OnUi(() =>
+            {
+                if (ReferenceEquals(_signIn, attempt))
+                    DeviceCodeText = text;
+            }));
+        try
+        {
+            var account = await run(prompt, attempt.Token).ConfigureAwait(true);
+            _log.Write($"{what}: signed in (tenant {account.Account.TenantId})");
+            return new Outcome(account, null);
+        }
+        catch (OperationCanceledException) when (attempt.IsCancellationRequested && !_userCancelled)
+        {
+            _log.Write($"{what}: timed out after {_signInTimeout.TotalSeconds:0}s waiting for the browser");
+            return new Outcome(null, $"Sign-in timed out after {Minutes(_signInTimeout)}: the browser never returned to the app. Try again.{LogHint()}");
+        }
+        catch (OperationCanceledException)
+        {
+            _log.Write($"{what}: cancelled");
+            return new Outcome(null, "Sign-in was cancelled.");
+        }
+        catch (Exception exception)
+        {
+            _log.Write($"{what}: failed: {Describe(exception)}");
+            return new Outcome(null, "Sign-in did not finish. " + Explain(exception) + LogHint());
+        }
+        finally
+        {
+            if (ReferenceEquals(_signIn, attempt))
+            {
+                _signIn = null;
+                _userCancelled = false;
+                SignInLink = null;
+                DeviceCodeText = null;
+            }
+
+            SigningInChanged();
+        }
+    }
+
+    private bool _userCancelled;
+
+    private void SigningInChanged()
+    {
+        OnPropertyChanged(nameof(IsSigningIn));
+        CancelSignInCommand.RaiseCanExecuteChanged();
+        AddAccountCommand.RaiseCanExecuteChanged();
+        SignInWithCodeCommand.RaiseCanExecuteChanged();
+    }
+
+    private string LogHint() => _log.Location is { } location ? $" Details: {location}" : string.Empty;
+
+    private static string Minutes(TimeSpan span) => span.TotalMinutes >= 1 ? $"{span.TotalMinutes:0} minutes" : $"{span.TotalSeconds:0} seconds";
+
+    /// <summary>Type and first message line of the exception and each inner one. Scrubbed; no tokens.</summary>
+    internal static string Describe(Exception exception)
+    {
+        var parts = new List<string>();
+        for (var current = exception; current is not null && parts.Count < 4; current = current.InnerException)
+            parts.Add($"{current.GetType().FullName}: {FirstLine(current.Message)}");
+        return LogScrubber.Scrub(string.Join(" <- ", parts));
     }
 
     public async Task OpenAsync(DiscoveryNode? node)
@@ -160,7 +365,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
 
     private AccountItemViewModel Track(StoredAccount account)
     {
-        var item = new AccountItemViewModel(account, SignInAgainAsync, SignOut, Remove);
+        var item = new AccountItemViewModel(account, SignInAgainAsync, SignOut, Remove, Browsers, SaveBrowser);
         Accounts.Add(item);
         OnPropertyChanged(nameof(HasAccounts));
         return item;
@@ -176,6 +381,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            _log.Write($"silent sign-in for a saved account failed: {Describe(exception)}");
             item.Credential = null;
             item.ErrorMessage = Explain(exception);
             item.State = AccountState.NeedsSignIn;
@@ -190,18 +396,18 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     {
         item.ErrorMessage = null;
         item.State = AccountState.SigningIn;
-        SignedInAccount signedIn;
-        try
+        var outcome = await InteractiveAsync("sign in again", item.Browser,
+            (prompt, token) => _authenticator.SignInInteractiveAsync(item.Account.RequestedTenant, item.Username, prompt, token)).ConfigureAwait(true);
+        if (outcome.Error is { } error)
         {
-            signedIn = await _authenticator.SignInInteractiveAsync(item.Account.RequestedTenant, item.Username, CancellationToken.None).ConfigureAwait(true);
-        }
-        catch (Exception exception)
-        {
-            item.ErrorMessage = exception is OperationCanceledException ? "Sign-in was cancelled." : Explain(exception);
+            item.ErrorMessage = error;
             item.State = item.Account.SignedOut ? AccountState.SignedOut : AccountState.NeedsSignIn;
             Rebuild();
             return;
         }
+
+        var signedIn = outcome.Account!;
+        signedIn = signedIn with { Account = signedIn.Account with { Browser = item.Account.Browser } };
 
         var target = signedIn.Account.Id == item.Id ? item : Accounts.FirstOrDefault(a => a.Id == signedIn.Account.Id) ?? Track(signedIn.Account);
         if (!ReferenceEquals(target, item))
@@ -215,16 +421,39 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         item.Credential = signedIn.Credential;
         item.ErrorMessage = null;
         item.State = AccountState.Discovering;
-        _store.Save(item.Account);
+        try
+        {
+            _store.Save(item.Account);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Signed in, but the account could not be kept for next launch. Say so; keep going this session.
+            _log.Write($"account not saved: {Describe(exception)}");
+            item.ErrorMessage = "Signed in, but the account could not be saved for next time. " + Explain(exception) + LogHint();
+        }
+
         Rebuild();
 
         var discovery = await NamespaceDiscovery.DiscoverAsync(_arm, signedIn.Credential, cancellationToken).ConfigureAwait(true);
         if (!ReferenceEquals(item.Credential, signedIn.Credential))
             return; // Signed out or removed while discovery ran.
         item.Discovery = discovery;
-        item.ErrorMessage = discovery.Error;
+        item.ErrorMessage = discovery.Error ?? item.ErrorMessage;
         item.State = discovery.Error is null ? AccountState.Ready : AccountState.Error;
         Rebuild();
+    }
+
+    private void SaveBrowser(AccountItemViewModel item)
+    {
+        try
+        {
+            _store.Save(item.Account);
+            _log.Write($"browser for a saved account set to {item.Browser.Name}");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            item.ErrorMessage = "The browser choice could not be saved. " + Explain(exception);
+        }
     }
 
     private void SignOut(AccountItemViewModel item)
@@ -298,8 +527,11 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
     private static string Explain(Exception exception) => exception switch
     {
         Azure.Identity.AuthenticationRequiredException => "The saved sign-in has expired or needs approval again.",
-        Azure.Identity.AuthenticationFailedException failed => FirstLine(failed.Message),
-        _ => ServiceBusErrorMapper.Map(exception).Message,
+        Azure.Identity.CredentialUnavailableException unavailable => LogScrubber.Scrub(FirstLine(unavailable.Message)),
+        Microsoft.Identity.Client.MsalException msal => LogScrubber.Scrub($"{msal.ErrorCode}: {FirstLine(msal.Message)}"),
+        Azure.Identity.AuthenticationFailedException failed => LogScrubber.Scrub(FirstLine(failed.InnerException is { } inner ? failed.Message + " " + FirstLine(inner.Message) : failed.Message)),
+        Azure.RequestFailedException or System.Net.Http.HttpRequestException or TimeoutException => ServiceBusErrorMapper.Map(exception).Message,
+        _ => LogScrubber.Scrub($"{exception.GetType().Name}: {FirstLine(exception.Message)}"),
     };
 
     private static string FirstLine(string text)

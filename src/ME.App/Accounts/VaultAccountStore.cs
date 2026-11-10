@@ -26,7 +26,8 @@ public sealed class VaultAccountStore(ICredentialVault vault) : IAccountStore
             e.Field("tenantId"),
             e.Fields.GetValueOrDefault("requestedTenant"),
             e.Field("authenticationRecord"),
-            e.Field("signedOut") == "true"))
+            e.Field("signedOut") == "true",
+            e.Fields.GetValueOrDefault("browser") is { Length: > 0 } browser ? browser : BrowserChoices.SystemDefaultId))
         .ToList();
 
     public void Save(StoredAccount account)
@@ -39,6 +40,7 @@ public sealed class VaultAccountStore(ICredentialVault vault) : IAccountStore
             ["homeAccountId"] = account.Id,
             ["authenticationRecord"] = account.RecordJson,
             ["signedOut"] = account.SignedOut ? "true" : "false",
+            ["browser"] = account.Browser,
         };
         if (account.RequestedTenant is { } tenant)
             fields["requestedTenant"] = tenant;

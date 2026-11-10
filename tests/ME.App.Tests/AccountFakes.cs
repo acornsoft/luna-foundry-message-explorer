@@ -33,8 +33,18 @@ internal sealed class FakeAuthenticator : IAccountAuthenticator
     public void WillSignIn(string username, string tenant = "00000000-0000-0000-0000-00000000c001") =>
         NextInteractive.Enqueue(() => Account(username, tenant));
 
-    public Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, CancellationToken cancellationToken)
+    public List<string> Browsers { get; } = [];
+
+    public Task<SignedInAccount> SignInWithDeviceCodeAsync(string? tenant, SignInPrompt prompt, CancellationToken cancellationToken)
     {
+        prompt.DeviceCode?.Invoke("Enter the code DEMO-1234 at the device login page (fake).");
+        return SignInInteractiveAsync(tenant, null, prompt, cancellationToken);
+    }
+
+    public Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken)
+    {
+        Browsers.Add(prompt.Browser.Id);
+        prompt.LinkReady?.Invoke(new Uri("https://login.example/fake/authorize"));
         InteractiveCalls.Add((tenant, loginHint));
         if (!NextInteractive.TryDequeue(out var next))
             throw new AuthenticationFailedException("The browser window was closed before sign-in finished.");

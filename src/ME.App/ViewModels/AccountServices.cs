@@ -23,7 +23,9 @@ public sealed record AccountServices(
     IArmReader Arm,
     ICredentialVault? Vault,
     IBrokerProvider? TestProvider = null,
-    ILegacySavedConnections? Legacy = null)
+    ILegacySavedConnections? Legacy = null,
+    ISignInLog? SignInLog = null,
+    IReadOnlyList<BrowserChoice>? Browsers = null)
 {
     /// <summary>
     /// Real Entra sign-in; accounts and logins in the vault (metadata in the config folder, secrets in this
@@ -39,12 +41,15 @@ public sealed record AccountServices(
             log: message => Trace.WriteLine("lfme vault: " + message));
         var store = new VaultAccountStore(vault);
         LoginMigration.ImportAccountFiles(new FileAccountStore(configDirectory), store);
+        var log = new FileSignInLog(configDirectory);
         return new AccountServices(
-            new EntraAuthenticator(EntraOptions.Resolve(environment, configDirectory)),
+            new EntraAuthenticator(EntraOptions.Resolve(environment, configDirectory), new ProcessBrowserLauncher(BrowserChoices.Current), log, configDirectory),
             store,
             new ArmReader(),
             vault,
-            Legacy: new LegacySavedConnections(configDirectory));
+            Legacy: new LegacySavedConnections(configDirectory),
+            SignInLog: log,
+            Browsers: BrowserChoices.DetectHere());
     }
 
     /// <summary>Moves the 0.6.0 saved connection strings into the vault. Leaves them alone when there is no secure store.</summary>
@@ -75,7 +80,10 @@ public sealed record AccountServices(
     {
         public string ClientId => EntraOptions.AzureCliClientId;
 
-        public Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, CancellationToken cancellationToken) =>
+        public Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Entra sign-in is not set up in this window.");
+
+        public Task<SignedInAccount> SignInWithDeviceCodeAsync(string? tenant, SignInPrompt prompt, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Entra sign-in is not set up in this window.");
 
         public Task<SignedInAccount> SignInSilentAsync(StoredAccount account, CancellationToken cancellationToken) =>

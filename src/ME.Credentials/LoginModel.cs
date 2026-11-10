@@ -56,7 +56,7 @@ public static class LoginKinds
     [
         new(LoginKind.EntraAccount, LoginSystem.Entra, "Microsoft Entra account",
             [new("username", "User", "alice@contoso.example", Required: true), new("tenantId", "Tenant", string.Empty), new("requestedTenant", "Signed in to", string.Empty),
-             new("homeAccountId", "Account ID", string.Empty), new("authenticationRecord", "Authentication record", string.Empty), new("signedOut", "Signed out", "false")],
+             new("homeAccountId", "Account ID", string.Empty), new("authenticationRecord", "Authentication record", string.Empty), new("signedOut", "Signed out", "false"), new("browser", "Browser", "default")],
             SecretLabel: null, SecretRequired: false),
         new(LoginKind.ServiceBusConnectionString, LoginSystem.ServiceBus, "Connection string or SAS token",
             [new("endpoint", "Namespace", "sbns-demo-001.servicebus.windows.net"), new("entityPath", "Entity (EntityPath)", "optional"), new("keyName", "Key name", "optional"),

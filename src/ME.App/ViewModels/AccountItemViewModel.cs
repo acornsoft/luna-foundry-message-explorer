@@ -27,9 +27,19 @@ public sealed class AccountItemViewModel : ViewModelBase
     private string? _error;
     private DiscoveryResult? _discovery;
 
-    internal AccountItemViewModel(StoredAccount account, Func<AccountItemViewModel, Task> signIn, Action<AccountItemViewModel> signOut, Action<AccountItemViewModel> remove)
+    private readonly Action<AccountItemViewModel>? _browserChanged;
+
+    internal AccountItemViewModel(
+        StoredAccount account,
+        Func<AccountItemViewModel, Task> signIn,
+        Action<AccountItemViewModel> signOut,
+        Action<AccountItemViewModel> remove,
+        IReadOnlyList<BrowserChoice>? browsers = null,
+        Action<AccountItemViewModel>? browserChanged = null)
     {
         _account = account;
+        Browsers = browsers ?? [BrowserChoices.SystemDefault, BrowserChoices.CopyLinkOnly];
+        _browserChanged = browserChanged;
         _state = account.SignedOut ? AccountState.SignedOut : AccountState.SigningIn;
         SignInCommand = new AsyncCommand(() => signIn(this), () => CanSignIn);
         SignOutCommand = new RelayCommand(() => signOut(this), () => IsSignedIn);
@@ -49,6 +59,24 @@ public sealed class AccountItemViewModel : ViewModelBase
     }
 
     public string Id => _account.Id;
+
+    /// <summary>The browsers this account can sign in with.</summary>
+    public IReadOnlyList<BrowserChoice> Browsers { get; }
+
+    /// <summary>Where this account's sign-in page opens. Remembered with the account.</summary>
+    public BrowserChoice Browser
+    {
+        get => BrowserChoices.Find(Browsers, _account.Browser);
+        set
+        {
+            var id = (value ?? BrowserChoices.SystemDefault).Id;
+            if (id == _account.Browser)
+                return;
+            _account = _account with { Browser = id };
+            OnPropertyChanged();
+            _browserChanged?.Invoke(this);
+        }
+    }
 
     public string Username => _account.Username;
 

@@ -32,7 +32,7 @@ public sealed class MainViewModel : ViewModelBase
         Topics = new TopicsViewModel();
         Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance, runnerFactory: runnerFactory, samplesFolder: samplesFolder);
         Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected, services.Vault);
-        Accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, OpenFromAccountsAsync);
+        Accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, OpenFromAccountsAsync, services.SignInLog, browsers: services.Browsers);
         Connect.Accounts = Accounts;
         var vault = services.Vault ?? new CredentialVault(
             new UnavailableSecretStore("secure store", "Saving logins is not available in this window."),

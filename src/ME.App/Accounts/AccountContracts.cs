@@ -17,7 +17,17 @@ public sealed record StoredAccount(
     string TenantId,
     string? RequestedTenant,
     string RecordJson,
-    bool SignedOut = false);
+    bool SignedOut = false,
+    string Browser = BrowserChoices.SystemDefaultId);
+
+/// <summary>
+/// How one sign-in reaches the user: the browser to open, and callbacks that hand the sign-in link (for
+/// Copy sign-in link) or the device code message (for Sign in with a code) to the screen.
+/// </summary>
+public sealed record SignInPrompt(BrowserChoice Browser, Action<Uri>? LinkReady = null, Action<string>? DeviceCode = null)
+{
+    public static SignInPrompt Default { get; } = new(BrowserChoices.SystemDefault);
+}
 
 /// <summary>A signed-in account and the credential that gets its tokens.</summary>
 public sealed record SignedInAccount(StoredAccount Account, TokenCredential Credential);
@@ -28,8 +38,15 @@ public interface IAccountAuthenticator
     /// <summary>The Entra application (client) ID that sign-in uses.</summary>
     string ClientId { get; }
 
-    /// <summary>Opens the system browser. <paramref name="tenant"/> null means any work or school account.</summary>
-    Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, CancellationToken cancellationToken);
+    /// <summary>
+    /// Opens the sign-in page in <see cref="SignInPrompt.Browser"/> and waits on the localhost redirect.
+    /// <paramref name="tenant"/> null means any work or school account. Cancelling the token stops the
+    /// wait and frees the localhost listener.
+    /// </summary>
+    Task<SignedInAccount> SignInInteractiveAsync(string? tenant, string? loginHint, SignInPrompt prompt, CancellationToken cancellationToken);
+
+    /// <summary>Device code flow: shows a code to enter at the Microsoft device login page in any browser, on any device.</summary>
+    Task<SignedInAccount> SignInWithDeviceCodeAsync(string? tenant, SignInPrompt prompt, CancellationToken cancellationToken);
 
     /// <summary>Signs in from the stored record and the token cache, without a browser. Throws when that is not possible.</summary>
     Task<SignedInAccount> SignInSilentAsync(StoredAccount account, CancellationToken cancellationToken);

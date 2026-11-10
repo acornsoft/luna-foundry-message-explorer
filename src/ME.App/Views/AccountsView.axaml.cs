@@ -14,6 +14,17 @@ public partial class AccountsView : UserControl
     public AccountsView()
     {
         InitializeComponent();
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is AccountsViewModel accounts && accounts.Clipboard is null)
+            {
+                accounts.Clipboard = async text =>
+                {
+                    if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                        await clipboard.SetTextAsync(text).ConfigureAwait(true);
+                };
+            }
+        };
     }
 
     private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
