@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Samples.OrderGenerator</RootNamespace>
+    <AssemblyName>OrderGenerator</AssemblyName>
+  </PropertyGroup>
+</Project>

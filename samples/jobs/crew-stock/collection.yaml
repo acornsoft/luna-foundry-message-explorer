@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MPL-2.0
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+collection: crew-stock
+description: >
+  A made-up field-crew app reserves stock for job tickets through a chain of integration hops.
+  Synthetic data and our own names only.
+defaults:
+  environment: local
+plugins:
+  crew-ticket-feed:
+    version: "0.1.0"
+    command: ["python3", "../../plugins/python/crew_ticket_feed.py"]
+  hop-relay:
+    version: "0.1.0"
+    command: ["dotnet", "../../../artifacts/plugins/HopRelay/HopRelay.dll"]
+  bus-observer:
+    version: "1.0.0"
+    builtin: true

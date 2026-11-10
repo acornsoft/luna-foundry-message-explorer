@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MPL-2.0
+# Synthetic dispute scenario. No live send in this skeleton.
+id: reg-e-dispute
+seed: 63001
+clock: virtual
+max_messages: 100
+max_duration_seconds: 300
+steps:
+  - id: plant-disputes
+    count: 100
+    template: synthetic-reg-e-dispute
+expected_hops:
+  - disputes/reg-e-clock
+  - disputes/case-sync

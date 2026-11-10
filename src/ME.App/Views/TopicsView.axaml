@@ -1,0 +1,77 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.TopicsView"
+             x:DataType="vm:TopicsViewModel">
+  <Grid RowDefinitions="Auto,*,Auto,*">
+    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <StackPanel Spacing="2">
+        <TextBlock Text="Topics" FontSize="16" FontWeight="SemiBold" />
+        <TextBlock x:Name="TopicsSummaryText" Text="{Binding Summary}" Opacity="0.8" />
+      </StackPanel>
+      <Button Grid.Column="1" x:Name="TopicsRefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top" />
+    </Grid>
+
+    <Panel Grid.Row="1">
+      <TextBlock x:Name="TopicsNotConnectedText" Classes="state" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" />
+      <StackPanel IsVisible="{Binding IsLoading}" Spacing="8">
+        <TextBlock x:Name="TopicsLoadingText" Classes="state" Text="{Binding LoadingText}" />
+        <ProgressBar IsIndeterminate="True" />
+      </StackPanel>
+      <TextBlock x:Name="TopicsEmptyText" Classes="state" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
+      <TextBlock x:Name="TopicsErrorText" Classes="state error" Text="{Binding ErrorMessage}" IsVisible="{Binding IsError}" />
+      <DataGrid x:Name="TopicsGrid" ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}"
+                IsVisible="{Binding HasRows}" IsReadOnly="True" CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="Horizontal">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Topic" x:DataType="vm:EntityRowViewModel" Binding="{Binding Name}" SortMemberPath="Name" Width="2*" />
+          <DataGridTextColumn Header="Subscriptions" x:DataType="vm:EntityRowViewModel" Binding="{Binding SubscriptionCountText}" SortMemberPath="SubscriptionCount" />
+          <DataGridTextColumn Header="Scheduled" x:DataType="vm:EntityRowViewModel" Binding="{Binding ScheduledText}" SortMemberPath="Scheduled" />
+          <DataGridTextColumn Header="Status" x:DataType="vm:EntityRowViewModel" Binding="{Binding Status}" SortMemberPath="Status" />
+          <DataGridTextColumn Header="Size" x:DataType="vm:EntityRowViewModel" Binding="{Binding SizeText}" SortMemberPath="SizeInBytes" />
+        </DataGrid.Columns>
+      </DataGrid>
+    </Panel>
+
+    <StackPanel Grid.Row="2" Spacing="2" Margin="0,16,0,8">
+      <TextBlock x:Name="SubscriptionsTitleText" Text="{Binding SubscriptionsTitle}" FontSize="16" FontWeight="SemiBold" />
+      <TextBlock x:Name="SubscriptionsSummaryText" Text="{Binding SubscriptionsSummary}" Opacity="0.8" />
+    </StackPanel>
+
+    <Panel Grid.Row="3">
+      <TextBlock x:Name="NoTopicText" Classes="state" Text="{Binding NoTopicText}" IsVisible="{Binding NoTopicSelected}" />
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding SubscriptionsLoading}" VerticalAlignment="Top" />
+      <TextBlock x:Name="SubscriptionsEmptyText" Classes="state" Text="{Binding SubscriptionsEmptyText}" IsVisible="{Binding SubscriptionsEmpty}" />
+      <TextBlock x:Name="SubscriptionsErrorText" Classes="state error" Text="{Binding SubscriptionError}" IsVisible="{Binding SubscriptionsError}" />
+      <DataGrid x:Name="SubscriptionsGrid" ItemsSource="{Binding Subscriptions}" IsVisible="{Binding HasSubscriptions}"
+                IsReadOnly="True" CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="Horizontal">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Subscription" x:DataType="vm:EntityRowViewModel" Binding="{Binding Name}" SortMemberPath="Name" Width="2*" />
+          <DataGridTextColumn Header="Active" x:DataType="vm:EntityRowViewModel" Binding="{Binding ActiveText}" SortMemberPath="Active" />
+          <DataGridTemplateColumn Header="Dead-letter" SortMemberPath="DeadLetter">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:EntityRowViewModel">
+                <Border Classes.deadletter="{Binding DeadLetterAboveZero}" Padding="6,2" Margin="4,2">
+                  <TextBlock Classes.deadletter="{Binding DeadLetterAboveZero}" Text="{Binding DeadLetterText}" VerticalAlignment="Center" />
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="Transfer DLQ" SortMemberPath="TransferDeadLetter">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:EntityRowViewModel">
+                <Border Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Padding="6,2" Margin="4,2">
+                  <TextBlock Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Text="{Binding TransferDeadLetterText}" VerticalAlignment="Center" />
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Status" x:DataType="vm:EntityRowViewModel" Binding="{Binding Status}" SortMemberPath="Status" />
+        </DataGrid.Columns>
+      </DataGrid>
+    </Panel>
+  </Grid>
+</UserControl>
