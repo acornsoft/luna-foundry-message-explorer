@@ -13,11 +13,12 @@ public class CliArgsTests
     [Fact]
     public void Parses_command_subject_options_and_flags()
     {
-        var args = CliArgs.Parse(["dlq", "resubmit", "gsl-reg-e-dispute", "--run", "r1", "--yes", "--sequence", "3, 7"]);
+        var args = CliArgs.Parse(["dlq", "resubmit", "gsl-reg-e-dispute", "--run", "r1", "--yes", "--send", "--sequence", "3, 7"]);
         Assert.Equal("dlq resubmit", args.Command);
         Assert.Equal("gsl-reg-e-dispute", args.Subject);
         Assert.Equal("r1", args.Options["run"]);
         Assert.Contains("yes", args.Flags);
+        Assert.Contains("send", args.Flags);
         Assert.Equal(new long[] { 3, 7 }, args.Sequences().Order().ToArray());
     }
 
@@ -105,13 +106,32 @@ public class CliAppTests
     }
 
     [Fact]
+    public async Task Run_without_send_is_a_dry_run()
+    {
+        var (app, broker, output, _) = Make();
+        Assert.Equal(0, await app.RunAsync(["scenario", "run", "gsl-reg-e-dispute", "--run-id", "t1", .. Coordinates]));
+        Assert.Empty(broker.Sent);
+        Assert.Contains("Dry run: nothing sent.", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Send_and_dry_run_together_is_a_usage_error()
+    {
+        var (app, broker, output, _) = Make();
+        Assert.Equal(2, await app.RunAsync(["scenario", "run", "gsl-reg-e-dispute", "--send", "--dry-run", .. Coordinates]));
+        Assert.Empty(broker.Sent);
+        Assert.Contains("Do not pass both", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Run_then_peek_then_resubmit_end_to_end()
     {
         var (app, broker, output, addresses) = Make();
-        Assert.Equal(0, await app.RunAsync(["scenario", "run", "gsl-reg-e-dispute", "--run-id", "t1", .. Coordinates]));
+        Assert.Equal(0, await app.RunAsync(["scenario", "run", "gsl-reg-e-dispute", "--run-id", "t1", "--send", .. Coordinates]));
         Assert.Equal("sbns-gsl-dev-eastus-001.servicebus.windows.net", addresses[0].FullyQualifiedNamespace);
         Assert.Equal("sbq-gsl-dev-001", addresses[0].Queue);
         Assert.Equal("rg-demo", addresses[0].ResourceGroup);
+        Assert.Equal(15, broker.Sent.Count);
 
         Assert.Equal(0, await app.RunAsync(["dlq", "peek", "gsl-reg-e-dispute", "--run", "t1", .. Coordinates]));
         Assert.Contains("Dead-letters for run t1 (peek, nothing locked): 3", output.ToString(), StringComparison.Ordinal);
@@ -120,16 +140,21 @@ public class CliAppTests
         Assert.Equal(3, broker.DeadLetters.Count);
 
         Assert.Equal(0, await app.RunAsync(["dlq", "resubmit", "gsl-reg-e-dispute", "--run", "t1", "--yes", .. Coordinates]));
+        Assert.Equal(3, broker.DeadLetters.Count);
+        Assert.Contains("Add --send with --yes", output.ToString(), StringComparison.Ordinal);
+
+        Assert.Equal(0, await app.RunAsync(["dlq", "resubmit", "gsl-reg-e-dispute", "--run", "t1", "--yes", "--send", .. Coordinates]));
         broker.Drain();
         Assert.Single(broker.DeadLetters);
     }
+
 
     [Fact]
     public async Task Real_subscription_must_be_allow_listed_through_the_environment()
     {
         var (app, broker, output, _) = Make();
         broker.Facts = broker.Facts with { SubscriptionId = "22222222-2222-2222-2222-222222222222" };
-        string[] args = ["scenario", "run", "gsl-reg-e-dispute", "--subscription", "22222222-2222-2222-2222-222222222222", "--resource-group", "rg"];
+        string[] args = ["scenario", "run", "gsl-reg-e-dispute", "--send", "--subscription", "22222222-2222-2222-2222-222222222222", "--resource-group", "rg"];
 
         Environment.SetEnvironmentVariable("LFME_ALLOWED_SUBSCRIPTIONS", null);
         Assert.Equal(1, await app.RunAsync(args));

@@ -38,7 +38,7 @@ public class LiveScenarioRunnerTests
         Assert.Contains("Sandbox gate: allowed", text, StringComparison.Ordinal);
         Assert.Contains("Settled: active=0 dead-letter=3", text, StringComparison.Ordinal);
         Assert.Contains("Every message ended where the scenario expected.", text, StringComparison.Ordinal);
-        Assert.Contains("lfme dlq resubmit --run run-1 --yes", text, StringComparison.Ordinal);
+        Assert.Contains("lfme dlq resubmit --run run-1 --yes --send", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -114,11 +114,23 @@ public class LiveScenarioRunnerTests
     {
         var (runner, broker, output) = Make();
         await runner.RunAsync(Scenario(), Options());
-        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: false);
+        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: false, send: true);
         Assert.True(report.Allowed);
         Assert.False(report.Executed);
         Assert.Equal(3, broker.DeadLetters.Count);
-        Assert.Contains("Add --yes", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Add --yes to resubmit", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Resubmit_with_yes_but_without_send_changes_nothing()
+    {
+        var (runner, broker, output) = Make();
+        await runner.RunAsync(Scenario(), Options());
+        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: true, send: false);
+        Assert.True(report.Allowed);
+        Assert.False(report.Executed);
+        Assert.Equal(3, broker.DeadLetters.Count);
+        Assert.Contains("Add --send with --yes", output.ToString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -126,7 +138,7 @@ public class LiveScenarioRunnerTests
     {
         var (runner, broker, _) = Make();
         await runner.RunAsync(Scenario(), Options());
-        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: true);
+        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: true, send: true);
         Assert.True(report.Executed);
         Assert.Equal(2, report.Outcomes.Count(o => o.Resubmitted));
         broker.Drain();
@@ -144,7 +156,7 @@ public class LiveScenarioRunnerTests
         broker.DeadLetters.Add(new DeadLetterSnapshot(2, "older-2", null, null, "MaxDeliveryCountExceeded", "x", 10, DateTimeOffset.UnixEpoch, legacy, new Dictionary<string, object>()));
         var (runner, _, _) = Make(broker);
 
-        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection(null, new HashSet<long> { 2 }), confirmed: true);
+        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection(null, new HashSet<long> { 2 }), confirmed: true, send: true);
 
         Assert.Single(report.Outcomes, o => o.Resubmitted);
         Assert.Equal(1, Assert.Single(broker.DeadLetters).SequenceNumber);
@@ -154,7 +166,7 @@ public class LiveScenarioRunnerTests
     public async Task Resubmit_needs_a_selection()
     {
         var (runner, broker, _) = Make();
-        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection(null, new HashSet<long>()), confirmed: true);
+        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection(null, new HashSet<long>()), confirmed: true, send: true);
         Assert.False(report.Allowed);
         Assert.Contains("never takes the whole dead-letter queue", report.BlockReason, StringComparison.Ordinal);
         Assert.Equal(0, broker.CountCalls);
@@ -166,7 +178,7 @@ public class LiveScenarioRunnerTests
         var broker = new FakeRegEBroker();
         broker.Facts = broker.Facts with { DisableLocalAuth = false };
         var (runner, _, _) = Make(broker);
-        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: true);
+        var report = await runner.ResubmitAsync(RegETarget.From(Scenario()), new ResubmitSelection("run-1", new HashSet<long>()), confirmed: true, send: true);
         Assert.False(report.Allowed);
     }
 

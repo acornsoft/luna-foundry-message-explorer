@@ -12,7 +12,7 @@ property. There are no real people, accounts, or cases.
    `RegEDisputeTracked` and completed. Invalid ones are dead-lettered with a reason the explorer can group by.
 3. **Counts.** Active and dead-letter counts are polled until the queue settles.
 4. **Dead-letter processing.** The runner peeks the dead-letter subqueue (no lock), shows each reason and
-   description, and previews a fix. Resubmit is a separate command and needs `--yes`.
+   description, and previews a fix. Resubmit is a separate command and needs both `--yes` and `--send`.
 
 ## Before you start
 
@@ -38,19 +38,19 @@ alias lfme='dotnet src/ME.Cli/bin/Release/net8.0/lfme.dll'
 
 ```bash
 lfme scenario list
-lfme scenario run gsl-reg-e-dispute --dry-run          # gate + plan + counts, sends nothing
-lfme scenario run gsl-reg-e-dispute --run-id demo-1    # send, settle, show dead-letters, preview fixes
-lfme dlq peek gsl-reg-e-dispute --run demo-1           # dead-letters grouped by reason, with fix verdicts
+lfme scenario run gsl-reg-e-dispute                    # dry run: gate + plan + counts, sends nothing
+lfme scenario run gsl-reg-e-dispute --run-id demo-1 --send  # send, settle, show dead-letters, preview fixes
+lfme dlq peek gsl-reg-e-dispute --run demo-1           # that run's dead-letters, grouped by reason, with fix verdicts
 lfme dlq resubmit gsl-reg-e-dispute --run demo-1       # preview only
-lfme dlq resubmit gsl-reg-e-dispute --run demo-1 --yes # resubmit the fixable ones
+lfme dlq resubmit gsl-reg-e-dispute --run demo-1 --yes --send  # resubmit the fixable ones
 ```
 
 Expected result of a run: 12 consumed, 3 dead-lettered (`MissingDisputeId`, `InconsistentDeadlines`,
-`SchemaViolation`), and "Every message ended where the scenario expected." After `--yes`, the first two come back
+`SchemaViolation`), and "Every message ended where the scenario expected." After `--yes --send`, the first two come back
 fixed and are consumed. The bad date stays: the fixer never guesses a date or a flag.
 
 `lfme dlq peek` without `--run` shows the whole dead-letter subqueue, including messages the scenario did not send.
-`lfme dlq resubmit --sequence 1,2,3` resubmits listed sequence numbers. Resubmit never takes the whole queue.
+`lfme dlq resubmit --sequence 1,2,3` can resubmit listed sequence numbers, but still needs `--yes` and `--send`. Resubmit never takes the whole queue.
 
 ## What a fix does
 
@@ -71,6 +71,7 @@ before the dead-letter is completed, so a crash in between leaves a duplicate, n
 | Option | Default | Notes |
 |---|---|---|
 | `--run-id` | `r<UTC timestamp>` | Letters, digits, and dashes. Stamped as `lfmeRunId`. |
+| `--send` | off | Opt-in live send for `scenario run`, and for resubmit together with `--yes`. Without it, the command is a dry run or a preview. |
 | `--settle-seconds` | 90 | How long to wait for the consumer. |
 | `--tcp` | off | AMQP on 5671. The default is WebSockets on 443. |
 | `LFME_USE_MANAGED_IDENTITY=1` | off | Lets `DefaultAzureCredential` try managed identity. Off by default because the probe can stall off Azure. |

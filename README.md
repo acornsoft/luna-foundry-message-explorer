@@ -20,7 +20,7 @@ Read mode is named **Observe**.
 - Event Hubs observe mode reads with `EventHubConsumerClient`-style forward reads on the shared group `cg-message-explorer`. Position stays in memory. There is no checkpoint store and no owner epoch.
 - Event Grid has no read API. A diagnostic subscription is a write. The Bicep file under `src/ME.Admin/Templates` is an owner-applied template. The explorer does not create the subscription.
 
-Admin actions are a separate module, off by default. They file a request. This skeleton does not send, purge, or settle.
+Admin actions are a separate module, off by default. They file a request. Observe mode does not send, purge, or settle. `lfme` is a separate sandbox simulation tool: it sends only with `--send`, and only after the sandbox gate.
 
 ## Layout
 
@@ -60,9 +60,9 @@ The desktop head builds with the solution. CI does not launch the window.
 - Azure SDK clients. Adapters talk to interfaces. A production peek transport is not wired, and no cloud call is made.
 - The Event Grid template is not deployed.
 - Machine-learning PII detection. The local net is schema rules, a pattern scrubber, and an echo scrub of values those rules already removed.
-- Scenario execution for the starter scenarios. `ScenarioRunner` returns a plan and sends nothing. The one exception is the
-  GSL Reg E demo: `lfme scenario run gsl-reg-e-dispute` sends synthetic messages to an allow-listed sandbox queue. See
-  [docs/gsl-reg-e-demo.md](docs/gsl-reg-e-demo.md).
+- Scenario execution for the starter scenarios. `ScenarioRunner` returns a plan and sends nothing. `lfme` is a separate
+  sandbox simulation tool for the GSL Reg E demo: `lfme scenario run gsl-reg-e-dispute` plans and gates by default, and
+  sends only with `--send`. See [docs/gsl-reg-e-demo.md](docs/gsl-reg-e-demo.md).
 - MCP Streamable HTTP and Entra sign-in. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
 - Topology, trace, and dead-letter screens. The window is an observe-mode shell.

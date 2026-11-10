@@ -18,11 +18,13 @@ internal sealed class CliApp
         lfme: Luna Foundry Message Explorer console runner (synthetic data only)
 
           lfme scenario list
-          lfme scenario run <scenario-id> --subscription <id> --resource-group <rg> [--run-id <id>] [--settle-seconds 90] [--dry-run]
+          lfme scenario run <scenario-id> --subscription <id> --resource-group <rg> [--run-id <id>] [--settle-seconds 90] [--send]
           lfme dlq peek <scenario-id> --subscription <id> --resource-group <rg> [--run <run-id>]
-          lfme dlq resubmit <scenario-id> --subscription <id> --resource-group <rg> (--run <run-id> | --sequence 3,7) [--yes]
+          lfme dlq resubmit <scenario-id> --subscription <id> --resource-group <rg> (--run <run-id> | --sequence 3,7) [--yes] [--send]
 
         Auth is Microsoft Entra through DefaultAzureCredential (az login works). No keys or connection strings.
+        scenario run is a dry run by default (gate, plan, and counts; nothing is sent). Pass --send to write to the queue.
+        Resubmit needs both --yes and --send.
         --subscription and --resource-group can come from LFME_SUBSCRIPTION and LFME_RESOURCE_GROUP.
         The sandbox gate also needs the subscription in LFME_ALLOWED_SUBSCRIPTIONS (comma-separated).
         Add --tcp to use AMQP on port 5671 instead of WebSockets on 443.
@@ -96,7 +98,9 @@ internal sealed class CliApp
         var runId = args.Options.TryGetValue("run-id", out var given)
             ? given
             : "r" + _clock.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-        var options = new LiveRunOptions(runId, TimeSpan.FromSeconds(args.Int("settle-seconds", 90)), TimeSpan.FromSeconds(5), args.Flags.Contains("dry-run"));
+        if (args.Flags.Contains("send") && args.Flags.Contains("dry-run"))
+            throw new CliUsageException("Use --send to send, or omit it for a dry run. Do not pass both.");
+        var options = new LiveRunOptions(runId, TimeSpan.FromSeconds(args.Int("settle-seconds", 90)), TimeSpan.FromSeconds(5), DryRun: !args.Flags.Contains("send"));
         var report = await runner.RunAsync(scenario, options, cancellationToken).ConfigureAwait(false);
         return report.Allowed && report.Mismatches.Count == 0 ? 0 : 1;
     }
@@ -131,7 +135,7 @@ internal sealed class CliApp
         var (_, target, runner, broker) = Prepare(args);
         await using var _ = broker as IAsyncDisposable;
         var selection = new ResubmitSelection(args.Options.TryGetValue("run", out var run) ? run : null, args.Sequences());
-        var report = await runner.ResubmitAsync(target, selection, args.Flags.Contains("yes"), cancellationToken).ConfigureAwait(false);
+        var report = await runner.ResubmitAsync(target, selection, args.Flags.Contains("yes"), args.Flags.Contains("send"), cancellationToken).ConfigureAwait(false);
         if (!report.Allowed)
             _out.WriteLine("Blocked: " + report.BlockReason);
         return report.Allowed ? 0 : 1;

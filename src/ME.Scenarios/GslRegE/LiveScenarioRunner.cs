@@ -95,7 +95,8 @@ public sealed record ResubmitSelection(string? RunId, IReadOnlySet<long> Sequenc
 
 /// <summary>
 /// Runs the GSL Reg E scenario against a live queue: gate, send, watch counts settle, show dead-letters with
-/// reasons, and preview the fix. Resubmit is a separate call that needs an explicit confirmation.
+/// reasons, and preview the fix. Send is opt-in (DryRun is the default at the CLI). Resubmit needs both
+/// confirmation and the same send opt-in.
 /// Output is plain text so the console runner and a later UI panel can show the same lines.
 /// </summary>
 public sealed class LiveScenarioRunner
@@ -187,12 +188,12 @@ public sealed class LiveScenarioRunner
         foreach (var item in plan)
             Line($"  seq {item.Message.SequenceNumber,-5} {(item.Fix.Fixable ? "fixable" : "needs a person")}: {item.Fix.Explanation}");
         if (plan.Any(p => p.Fix.Fixable))
-            Line($"To resubmit the fixable ones: lfme dlq resubmit --run {options.RunId} --yes");
+            Line($"To resubmit the fixable ones: lfme dlq resubmit --run {options.RunId} --yes --send");
 
         return new LiveRunReport(true, null, options.RunId, messages.Count, sent, before, after, dead, plan, mismatches);
     }
 
-    public async Task<ResubmitReport> ResubmitAsync(RegETarget target, ResubmitSelection selection, bool confirmed, CancellationToken cancellationToken = default)
+    public async Task<ResubmitReport> ResubmitAsync(RegETarget target, ResubmitSelection selection, bool confirmed, bool send, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(selection);
@@ -212,9 +213,11 @@ public sealed class LiveScenarioRunner
         foreach (var item in preview)
             Line($"  seq {item.Message.SequenceNumber,-5} {item.Message.DeadLetterReason}: {(item.Fix.Fixable ? "fix -> " : "skip, needs a person -> ")}{item.Fix.Explanation}");
 
-        if (!confirmed)
+        if (!confirmed || !send)
         {
-            Line("Preview only. Add --yes to resubmit the fixable ones.");
+            Line(!send
+                ? "Preview only. Add --send with --yes to resubmit the fixable ones."
+                : "Preview only. Add --yes to resubmit the fixable ones.");
             return new ResubmitReport(true, null, false, preview, [], null);
         }
 

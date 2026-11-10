@@ -10,7 +10,7 @@ namespace Acornsoft.MessageExplorer.Cli;
 /// <summary>Tiny argument parser: two command words, then --name value options and bare --flags.</summary>
 internal sealed record CliArgs(string Command, string? Subject, IReadOnlyDictionary<string, string> Options, IReadOnlySet<string> Flags)
 {
-    private static readonly HashSet<string> KnownFlags = new(StringComparer.Ordinal) { "yes", "dry-run", "tcp", "help" };
+    private static readonly HashSet<string> KnownFlags = new(StringComparer.Ordinal) { "yes", "dry-run", "send", "tcp", "help" };
 
     public static CliArgs Parse(IReadOnlyList<string> args)
     {
