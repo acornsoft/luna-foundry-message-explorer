@@ -29,17 +29,25 @@ Admin actions are a separate module, off by default. They file a request. This s
 | `src/ME.Model` | CloudEvents envelope, observe-mode guard, provider matrix |
 | `src/ME.Redaction` | Schema rules, pattern net, default deny, 16 KB cap |
 | `src/ME.Correlation` | W3C `traceparent` and correlation tokens |
-| `src/ME.Adapters.ServiceBus` | Peek client with an explicit sequence cursor |
+| `src/ME.Brokers.Abstractions` | Broker-neutral provider contract: `IBrokerProvider`, `IEntityInventory`, capability flags, provider catalog |
+| `src/ME.Adapters.ServiceBus` | Peek client with an explicit sequence cursor, and the read-only Service Bus provider and queue inventory |
 | `src/ME.Adapters.EventHubs` | Read-only consumer, in-memory position |
 | `src/ME.Adapters.EventGrid` | Refuses a read and points at the admin template |
 | `src/ME.Admin` | Role gate, audit row, approval tickets, Event Grid template |
 | `src/ME.Scenarios` | Seeded scenario parser, sandbox gate, kill switch |
 | `src/ME.Mcp` | In-process tool policy: redaction, scopes, no self-approval |
-| `src/ME.App` | Avalonia shell. Admin controls are hidden in observe mode |
+| `src/ME.App` | Avalonia shell: Connect panel (Entra or in-memory connection string) and a sortable Queues grid |
 | `src/ME.App.Desktop` | Desktop entry point |
-| `tests/*` | One test project per core library, plus the shell |
+| `src/Scenarios`, `tests/Scenarios` | Reserved for the GSL Reg E dispute library and runner (separate PR) |
+| `tests/*` | One test project per core library, plus the shell (view models and headless UI) |
 
-Borrowed ideas are credited in [docs/ideas-log.md](docs/ideas-log.md). No code is copied from those projects.
+Borrowed ideas are credited in [docs/ideas-log.md](docs/ideas-log.md). No code is copied from those projects. Feature parity is tracked in [docs/parity-matrix.md](docs/parity-matrix.md), the plan in [docs/backlog.md](docs/backlog.md), and the test jobs design in [docs/design/test-jobs.md](docs/design/test-jobs.md).
+
+## Service Bus queue list
+
+Connect with Microsoft Entra ID (namespace host name plus `DefaultAzureCredential`) or with a connection string typed at runtime. The connection string is held in memory, shown masked, and cleared after connecting. The queue list reads the management plane only (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged). Listing needs a management read permission on the namespace.
+
+Opt-in integration test: set `ME_SB_NAMESPACE` to a namespace you can read, then run `dotnet test`. CI does not set it, so the test is skipped there.
 
 ## Build and test
 

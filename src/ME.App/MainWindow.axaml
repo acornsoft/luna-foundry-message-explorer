@@ -4,16 +4,119 @@
      file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
         x:Class="Acornsoft.MessageExplorer.Shell.MainWindow"
-        Width="960"
-        Height="640"
-        Title="Acornsoft Message Explorer">
-  <StackPanel Margin="24" Spacing="12">
-    <TextBlock x:Name="BannerText" FontSize="20" TextWrapping="Wrap" />
-    <TextBlock x:Name="PolicyText" TextWrapping="Wrap" />
-    <TextBlock x:Name="EmptyText" TextWrapping="Wrap" />
-    <StackPanel x:Name="AdminPanel" Spacing="8">
-      <TextBlock Text="Admin" />
+        x:DataType="vm:MainViewModel"
+        Width="1180"
+        Height="720"
+        Title="{Binding Title}">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,12">
+      <TextBlock x:Name="BannerText" Text="{Binding Shell.Banner}" FontSize="18" TextWrapping="Wrap" />
+      <TextBlock x:Name="PolicyText" Text="{Binding Shell.DataPolicy}" TextWrapping="Wrap" Opacity="0.8" />
     </StackPanel>
-  </StackPanel>
+
+    <!-- Connect panel -->
+    <Border DockPanel.Dock="Left" Width="340" Padding="12" Margin="0,0,16,0"
+            BorderBrush="#40808080" BorderThickness="1" CornerRadius="6">
+      <StackPanel x:Name="ConnectPanel" Spacing="10" DataContext="{Binding Connect}" x:DataType="vm:ConnectViewModel">
+        <TextBlock Text="Connect" FontSize="16" FontWeight="SemiBold" />
+        <TextBlock Text="Provider" Opacity="0.8" />
+        <ItemsControl x:Name="ProviderList" ItemsSource="{Binding Providers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProviderOption">
+              <StackPanel Margin="0,2">
+                <RadioButton GroupName="provider"
+                             Content="{Binding Label}"
+                             IsEnabled="{Binding IsEnabled}"
+                             IsChecked="{Binding IsSelected}"
+                             ToolTip.Tip="{Binding Note}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="Sign in with" Opacity="0.8" Margin="0,6,0,0" />
+        <RadioButton x:Name="EntraOption" GroupName="auth" Content="Microsoft Entra ID" IsChecked="{Binding UseEntra}" />
+        <RadioButton x:Name="ConnectionStringOption" GroupName="auth" Content="Connection string" IsChecked="{Binding UseConnectionString}" />
+
+        <StackPanel Spacing="4" IsVisible="{Binding UseEntra}">
+          <TextBlock Text="Namespace" />
+          <TextBox x:Name="NamespaceBox" Text="{Binding NamespaceText}" Watermark="contoso-synthetic.servicebus.windows.net" />
+          <TextBlock Text="Uses your Azure sign-in. No secret is stored." TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+        </StackPanel>
+
+        <StackPanel Spacing="4" IsVisible="{Binding UseConnectionString}">
+          <TextBlock Text="Connection string" />
+          <TextBox x:Name="ConnectionStringBox" Text="{Binding ConnectionString}" PasswordChar="•" RevealPassword="False" Watermark="Endpoint=sb://..." />
+          <TextBlock Text="Held in memory only. Cleared after connecting. Never saved." TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+        </StackPanel>
+
+        <TextBlock x:Name="ValidationText" Classes="error" Text="{Binding ValidationMessage}" IsVisible="{Binding HasValidationMessage}" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="ConnectButton" Content="Connect" Command="{Binding ConnectCommand}" />
+          <Button x:Name="DisconnectButton" Content="Disconnect" Command="{Binding DisconnectCommand}" />
+        </StackPanel>
+        <TextBlock Text="{Binding ConnectedTo}" IsVisible="{Binding IsConnected}" TextWrapping="Wrap" Opacity="0.8" />
+      </StackPanel>
+    </Border>
+
+    <!-- Queues -->
+    <DockPanel DataContext="{Binding Queues}" x:DataType="vm:QueuesViewModel">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+        <StackPanel Spacing="2">
+          <TextBlock Text="Queues" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock x:Name="SummaryText" Text="{Binding Summary}" Opacity="0.8" />
+          <TextBlock Text="{Binding SortText}" Opacity="0.6" FontSize="12" IsVisible="{Binding HasRows}" />
+        </StackPanel>
+        <Button Grid.Column="1" x:Name="RefreshButton" Content="Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Top" />
+      </Grid>
+
+      <Panel>
+        <TextBlock x:Name="NotConnectedText" Classes="state" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" />
+        <StackPanel IsVisible="{Binding IsLoading}" Spacing="8">
+          <TextBlock x:Name="LoadingText" Classes="state" Text="{Binding LoadingText}" />
+          <ProgressBar IsIndeterminate="True" />
+        </StackPanel>
+        <TextBlock x:Name="EmptyText" Classes="state" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
+        <TextBlock x:Name="ErrorText" Classes="state error" Text="{Binding ErrorMessage}" IsVisible="{Binding IsError}" />
+
+        <DataGrid x:Name="QueuesGrid"
+                  ItemsSource="{Binding Rows}"
+                  IsVisible="{Binding HasRows}"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True"
+                  CanUserResizeColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  Sorting="OnQueuesGridSorting">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Queue" x:DataType="vm:QueueRowViewModel" Binding="{Binding Name}" SortMemberPath="Name" Width="2*" />
+            <DataGridTextColumn Header="Active" x:DataType="vm:QueueRowViewModel" Binding="{Binding ActiveText}" SortMemberPath="Active" />
+            <DataGridTemplateColumn Header="Dead-letter" SortMemberPath="DeadLetter">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:QueueRowViewModel">
+                  <Border Classes.deadletter="{Binding DeadLetterAboveZero}" Padding="6,2" Margin="4,2">
+                    <TextBlock Classes.deadletter="{Binding DeadLetterAboveZero}" Text="{Binding DeadLetterText}" VerticalAlignment="Center" />
+                  </Border>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Scheduled" x:DataType="vm:QueueRowViewModel" Binding="{Binding ScheduledText}" SortMemberPath="Scheduled" />
+            <DataGridTemplateColumn Header="Transfer DLQ" SortMemberPath="TransferDeadLetter">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:QueueRowViewModel">
+                  <Border Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Padding="6,2" Margin="4,2">
+                    <TextBlock Classes.deadletter="{Binding TransferDeadLetterAboveZero}" Text="{Binding TransferDeadLetterText}" VerticalAlignment="Center" />
+                  </Border>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Status" x:DataType="vm:QueueRowViewModel" Binding="{Binding Status}" SortMemberPath="Status" />
+            <DataGridTextColumn Header="Size" x:DataType="vm:QueueRowViewModel" Binding="{Binding SizeText}" SortMemberPath="Size" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </Panel>
+    </DockPanel>
+  </DockPanel>
 </Window>

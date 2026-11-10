@@ -4,8 +4,16 @@
     <AssemblyName>Acornsoft.MessageExplorer.Adapters.ServiceBus</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
     <ProjectReference Include="..\ME.Redaction\ME.Redaction.csproj" />
     <ProjectReference Include="..\ME.Correlation\ME.Correlation.csproj" />
+    <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Acornsoft.MessageExplorer.Adapters.ServiceBus.Tests" />
   </ItemGroup>
 </Project>
