@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Acornsoft.MessageExplorer.Cli</RootNamespace>
+    <AssemblyName>lfme</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Scenarios\ME.Scenarios.csproj" />
+    <ProjectReference Include="..\ME.Adapters.ServiceBus.Azure\ME.Adapters.ServiceBus.Azure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ME.Cli.Tests" />
+  </ItemGroup>
+</Project>

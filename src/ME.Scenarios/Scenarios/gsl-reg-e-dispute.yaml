@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MPL-2.0
+# GSL Reg E dispute demo against the dev queue. Synthetic data only.
+# Gotham Savings and Loan (GSL) is a fictional first customer context. No real people or accounts.
+# Auth is Microsoft Entra (DefaultAzureCredential). There is no connection string and no key here.
+id: gsl-reg-e-dispute
+seed: 63101
+clock: virtual
+max_messages: 30
+max_duration_seconds: 300
+target_namespace: sbns-gsl-dev-eastus-001.servicebus.windows.net
+target_queue: sbq-gsl-dev-001
+auth: entra
+data_class: synthetic
+notice_date_from: 2026-11-02
+steps:
+  - id: standard
+    count: 6
+    template: gsl-reg-e-standard
+  - id: new-account
+    count: 3
+    template: gsl-reg-e-new-account
+  - id: pos-foreign
+    count: 3
+    template: gsl-reg-e-pos-foreign
+  - id: missing-dispute-id
+    count: 1
+    template: gsl-reg-e-malformed-missing-id
+  - id: inconsistent-deadlines
+    count: 1
+    template: gsl-reg-e-malformed-inconsistent
+  - id: bad-notice-date
+    count: 1
+    template: gsl-reg-e-malformed-bad-date
+expected_hops:
+  - disputes/reg-e-clock

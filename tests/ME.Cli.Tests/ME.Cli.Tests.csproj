@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Cli\ME.Cli.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\ME.Scenarios.Tests\FakeRegEBroker.cs" Link="FakeRegEBroker.cs" />
+  </ItemGroup>
+</Project>

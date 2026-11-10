@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Scenarios</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Scenarios</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scenarios\reg-e-dispute.yaml">
+      <LogicalName>reg-e-dispute.yaml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Scenarios\gsl-reg-e-dispute.yaml">
+      <LogicalName>gsl-reg-e-dispute.yaml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Scenarios\account-takeover.yaml">
+      <LogicalName>account-takeover.yaml</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Sandbox\allowed-namespaces.txt">
+      <LogicalName>allowed-namespaces.txt</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Sandbox\allowed-subscriptions.txt">
+      <LogicalName>allowed-subscriptions.txt</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ME.Scenarios.Tests" />
+  </ItemGroup>
+</Project>

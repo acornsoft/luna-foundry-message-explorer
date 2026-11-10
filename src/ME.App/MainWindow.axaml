@@ -1,0 +1,19 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Acornsoft.MessageExplorer.Shell.MainWindow"
+        Width="960"
+        Height="640"
+        Title="Acornsoft Message Explorer">
+  <StackPanel Margin="24" Spacing="12">
+    <TextBlock x:Name="BannerText" FontSize="20" TextWrapping="Wrap" />
+    <TextBlock x:Name="PolicyText" TextWrapping="Wrap" />
+    <TextBlock x:Name="EmptyText" TextWrapping="Wrap" />
+    <StackPanel x:Name="AdminPanel" Spacing="8">
+      <TextBlock Text="Admin" />
+    </StackPanel>
+  </StackPanel>
+</Window>
