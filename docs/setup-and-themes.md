@@ -3,22 +3,24 @@
 ## Light, dark or system
 
 The app follows the operating system's light or dark setting by default. Pick **System**, **Light** or **Dark**
-in the namespace switcher's header (on every page of it) or under **Settings** (the gear in the top bar). Both
-pickers share one choice, and it is remembered on this computer in `ui-settings.json` in the app's config
+under **Settings** (the gear in the top bar), the only place for appearance. The choice is remembered on this computer in `ui-settings.json` in the app's config
 folder (with the kind filter and the recent connections list; no secrets).
 
 Colours come from one palette in `App.axaml` with a Light and a Dark dictionary, used through
 `DynamicResource`, so views never hard-code a colour. Maroon (#4F2001) is the accent in light and gold
 (#FF9900) in dark. Every text colour pair passes 4.5:1 contrast and every icon pair 3:1 in both themes;
 `ThemeAndSetupTests` checks the palette, checks that every resource key the views use exists in both
-themes, and fails if a view hard-codes a colour.
+themes, and fails if a view hard-codes a colour. `HeadlessUxPassTests` also measures small text on the
+rendered window (kind badges, count badges, "top N ready to peek", mono paths and helper text) in both themes:
+each must be at least 10 px and 4.5:1 against what is actually behind it.
 
 ## The namespace switcher
 
 The namespace name at the top left opens one sheet with a left rail, in the style of Azure Data Studio's
 connection dialog: **Connect** (Recent and Saved on the left, connection details on the right), **Accounts**
-and **Saved logins**. It is open at launch, closes when a namespace connects, and Esc or a click outside closes
-it once something is connected. These used to be the Accounts and Saved logins tabs and the Connect panel.
+and **Saved logins**. It is open at launch on the page with the next action (see [Resources](quick-view.md#the-top-bar)),
+closes when a namespace connects, and Esc or a click outside closes it once something is connected. Once
+connected, the namespace name opens a quick switch (Recent, Saved, **Manage accounts…**) instead. These used to be the Accounts and Saved logins tabs and the Connect panel.
 
 ## Accounts (linked accounts)
 
@@ -44,6 +46,7 @@ read-only Azure Resource Manager listing.
 **Recent** lists the last ten connections (saved logins by id, and namespaces opened from Browse by their
 resource id and account). A pasted connection string that you don't save is never kept. **Saved** lists
 saved logins. Beside them, **Connection details** still takes a namespace with an Entra account, or a pasted
-connection string.
+connection string. A disabled **Connect** or **Connect saved** says why on a line under it (for example
+"Enter a namespace to connect.").
 
 Once connected, the switcher closes so Resources gets the whole window. Open it again from the namespace name.

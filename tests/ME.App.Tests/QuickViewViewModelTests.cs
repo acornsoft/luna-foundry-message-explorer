@@ -157,7 +157,7 @@ public class QuickViewViewModelTests
         quick.SelectedNode = quick.Find("billing", "order-events");
 
         var entity = quick.Entity!;
-        Assert.Equal([MessageLane.Active, MessageLane.DeadLetter, MessageLane.TransferDeadLetter, MessageLane.Scheduled], entity.Lanes.Select(l => l.Lane));
+        Assert.Equal([MessageLane.Active, MessageLane.DeadLetter, MessageLane.Scheduled, MessageLane.TransferDeadLetter], entity.Lanes.Select(l => l.Lane));
         var scheduled = entity.LaneOf(MessageLane.Scheduled)!;
         Assert.Equal("6", scheduled.CountText);
         Assert.False(scheduled.IsPeekable);

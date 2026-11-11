@@ -60,7 +60,7 @@ public class HeadlessSlimBarTests
     {
         var (window, _, _) = Open();
 
-        foreach (var gone in new[] { "MainTabs", "BannerText", "PolicyText", "ConnectPinToggle", "ConnectCard", "QuickPeekText", "QuickFooterText", "QuickFindBox", "ShowQueuesToggle", "ShowTopicsToggle", "AccountsThemePicker", "ConnectThemePicker" })
+        foreach (var gone in new[] { "MainTabs", "BannerText", "PolicyText", "ConnectPinToggle", "ConnectCard", "QuickPeekText", "QuickFooterText", "QuickFindBox", "ShowQueuesToggle", "ShowTopicsToggle", "AccountsThemePicker", "ConnectThemePicker", "SwitcherThemePicker" })
             Assert.DoesNotContain(window.GetVisualDescendants().OfType<Control>(), c => c.Name == gone);
 
         var bar = Find<Border>(window, "TopBar");
@@ -73,7 +73,7 @@ public class HeadlessSlimBarTests
 
         // The switcher sheet is up at launch, with its three pages.
         Assert.True(Find<Panel>(window, "SwitcherSheet").IsVisible);
-        Assert.True(Find<Grid>(window, "ConnectPanel").IsEffectivelyVisible);
+        Assert.True(Find<Control>(window, "AccountsPanel").IsEffectivelyVisible); // first run: Add an account is the next step
         Assert.False(Find<Button>(window, "CloseSwitcherButton").IsVisible);
     }
 
@@ -121,7 +121,9 @@ public class HeadlessSlimBarTests
         Assert.False(window.FindControl<Panel>("SwitcherSheet")!.IsVisible);
         Assert.Equal(main.QuickView.NamespaceName, Find<TextBlock>(window, "NamespaceSwitcherText").Text);
 
-        Find<Button>(window, "NamespaceSwitcherButton").Command!.Execute(null);
+        // The switcher button opens the quick switch; "Manage accounts…" opens the full sheet.
+        Assert.NotNull(Find<Button>(window, "NamespaceSwitcherButton").Flyout);
+        main.ManageAccountsCommand.Execute(null);
         Pump(window);
         Assert.True(Find<Panel>(window, "SwitcherSheet").IsVisible);
         Assert.True(Find<Button>(window, "CloseSwitcherButton").IsVisible);
@@ -129,7 +131,7 @@ public class HeadlessSlimBarTests
         Find<RadioButton>(window, "SwitcherAccountsPage").IsChecked = true;
         Pump(window);
         Assert.True(Find<Control>(window, "AccountsPanel").IsEffectivelyVisible);
-        Assert.False(window.FindControl<Grid>("ConnectPanel")!.IsEffectivelyVisible);
+        Assert.False(window.FindControl<ScrollViewer>("ConnectPage")!.IsVisible);
 
         Find<RadioButton>(window, "SwitcherLoginsPage").IsChecked = true;
         Pump(window);
@@ -191,10 +193,14 @@ public class HeadlessSlimBarTests
         Assert.Contains("topic", tag.Classes);
         Assert.Equal("SUB", ((TextBlock)tag.Child!).Text);
 
+        // Under All only topics and subscriptions carry a badge; a queue is told by its icon and the icon's tooltip.
         var tags = VisibleTags(window);
-        Assert.Contains("QUEUE", tags);
+        Assert.DoesNotContain("QUEUE", tags);
         Assert.Contains("TOPIC", tags);
         Assert.Contains("SUB", tags);
+        var queueRow = (TreeViewItem)Find<TreeView>(window, "QuickTree").ContainerFromItem(quick.Find("gsl-disputes-intake")!)!;
+        var queueIcon = queueRow.GetVisualDescendants().OfType<Projektanker.Icons.Avalonia.Icon>().First();
+        Assert.Equal("Queue", ToolTip.GetTip(queueIcon));
     }
 
     [AvaloniaFact]
@@ -211,16 +217,16 @@ public class HeadlessSlimBarTests
         Assert.Equal(ResourceKindFilter.Queues, quick.KindFilter);
         Assert.Null(quick.SelectedNode);
         Assert.False(quick.HasEntity);
-        Assert.Equal(["QUEUE"], VisibleTags(window).Distinct());
+        Assert.Empty(VisibleTags(window)); // the filter already says the kind
 
         Find<RadioButton>(window, "KindTopics").IsChecked = true;
         Pump(window);
         Assert.Equal(ResourceKindFilter.Topics, quick.KindFilter);
-        Assert.Equal(["TOPIC"], VisibleTags(window).Distinct());
+        Assert.Empty(VisibleTags(window));
 
         Find<RadioButton>(window, "KindAll").IsChecked = true;
         Pump(window);
-        Assert.Equal(["QUEUE", "TOPIC"], VisibleTags(window).Distinct().Order(StringComparer.Ordinal));
+        Assert.Equal(["TOPIC"], VisibleTags(window).Distinct().Order(StringComparer.Ordinal));
     }
 
     [AvaloniaFact]

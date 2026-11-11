@@ -25,7 +25,7 @@ public class HeadlessAccountsTests
     // Built at run time so secret scanners never see a key-shaped literal. It decodes to "not-a-real-key".
     private static readonly string FakeKey = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("not-a-real-key"));
 
-    private static (MainWindow Window, MainViewModel Main, FakeAuthenticator Auth, TestVault Vault) Open()
+    private static (MainWindow Window, MainViewModel Main, FakeAuthenticator Auth, TestVault Vault) Open(bool showConnect = true)
     {
         var auth = new FakeAuthenticator();
         var arm = new FakeArmReader();
@@ -42,6 +42,13 @@ public class HeadlessAccountsTests
         var window = new MainWindow { DataContext = main };
         window.Show();
         Dispatcher.UIThread.RunJobs();
+        if (showConnect)
+        {
+            // Most tests here use the Connect page; render it once (first run lands on Accounts).
+            main.OpenSwitcher(SwitcherPage.Connect);
+            Dispatcher.UIThread.RunJobs();
+        }
+
         return (window, main, auth, vault);
     }
 
@@ -60,10 +67,10 @@ public class HeadlessAccountsTests
     [AvaloniaFact]
     public void The_switcher_opens_first_and_its_accounts_page_invites_an_account()
     {
-        var (window, main, _, _) = Open();
+        var (window, main, _, _) = Open(showConnect: false);
         Assert.True(main.IsSwitcherOpen);
-        Assert.True(main.IsConnectPage);
-        main.IsAccountsPage = true;
+        Assert.True(main.IsAccountsPage); // first run lands on Accounts, focus on Add an account
+        Assert.Equal(SwitcherFocus.AddAccount, main.SwitcherFocus);
         Settle(window);
 
         Assert.True(Find<TextBlock>(window, "NoAccountsText").IsVisible);

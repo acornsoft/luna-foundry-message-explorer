@@ -321,7 +321,7 @@
     <Style Selector="Button.switcher">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Padding" Value="10,3" />
       <Setter Property="CornerRadius" Value="6" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -364,6 +364,19 @@
     </Style>
     <Style Selector="ToggleButton.modechip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="BorderBrush" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <!-- Rows in the quick switch popover. -->
+    <Style Selector="Button.quickitem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.quickitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
     </Style>
     <Style Selector=":is(Button).baricon">
       <Setter Property="Background" Value="Transparent" />

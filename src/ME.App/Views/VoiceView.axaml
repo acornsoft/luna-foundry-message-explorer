@@ -28,7 +28,7 @@
           </ComboBox>
         </Grid>
         <CheckBox x:Name="VoiceRedactBodies" Content="Redact message bodies (recommended)" IsChecked="{Binding RedactBodies}" IsEnabled="{Binding !IsRunning}" />
-        <TextBlock Text="xAI's built-in voices only." Opacity="0.7" />
+        <TextBlock Text="xAI's built-in voices only." Classes="muted" FontSize="12" />
         <TextBlock x:Name="VoiceKeyStatus" Text="{Binding KeyStatus}" TextWrapping="Wrap" />
       </StackPanel>
     </Border>
@@ -42,15 +42,16 @@
           <TextBlock Text="Hold to talk" />
         </StackPanel>
       </Button>
-      <TextBlock x:Name="VoiceStatus" Text="{Binding Status}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.8" />
+      <TextBlock x:Name="VoiceStatus" Text="{Binding Status}" VerticalAlignment="Center" TextWrapping="Wrap" Classes="muted" />
     </WrapPanel>
-    <TextBlock DockPanel.Dock="Top" x:Name="VoiceAudioNote" Text="{Binding AudioNote}" IsVisible="{Binding AudioNote, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
-    <TextBlock DockPanel.Dock="Top" x:Name="VoiceCredential" Text="{Binding Credential}" IsVisible="{Binding Credential, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
-
-    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+    <!-- The question box: next to Start session when there is no audio device (typing is the way in), else at the bottom. -->
+    <DockPanel x:Name="VoiceAskRow" DockPanel.Dock="{Binding AskDock}" Margin="0,0,0,8">
       <Button DockPanel.Dock="Right" x:Name="VoiceAsk" Content="Ask" Command="{Binding AskCommand}" Margin="8,0,0,0" IsDefault="True" />
-      <TextBox x:Name="VoiceAskText" Text="{Binding AskText}" Watermark="Or type a question, for example: which queues have dead letters?" IsEnabled="{Binding IsRunning}" />
+      <TextBox x:Name="VoiceAskText" Text="{Binding AskText}" Watermark="Type a question, for example: which queues have dead letters?" IsEnabled="{Binding IsRunning}" />
     </DockPanel>
+    <TextBlock DockPanel.Dock="Top" x:Name="VoiceAudioNote" Text="{Binding AudioNote}" IsVisible="{Binding AudioNote, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Classes="muted" Margin="0,0,0,8" />
+    <TextBlock DockPanel.Dock="Top" x:Name="VoiceCredential" Text="{Binding Credential}" IsVisible="{Binding Credential, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Classes="muted" Margin="0,0,0,8" />
+
 
     <!-- Side panel: the conversation on top, the read-only tool calls under it. -->
     <Grid RowDefinitions="2*,12,*">

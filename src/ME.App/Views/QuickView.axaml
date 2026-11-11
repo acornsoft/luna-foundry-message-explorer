@@ -83,6 +83,10 @@
     <Style Selector="Button.icon">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="6,4" />
+      <Setter Property="MinWidth" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
     </Style>
@@ -125,7 +129,7 @@
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.kind TextBlock">
-      <Setter Property="FontSize" Value="9" />
+      <Setter Property="FontSize" Value="10" />
       <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="LetterSpacing" Value="0.5" />
     </Style>
@@ -139,6 +143,37 @@
     </Style>
     <Style Selector="TreeView.entities TreeViewItem">
       <Setter Property="MinHeight" Value="26" />
+    </Style>
+    <!-- The selected row kept in view while the search or a filter would hide it: dimmed text, never lower contrast. -->
+    <Style Selector="Grid.pinned TextBlock.name">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+      <Setter Property="FontStyle" Value="Italic" />
+    </Style>
+    <Style Selector="Button.link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.link TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+      <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+    <Style Selector="ToggleButton.filterchip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+    <Style Selector="ToggleButton.filterchip:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeDeadSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeDeadLineBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.filterchip:checked TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeDeadTextBrush}" />
     </Style>
   </UserControl.Styles>
 
@@ -177,19 +212,39 @@
                     </RadioButton>
                   </StackPanel>
                 </Border>
-                <Button Grid.Column="1" x:Name="QuickRefreshButton" Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Read counts again" VerticalAlignment="Center">
+                <Button Grid.Column="1" x:Name="QuickRefreshButton" Classes="icon" Command="{Binding RefreshCommand}" VerticalAlignment="Center"
+                        ToolTip.Tip="Refresh the resources list: read every count and receiver again"
+                        AutomationProperties.Name="Refresh the resources list">
                   <i:Icon Value="fa-solid fa-rotate-right" />
                 </Button>
               </Grid>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
+                <ToggleButton x:Name="QuickDeadLettersFilter" Classes="filterchip" IsChecked="{Binding OnlyDeadLetters}"
+                              AutomationProperties.Name="Has dead letters" ToolTip.Tip="Show only resources and receivers with dead-lettered messages">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                    <i:Icon Classes="dead" Value="fa-solid fa-skull-crossbones" FontSize="11" />
+                    <TextBlock Text="Has dead letters" FontSize="12" />
+                  </StackPanel>
+                </ToggleButton>
+              </StackPanel>
               <TextBlock DockPanel.Dock="Top" x:Name="QuickNotConnectedText" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" TextWrapping="Wrap" Classes="dim" />
               <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
               <TextBlock DockPanel.Dock="Top" x:Name="QuickErrorText" Text="{Binding Error}" IsVisible="{Binding HasError}" TextWrapping="Wrap" Foreground="{DynamicResource LfmeErrorBrush}" />
-              <TextBlock DockPanel.Dock="Top" x:Name="QuickSummaryText" Text="{Binding Summary}" IsVisible="{Binding HasSummary}" TextWrapping="Wrap" Classes="dim" FontSize="12" Margin="0,0,0,6" />
+              <!-- No summary line in the normal state: "N of M match ..." only while a filter or the search narrows the list. -->
+              <Grid DockPanel.Dock="Top" x:Name="QuickMatchPanel" ColumnDefinitions="*,Auto" IsVisible="{Binding IsNarrowed}" Margin="0,0,0,6">
+                <TextBlock x:Name="QuickMatchText" Text="{Binding MatchText}" TextWrapping="Wrap" Classes="dim" FontSize="12" VerticalAlignment="Center" />
+                <Button Grid.Column="1" x:Name="QuickClearFilters" Classes="link" Command="{Binding ClearFiltersCommand}"
+                        AutomationProperties.Name="Clear the search and filters" ToolTip.Tip="Clear the search and filters" VerticalAlignment="Center">
+                  <TextBlock Text="Clear" FontSize="12" />
+                </Button>
+              </Grid>
+              <TextBlock DockPanel.Dock="Top" x:Name="QuickPinnedNote" Text="{Binding PinnedNote}" IsVisible="{Binding HasPinnedNote}" TextWrapping="Wrap" Classes="dim" FontSize="12" FontStyle="Italic" Margin="0,0,0,6" />
               <Border DockPanel.Dock="Top" x:Name="QuickNoticePanel" Classes="callout warn" IsVisible="{Binding HasNotice}" Margin="0,0,0,6">
                 <TextBlock x:Name="QuickNoticeText" Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12" />
               </Border>
               <TextBlock DockPanel.Dock="Top" x:Name="QuickEmptyText" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" TextWrapping="Wrap" Classes="dim" />
-              <TreeView x:Name="QuickTree" Classes="entities" ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedNode}">
+              <TreeView x:Name="QuickTree" Classes="entities" ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedNode}"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <TreeView.Styles>
                   <Style Selector="TreeViewItem" x:DataType="vm:QuickTreeNode">
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -198,18 +253,19 @@
                 </TreeView.Styles>
                 <TreeView.ItemTemplate>
                   <TreeDataTemplate x:DataType="vm:QuickTreeNode" ItemsSource="{Binding Children}">
-                    <Grid Classes="il" ColumnDefinitions="Auto,*,Auto">
+                    <Grid Classes="il" ColumnDefinitions="Auto,*,Auto" Classes.pinned="{Binding IsPinned}">
                       <i:Icon Value="{Binding Icon}" FontSize="12" Margin="0,0,6,0" IsVisible="{Binding !IsPlaceholder}"
-                              Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" />
-                      <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                              Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}"
+                              ToolTip.Tip="{Binding KindName}" AutomationProperties.Name="{Binding KindName}" />
+                      <TextBlock Grid.Column="1" Classes="name" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                  Classes.dim="{Binding IsPlaceholder}" FontSize="13" />
                       <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
-                        <Border Classes="kind" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" IsVisible="{Binding HasKindTag}"
-                                Margin="0,0,4,0"><TextBlock Text="{Binding KindTag}" /></Border>
-                        <Border Classes="badge" IsVisible="{Binding HasPrimaryBadge}"><TextBlock Text="{Binding PrimaryBadge}" /></Border>
-                        <Border Classes="badge dead" IsVisible="{Binding HasDeadLetterBadge}"><TextBlock Text="{Binding DeadLetterBadge}" /></Border>
-                        <Border Classes="badge scheduled" IsVisible="{Binding HasScheduledBadge}"><TextBlock Text="{Binding ScheduledBadge}" /></Border>
-                        <Border Classes="badge transfer" IsVisible="{Binding HasTransferBadge}"><TextBlock Text="{Binding TransferBadge}" /></Border>
+                        <Border Classes="kind" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" IsVisible="{Binding ShowKindTag}"
+                                Margin="0,0,4,0" AutomationProperties.Name="{Binding KindName}"><TextBlock Text="{Binding KindTag}" /></Border>
+                        <Border Classes="badge" IsVisible="{Binding HasPrimaryBadge}" AutomationProperties.Name="{Binding PrimaryBadgeName}" ToolTip.Tip="{Binding PrimaryBadgeName}"><TextBlock Text="{Binding PrimaryBadge}" /></Border>
+                        <Border Classes="badge dead" IsVisible="{Binding HasDeadLetterBadge}" AutomationProperties.Name="{Binding DeadLetterName}" ToolTip.Tip="{Binding DeadLetterName}"><TextBlock Text="{Binding DeadLetterBadge}" /></Border>
+                        <Border Classes="badge scheduled" IsVisible="{Binding HasScheduledBadge}" AutomationProperties.Name="{Binding ScheduledName}" ToolTip.Tip="{Binding ScheduledName}"><TextBlock Text="{Binding ScheduledBadge}" /></Border>
+                        <Border Classes="badge transfer" IsVisible="{Binding HasTransferBadge}" AutomationProperties.Name="{Binding TransferName}" ToolTip.Tip="{Binding TransferName}"><TextBlock Text="{Binding TransferBadge}" /></Border>
                       </StackPanel>
                     </Grid>
                   </TreeDataTemplate>
@@ -247,9 +303,13 @@
                                   Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
                           <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
                           <i:Icon Grid.Column="2" Value="fa-solid fa-chevron-down" FontSize="10" Foreground="{DynamicResource LfmeMutedTextBrush}" />
-                          <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path}" Classes="dim mono" FontSize="10" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path}" Classes="dim mono" FontSize="11" TextTrimming="CharacterEllipsis" />
                         </Grid>
-                        <TextBlock Text="{Binding CountText}" FontSize="28" FontWeight="Bold" Classes.reason="{Binding Alarm}" />
+                        <Panel AutomationProperties.Name="{Binding CountName}">
+                          <TextBlock Text="{Binding CountText}" FontSize="28" FontWeight="Bold" Classes.reason="{Binding Alarm}" IsVisible="{Binding ShowsCount}" />
+                          <!-- Zero counts are not shown: the card says Empty. -->
+                          <TextBlock Text="Empty" Classes="dim" FontSize="20" FontWeight="SemiBold" Margin="0,6,0,5" IsVisible="{Binding IsEmptyLane}" />
+                        </Panel>
                         <TextBlock Text="{Binding CardFooter}" Classes="dim" FontSize="11" />
                       </StackPanel>
                     </Button>
@@ -268,7 +328,8 @@
                                   Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
                           <StackPanel>
                             <Grid Classes="il" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="8,6">
-                              <Button Classes="icon" Command="{Binding ToggleCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Open or close" VerticalAlignment="Center">
+                              <Button Classes="icon" Command="{Binding ToggleCommand}" IsVisible="{Binding IsPeekable}" VerticalAlignment="Center"
+                                      ToolTip.Tip="{Binding Title, StringFormat='Open or close {0}'}" AutomationProperties.Name="{Binding Title, StringFormat='Open or close {0}'}">
                                 <Panel>
                                   <i:Icon Value="fa-solid fa-chevron-right" FontSize="11" IsVisible="{Binding !IsExpanded}" />
                                   <i:Icon Value="fa-solid fa-chevron-down" FontSize="11" IsVisible="{Binding IsExpanded}" />
@@ -278,18 +339,18 @@
                                       Classes.active="{Binding IsActiveLane}" Classes.dead="{Binding IsDeadLane}"
                                       Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
                               <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                              <Border Grid.Column="3" Classes="badge" Classes.dead="{Binding Alarm}" Margin="8,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding CountText}" />
-                              </Border>
-                              <StackPanel Grid.Column="4" VerticalAlignment="Center">
+                              <!-- No count chip here: the card above already shows the count (one number, once). -->
+                              <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="10,0,0,0">
                                 <TextBlock Text="{Binding Path}" Classes="dim mono" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNote}" />
                                 <TextBlock Text="{Binding Note}" Classes="dim" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
                               </StackPanel>
                               <TextBlock Grid.Column="5" Text="{Binding Status}" Classes="dim" FontSize="12" VerticalAlignment="Center" Margin="8,0" />
-                              <Button Grid.Column="6" Classes="icon" VerticalAlignment="Center" Command="{Binding RefreshCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Peek again from the first message">
+                              <Button Grid.Column="6" Classes="icon" VerticalAlignment="Center" Command="{Binding RefreshCommand}" IsVisible="{Binding IsPeekable}"
+                                      ToolTip.Tip="{Binding Title, StringFormat='Peek {0} again from the first message'}" AutomationProperties.Name="{Binding Title, StringFormat='Refresh {0}'}">
                                 <i:Icon Value="fa-solid fa-rotate-right" FontSize="12" />
                               </Button>
-                              <Button Grid.Column="7" Classes="icon" VerticalAlignment="Center" Command="{Binding JumpCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Open this section">
+                              <Button Grid.Column="7" Classes="icon" VerticalAlignment="Center" Command="{Binding JumpCommand}" IsVisible="{Binding IsPeekable}"
+                                      ToolTip.Tip="{Binding Title, StringFormat='Expand {0} and jump to it'}" AutomationProperties.Name="{Binding Title, StringFormat='Expand {0}'}">
                                 <i:Icon Value="fa-solid fa-up-right-and-down-left-from-center" FontSize="12" />
                               </Button>
                             </Grid>
@@ -323,8 +384,8 @@
                                         <TextBlock Grid.Column="1" Text="{Binding Message.Reason}" Classes.reason="{Binding Message.HasReason}" Classes.dim="{Binding !Message.HasReason}" TextTrimming="CharacterEllipsis" />
                                       </Grid>
                                       <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Classes="icon" Command="{Binding OpenCommand}" ToolTip.Tip="Open in the detail drawer"><i:Icon Value="fa-solid fa-eye" FontSize="12" /></Button>
-                                        <Button Classes="icon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
+                                        <Button Classes="icon" Command="{Binding OpenCommand}" ToolTip.Tip="Open in the detail drawer" AutomationProperties.Name="Open in the detail drawer"><i:Icon Value="fa-solid fa-eye" FontSize="12" /></Button>
+                                        <Button Classes="icon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text" AutomationProperties.Name="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
                                       </StackPanel>
                                     </Grid>
                                   </DataTemplate>
@@ -363,8 +424,8 @@
                     <TextBlock x:Name="QuickDrawerTitle" Text="{Binding Message.SequenceText, StringFormat='#{0}'}" FontWeight="Bold" />
                     <TextBlock Text="{Binding Message.MessageId}" Classes="mono dim" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                  <Button Grid.Column="1" Classes="icon" VerticalAlignment="Center" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
-                  <Button Grid.Column="2" Classes="icon" VerticalAlignment="Center" x:Name="QuickDrawerClose" Click="OnCloseDrawer" ToolTip.Tip="Close"><i:Icon Value="fa-solid fa-xmark" FontSize="13" /></Button>
+                  <Button Grid.Column="1" Classes="icon" VerticalAlignment="Center" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text" AutomationProperties.Name="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
+                  <Button Grid.Column="2" Classes="icon" VerticalAlignment="Center" x:Name="QuickDrawerClose" Click="OnCloseDrawer" ToolTip.Tip="Close the detail drawer" AutomationProperties.Name="Close the detail drawer"><i:Icon Value="fa-solid fa-xmark" FontSize="13" /></Button>
                 </Grid>
                 <Border Background="{DynamicResource LfmeDeadSoftBrush}" BorderBrush="{DynamicResource LfmeDeadLineBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" IsVisible="{Binding Message.HasReason}">
                   <StackPanel Spacing="4">

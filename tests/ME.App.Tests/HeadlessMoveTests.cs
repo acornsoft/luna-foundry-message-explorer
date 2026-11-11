@@ -47,7 +47,8 @@ public class HeadlessMoveTests
 
         Assert.True(main.MoveModeOn);
         Assert.True(window.FindControl<Border>("MoveModeBanner")!.IsEffectivelyVisible);
-        Assert.Equal(MoveModeSwitch.Banner, window.FindControl<TextBlock>("MoveModeBannerText")!.Text);
+        Assert.Equal(main.MoveBannerText, window.FindControl<TextBlock>("MoveModeBannerText")!.Text);
+        Assert.StartsWith("Move mode is on for ", main.MoveBannerText, StringComparison.Ordinal);
         Assert.Equal("Move", Find<TextBlock>(window, "ModeChipText").Text);
     }
 

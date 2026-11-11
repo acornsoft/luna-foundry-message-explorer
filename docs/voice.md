@@ -47,6 +47,9 @@ resubmit, purge or delete anything.
 
 ## Audio devices
 
+With no audio device (as in builds without one set up), typing is the way in: the question box moves up next
+to **Start session** instead of sitting at the bottom of the panel.
+
 - **Library.** PortAudio (MIT-style) through PortAudioSharp2 (Apache-2.0), which ships prebuilt PortAudio for
   win-x64, linux-x64, linux-arm64, osx-x64 and osx-arm64. Notices are in `THIRD-PARTY-NOTICES.md`.
 - **Format.** Mono, 16-bit, 24 kHz. If a device won't open at 24 kHz, it opens at its own default rate and the

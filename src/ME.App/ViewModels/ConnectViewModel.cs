@@ -242,11 +242,22 @@ public sealed class ConnectViewModel : ViewModelBase
         set
         {
             if (Set(ref _selectedSaved, value))
+            {
                 ConnectSavedCommand?.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(ConnectSavedBlockedReason));
+                OnPropertyChanged(nameof(HasConnectSavedBlockedReason));
+            }
         }
     }
 
     public AsyncCommand ConnectSavedCommand { get; }
+
+    /// <summary>Why "Connect saved" is off, shown under it; null when it can run.</summary>
+    public string? ConnectSavedBlockedReason => IsConnected
+        ? "Already connected. Disconnect first."
+        : SelectedSaved is null ? "Pick a saved login first." : null;
+
+    public bool HasConnectSavedBlockedReason => ConnectSavedBlockedReason is not null;
 
     public string? ValidationMessage
     {
@@ -281,6 +292,16 @@ public sealed class ConnectViewModel : ViewModelBase
         && (UseConnectionString ? !string.IsNullOrWhiteSpace(ConnectionString) : !string.IsNullOrWhiteSpace(NamespaceText));
 
     public AsyncCommand ConnectCommand { get; }
+
+    /// <summary>Why Connect is off, shown as a line under it; null when it can run.</summary>
+    public string? ConnectBlockedReason =>
+        CanConnect ? null
+        : IsConnected ? "Already connected. Disconnect first."
+        : SelectedProvider is not { IsEnabled: true } ? "This provider is planned and can't connect yet."
+        : UseConnectionString ? "Paste a connection string to connect."
+        : "Enter a namespace to connect.";
+
+    public bool HasConnectBlockedReason => ConnectBlockedReason is not null;
 
     /// <summary>The connection behind the open inventory, in memory only. Move mode opens its own client from it.</summary>
     public BrokerConnection? LastConnection { get; private set; }
@@ -542,6 +563,10 @@ public sealed class ConnectViewModel : ViewModelBase
     private void Refresh()
     {
         OnPropertyChanged(nameof(CanConnect));
+        OnPropertyChanged(nameof(ConnectBlockedReason));
+        OnPropertyChanged(nameof(HasConnectBlockedReason));
+        OnPropertyChanged(nameof(ConnectSavedBlockedReason));
+        OnPropertyChanged(nameof(HasConnectSavedBlockedReason));
         ConnectCommand?.RaiseCanExecuteChanged();
         DisconnectCommand?.RaiseCanExecuteChanged();
         ConnectSavedCommand?.RaiseCanExecuteChanged();

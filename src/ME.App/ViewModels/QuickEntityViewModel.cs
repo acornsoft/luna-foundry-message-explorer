@@ -64,11 +64,12 @@ public sealed class QuickEntityViewModel : ViewModelBase
                 [
                     Lane(MessageLane.Active, counts.Active, target.Path, session, Unavailable(session, unavailable)),
                     Lane(MessageLane.DeadLetter, counts.DeadLetter, target.PathOf(PeekSource.DeadLetter), session, Unavailable(session, unavailable)),
-                    Lane(MessageLane.TransferDeadLetter, counts.TransferDeadLetter, target.PathOf(PeekSource.TransferDeadLetter), session, Unavailable(session, unavailable)),
-                    // A subscription has no Scheduled count of its own, and a subscription peek doesn't return
-                    // scheduled messages: they wait on the topic until they're due.
+                    // One order for every resource: Active, Dead-letter, Scheduled, Transfer DL. A subscription has
+                    // no Scheduled count of its own, and its peek doesn't return scheduled messages: they wait on the
+                    // topic until they're due.
                     Lane(MessageLane.Scheduled, topic?.Counts.Scheduled, topicName, null,
                         $"On topic {topicName}: count only. A subscription peek doesn't return scheduled messages; they wait on the topic until they're due."),
+                    Lane(MessageLane.TransferDeadLetter, counts.TransferDeadLetter, target.PathOf(PeekSource.TransferDeadLetter), session, Unavailable(session, unavailable)),
                 ];
                 break;
             }

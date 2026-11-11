@@ -162,13 +162,15 @@ public sealed class ResourcesViewTests
     }
 
     [Fact]
-    public async Task The_summary_counts_resources_without_repeating_the_read_only_note()
+    public async Task There_is_no_summary_line_until_the_list_is_narrowed()
     {
         var (quick, _, _) = Open();
         await quick.EnsureLoadedAsync();
 
-        Assert.Equal("3 resources: 2 queues (1 with dead letters), 1 topic", quick.Summary);
-        Assert.DoesNotContain("Read-only", quick.Summary, StringComparison.Ordinal);
+        Assert.False(quick.IsNarrowed);
+        Assert.Equal(string.Empty, quick.MatchText);
+        quick.KindFilter = ResourceKindFilter.Queues;
+        Assert.Equal("2 of 3 match queues", quick.MatchText);
     }
 
     [Fact]

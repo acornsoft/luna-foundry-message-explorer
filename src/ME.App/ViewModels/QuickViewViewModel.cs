@@ -31,6 +31,8 @@ public sealed class QuickTreeNode : ViewModelBase
     private readonly Func<QuickTreeNode, Task>? _expand;
     private bool _isExpanded;
     private bool _isVisible = true;
+    private bool _isPinned;
+    private bool _showKindTag;
 
     public QuickTreeNode(Resource resource, Func<QuickTreeNode, Task>? expand = null)
         : this(QuickNodeKind.Resource, resource?.Name ?? throw new ArgumentNullException(nameof(resource)))
@@ -96,6 +98,30 @@ public sealed class QuickTreeNode : ViewModelBase
 
     public bool HasKindTag => KindTag is not null;
 
+    /// <summary>
+    /// Whether the row shows its kind badge. Under All only topics and their receivers carry one (a queue is told by
+    /// its icon and the icon's tooltip); under the Queues or Topics filter the kind is already known, so none do.
+    /// </summary>
+    public bool ShowKindTag
+    {
+        get => _showKindTag;
+        internal set => Set(ref _showKindTag, value && HasKindTag);
+    }
+
+    /// <summary>The icon's tooltip and spoken name: Queue, Topic or Subscription.</summary>
+    public string? KindName => Kind switch
+    {
+        QuickNodeKind.Resource => Resource!.Kind switch
+        {
+            ResourceKind.Queue => "Queue",
+            ResourceKind.Topic => "Topic",
+            ResourceKind.EventHub => "Event hub",
+            _ => "Kafka topic",
+        },
+        QuickNodeKind.Receiver => Receiver!.Kind == ReceiverKind.ConsumerGroup ? "Consumer group" : "Subscription",
+        _ => null,
+    };
+
     /// <summary>Queue colour (teal) for queues; topic colour (purple) for topics and their receivers.</summary>
     public bool IsQueueFamily => Resource is { HasImplicitReceiver: true };
 
@@ -104,16 +130,30 @@ public sealed class QuickTreeNode : ViewModelBase
     /// <summary>The resource a row belongs to: itself, or a receiver's topic.</summary>
     public string? ResourceName => Resource?.Name ?? Receiver?.ResourceName;
 
-    /// <summary>The first badge: active count (or a topic's receiver count).</summary>
+    /// <summary>The first badge: active count (or a topic's receiver count). Zero counts are not shown.</summary>
     public string? PrimaryBadge => Resource is { HasImplicitReceiver: false } topic
-        ? topic.ReceiverCount?.ToString(CultureInfo.InvariantCulture)
-        : Snapshot is { } entity ? Short(entity.Counts.Active) : null;
+        ? topic.ReceiverCount is > 0 and var receivers ? receivers.ToString(CultureInfo.InvariantCulture) : null
+        : Snapshot?.Counts.Active is > 0 and var active ? Short(active) : null;
 
     public bool HasPrimaryBadge => PrimaryBadge is not null;
+
+    /// <summary>What a screen reader says for the first badge.</summary>
+    public string? PrimaryBadgeName => PrimaryBadge is null ? null
+        : Resource is { HasImplicitReceiver: false } topic ? $"{topic.ReceiverCount} receivers"
+        : $"{Snapshot!.Counts.Active} active";
 
     public string? DeadLetterBadge => Snapshot?.Counts.DeadLetter is > 0 and var dead ? Short(dead) : null;
 
     public bool HasDeadLetterBadge => DeadLetterBadge is not null;
+
+    /// <summary>The red badge's spoken name, e.g. "3 dead-lettered".</summary>
+    public string? DeadLetterName => Snapshot?.Counts.DeadLetter is > 0 and var dead
+        ? string.Create(CultureInfo.InvariantCulture, $"{dead} dead-lettered")
+        : null;
+
+    public string? ScheduledName => Snapshot?.Counts.Scheduled is > 0 and var due ? string.Create(CultureInfo.InvariantCulture, $"{due} scheduled") : null;
+
+    public string? TransferName => Snapshot?.Counts.TransferDeadLetter is > 0 and var t ? string.Create(CultureInfo.InvariantCulture, $"{t} transfer dead-lettered") : null;
 
     public string? ScheduledBadge => Snapshot is { Kind: not EntityKind.Topic } && Snapshot.Counts.Scheduled is > 0 and var due ? Short(due) : null;
 
@@ -155,6 +195,13 @@ public sealed class QuickTreeNode : ViewModelBase
     {
         get => _isVisible;
         set => Set(ref _isVisible, value);
+    }
+
+    /// <summary>The selected row, kept in view (dimmed) although the search or a filter would hide it.</summary>
+    public bool IsPinned
+    {
+        get => _isPinned;
+        internal set => Set(ref _isPinned, value);
     }
 
     internal static string? Short(long? value) => value switch
@@ -199,6 +246,9 @@ public sealed class QuickViewViewModel : ViewModelBase
     private int _deadLetterQueues;
     private bool _loaded;
     private string? _notice;
+    private bool _onlyDeadLetters;
+    private int _shownCount;
+    private string? _pinnedNote;
 
     /// <param name="settings">Remembers the kind filter between launches; null keeps it for this session.</param>
     public QuickViewViewModel(IUiScheduler? scheduler = null, RedactionPipeline? redaction = null, Settings.IUiSettingsStore? settings = null)
@@ -219,6 +269,7 @@ public sealed class QuickViewViewModel : ViewModelBase
         _scheduler = scheduler ?? InlineUiScheduler.Instance;
         _redaction = redaction ?? QuickViewRedactionProfile.ForThisSession();
         RefreshCommand = new AsyncCommand(RefreshAsync, () => _inventory is not null);
+        ClearFiltersCommand = new RelayCommand(ClearFilters);
     }
 
     /// <summary>The Resources list: one row per queue or topic, sorted by name.</summary>
@@ -298,16 +349,68 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public string EmptyText => HasNotice ? "No resources to show with this connection." : "This namespace has no queues or topics.";
 
-    /// <summary>One line over the list, e.g. "6 resources: 4 queues (2 with dead letters), 2 topics".</summary>
-    public string Summary => !_loaded || _error is not null
-        ? string.Empty
-        : string.Create(CultureInfo.InvariantCulture,
-            $"{Plural(AllCount, "resource")}: {Plural(_queueCount, "queue")}{(_deadLetterQueues > 0 ? $" ({_deadLetterQueues} with dead letters)" : string.Empty)}, {Plural(_topicCount, "topic")}");
+    /// <summary>Only resources with dead letters (or receivers with them). Narrows like the search does.</summary>
+    public bool OnlyDeadLetters
+    {
+        get => _onlyDeadLetters;
+        set
+        {
+            if (!Set(ref _onlyDeadLetters, value))
+                return;
+            ApplyFilter();
+            if (value)
+                SearchLoad = LoadReceiversForSearchAsync();
+        }
+    }
 
-    public bool HasSummary => Summary.Length > 0;
+    /// <summary>True while the kind filter, the dead-letters filter or the search hides part of the list.</summary>
+    public bool IsNarrowed => _loaded && (_kindFilter != ResourceKindFilter.All || _onlyDeadLetters || _filter.Trim().Length > 0);
 
-    private static string Plural(int count, string noun) =>
-        string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? string.Empty : "s")}");
+    /// <summary>"N of M match 'x'" while the list is narrowed; empty otherwise (there is no summary line).</summary>
+    public string MatchText
+    {
+        get
+        {
+            if (!IsNarrowed)
+                return string.Empty;
+            var what = new List<string>();
+            if (_kindFilter == ResourceKindFilter.Queues)
+                what.Add("queues");
+            else if (_kindFilter == ResourceKindFilter.Topics)
+                what.Add("topics");
+            if (_onlyDeadLetters)
+                what.Add("has dead letters");
+            if (_filter.Trim() is { Length: > 0 } text)
+                what.Add($"'{text}'");
+            return string.Create(CultureInfo.InvariantCulture, $"{_shownCount} of {AllCount} match {string.Join(", ", what)}");
+        }
+    }
+
+    /// <summary>Clears the search, the kind filter and the dead-letters filter.</summary>
+    public RelayCommand ClearFiltersCommand { get; }
+
+    /// <summary>Says why a row that doesn't match is still shown: it is the selection.</summary>
+    public string? PinnedNote
+    {
+        get => _pinnedNote;
+        private set
+        {
+            if (Set(ref _pinnedNote, value))
+                OnPropertyChanged(nameof(HasPinnedNote));
+        }
+    }
+
+    public bool HasPinnedNote => _pinnedNote is not null;
+
+    private void ClearFilters()
+    {
+        _filter = string.Empty;
+        OnPropertyChanged(nameof(Filter));
+        _onlyDeadLetters = false;
+        OnPropertyChanged(nameof(OnlyDeadLetters));
+        KindFilter = ResourceKindFilter.All;
+        ApplyFilter();
+    }
 
     public int AllCount => _queueCount + _topicCount;
 
@@ -405,6 +508,7 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public string PeekText => CanPeek ? "Read-only · peek" : "Read-only · counts only";
 
+
     public QuickTreeNode? SelectedNode
     {
         get => _selectedNode;
@@ -413,6 +517,7 @@ public sealed class QuickViewViewModel : ViewModelBase
             if (!Set(ref _selectedNode, value))
                 return;
             Entity = value?.Snapshot is { } snapshot ? Build(snapshot) : null;
+            ApplyFilter();
         }
     }
 
@@ -538,8 +643,13 @@ public sealed class QuickViewViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(EmptyText));
-        OnPropertyChanged(nameof(Summary));
-        OnPropertyChanged(nameof(HasSummary));
+        Narrowed();
+    }
+
+    private void Narrowed()
+    {
+        OnPropertyChanged(nameof(IsNarrowed));
+        OnPropertyChanged(nameof(MatchText));
     }
 
     private async Task LoadReceiversAsync(QuickTreeNode topic)
@@ -600,28 +710,67 @@ public sealed class QuickViewViewModel : ViewModelBase
         return _browser;
     }
 
-    /// <summary>The kind filter and the search together. A topic stays visible when one of its receivers matches, and opens.</summary>
+    /// <summary>
+    /// The kind filter, the dead-letters filter and the search together. A topic stays visible when one of its
+    /// receivers matches, and opens. A selected row the search or the dead-letters filter would hide stays, pinned.
+    /// </summary>
     private void ApplyFilter()
     {
         var text = _filter.Trim();
+        var searching = text.Length > 0;
+        bool Named(QuickTreeNode n) => n.Name.Contains(text, StringComparison.OrdinalIgnoreCase);
+        bool Dead(QuickTreeNode n) => n.Snapshot?.Counts.HasDeadLetters == true;
+        var shown = 0;
         foreach (var resource in Tree)
         {
             var kindShown = resource.Resource is not { } r || r.Matches(_kindFilter);
-            var selfMatch = text.Length == 0 || resource.Name.Contains(text, StringComparison.OrdinalIgnoreCase);
+            var selfText = !searching || Named(resource);
             var anyReceiver = false;
             foreach (var child in resource.Children)
             {
-                var childMatch = text.Length == 0
-                    ? true
-                    : child.IsEntity && (child.Name.Contains(text, StringComparison.OrdinalIgnoreCase) || selfMatch);
-                child.IsVisible = kindShown && childMatch;
-                anyReceiver |= child.IsEntity && kindShown && text.Length > 0 && child.Name.Contains(text, StringComparison.OrdinalIgnoreCase);
+                var childText = !searching || (child.IsEntity && (Named(child) || selfText));
+                var childDead = !_onlyDeadLetters || (child.IsEntity && Dead(child));
+                child.IsVisible = kindShown && childText && childDead;
+                child.IsPinned = false;
+                child.ShowKindTag = _kindFilter == ResourceKindFilter.All && child.IsTopicFamily;
+
+                // A receiver that matches on its own (by name, or by dead letters) keeps its topic in the list.
+                var ownMatch = child.IsEntity && (searching || _onlyDeadLetters)
+                    && (!searching || Named(child)) && (!_onlyDeadLetters || Dead(child));
+                anyReceiver |= kindShown && ownMatch;
             }
 
-            resource.IsVisible = kindShown && (selfMatch || anyReceiver);
+            var selfDead = !_onlyDeadLetters || Dead(resource);
+            resource.IsVisible = kindShown && ((selfText && selfDead) || anyReceiver);
+            resource.IsPinned = false;
+            resource.ShowKindTag = _kindFilter == ResourceKindFilter.All && resource.IsTopicFamily;
+            if (resource.IsVisible)
+                shown++;
             if (anyReceiver && !resource.IsExpanded)
                 resource.IsExpanded = true;
         }
+
+        _shownCount = shown;
+        PinnedNote = null;
+        if (_selectedNode is { } selected && !selected.IsVisible && Shows(selected))
+        {
+            selected.IsVisible = true;
+            selected.IsPinned = true;
+            if (selected.Receiver is not null && Tree.FirstOrDefault(t => t.Children.Contains(selected)) is { } parent)
+            {
+                if (!parent.IsVisible)
+                {
+                    parent.IsVisible = true;
+                    parent.IsPinned = true;
+                }
+
+                parent.IsExpanded = true;
+            }
+
+            PinnedNote = $"{selected.Name} stays in the list because it is selected; it doesn't match.";
+        }
+
+        Narrowed();
     }
 
     private static IEnumerable<QuickTreeNode> Walk(IEnumerable<QuickTreeNode> nodes)

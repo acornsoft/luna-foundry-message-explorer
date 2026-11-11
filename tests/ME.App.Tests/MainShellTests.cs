@@ -48,7 +48,7 @@ public sealed class MainShellTests
         var main = new MainViewModel(new ProviderCatalog([provider], ProviderCatalog.PlannedProviders));
 
         Assert.True(main.IsSwitcherOpen);
-        Assert.True(main.IsConnectPage);
+        Assert.True(main.IsAccountsPage); // first run: the next step is adding an account
         Assert.Equal("Choose a namespace", main.NamespaceLabel);
         Assert.False(main.CloseTopmost()); // Esc can't dismiss it before there is anything behind it.
         Assert.True(main.IsSwitcherOpen);
@@ -78,8 +78,7 @@ public sealed class MainShellTests
         Assert.True(main.IsReadOnly);
         Assert.Equal("Read-only", main.ModeText);
         Assert.Equal(main.Shell.ReadOnlyTip, main.ModeTip);
-        Assert.Contains("never receives", main.ModeTip, StringComparison.Ordinal);
-        Assert.Contains("off every time the app starts", main.ModeTip, StringComparison.Ordinal);
+        Assert.Equal("Read-only: peeks, never changes messages", main.ModeTip);
 
         var changed = new List<string?>();
         main.PropertyChanged += (_, e) => changed.Add(e.PropertyName);

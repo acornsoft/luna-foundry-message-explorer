@@ -110,6 +110,14 @@ public sealed class VoiceViewModel : ViewModelBase
 
     public string? AudioNote => _audio.UnavailableReason;
 
+    /// <summary>With no audio device, typing is the way in: the question box moves up next to Start session.</summary>
+    public bool AskNearStart => AudioNote is not null;
+
+    public bool AskBelow => !AskNearStart;
+
+    /// <summary>Where the question row docks in the panel.</summary>
+    public Avalonia.Controls.Dock AskDock => AskNearStart ? Avalonia.Controls.Dock.Top : Avalonia.Controls.Dock.Bottom;
+
     public bool CanTalk => IsRunning && _audio.UnavailableReason is null;
 
     /// <summary>How the voice connection was authenticated (shown under the status).</summary>
@@ -238,6 +246,9 @@ public sealed class VoiceViewModel : ViewModelBase
             IsTalking = false;
             Status = reason;
             OnPropertyChanged(nameof(AudioNote));
+            OnPropertyChanged(nameof(AskNearStart));
+            OnPropertyChanged(nameof(AskBelow));
+            OnPropertyChanged(nameof(AskDock));
             OnPropertyChanged(nameof(CanTalk));
             return;
         }

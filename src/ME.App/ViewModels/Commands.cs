@@ -71,3 +71,47 @@ public sealed class RelayCommand : ICommand
 
     public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
+
+/// <summary>An async command that takes the clicked item as its parameter (for rows in a list).</summary>
+public sealed class AsyncCommand<T> : ICommand
+    where T : class
+{
+    private readonly Func<T, Task> _execute;
+    private readonly Func<T, bool> _canExecute;
+    private bool _running;
+
+    public AsyncCommand(Func<T, Task> execute, Func<T, bool>? canExecute = null)
+    {
+        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+        _canExecute = canExecute ?? (_ => true);
+    }
+
+    public event EventHandler? CanExecuteChanged;
+
+    public bool CanExecute(object? parameter) => !_running && parameter is T item && _canExecute(item);
+
+    public async void Execute(object? parameter)
+    {
+        if (parameter is T item)
+            await ExecuteAsync(item).ConfigureAwait(true);
+    }
+
+    public async Task ExecuteAsync(T item)
+    {
+        if (_running || !_canExecute(item))
+            return;
+        _running = true;
+        RaiseCanExecuteChanged();
+        try
+        {
+            await _execute(item).ConfigureAwait(true);
+        }
+        finally
+        {
+            _running = false;
+            RaiseCanExecuteChanged();
+        }
+    }
+
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}

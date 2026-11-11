@@ -24,24 +24,76 @@
     <!-- The one slim bar: namespace switcher | search | mode, voice, settings. -->
     <Border DockPanel.Dock="Top" x:Name="TopBar" Classes="topbar">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Button x:Name="NamespaceSwitcherButton" Classes="switcher" Command="{Binding OpenSwitcherCommand}" ToolTip.Tip="{Binding NamespaceDetail}"
-                AutomationProperties.Name="Namespace switcher">
-          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
-            <i:Icon Classes="accent" Value="fa-solid fa-layer-group" FontSize="14" />
-            <TextBlock x:Name="NamespaceSwitcherText" Text="{Binding NamespaceLabel}" FontWeight="SemiBold" MaxWidth="280" TextTrimming="CharacterEllipsis" />
-            <i:Icon Classes="muted" Value="fa-solid fa-chevron-down" FontSize="10" />
+        <!-- The namespace switcher: name over account · cloud. Opens a quick switch (Recent, Saved, Manage accounts…). -->
+        <Button x:Name="NamespaceSwitcherButton" Classes="switcher" ToolTip.Tip="{Binding NamespaceDetail}"
+                AutomationProperties.Name="{Binding NamespaceLabel, StringFormat='Namespace switcher: {0}'}"
+                AutomationProperties.HelpText="{Binding NamespaceIdentity}">
+          <StackPanel VerticalAlignment="Center">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Classes="accent" Value="fa-solid fa-layer-group" FontSize="14" />
+              <TextBlock x:Name="NamespaceSwitcherText" Text="{Binding NamespaceLabel}" FontWeight="SemiBold" MaxWidth="280" TextTrimming="CharacterEllipsis" />
+              <i:Icon Classes="muted" Value="fa-solid fa-chevron-down" FontSize="10" />
+            </StackPanel>
+            <!-- Secondary label: account · cloud. -->
+            <TextBlock x:Name="NamespaceIdentityText" Classes="muted" Text="{Binding NamespaceIdentity}" IsVisible="{Binding HasNamespaceIdentity}"
+                       FontSize="11" MaxWidth="300" Margin="22,0,0,0" TextTrimming="CharacterEllipsis" />
           </StackPanel>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <StackPanel x:Name="QuickSwitchPanel" Spacing="6" Width="320">
+                <TextBlock Text="Recent" FontWeight="SemiBold" IsVisible="{Binding Sources.HasRecent}" />
+                <ItemsControl x:Name="QuickSwitchRecent" ItemsSource="{Binding Sources.Recent}" IsVisible="{Binding Sources.HasRecent}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecentItemViewModel">
+                      <Button Classes="quickitem" Click="OnQuickSwitchClick" CommandParameter="{Binding}"
+                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickOpenRecentCommand}"
+                              AutomationProperties.Name="{Binding Title, StringFormat='Open {0}'}" ToolTip.Tip="{Binding Detail}">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                          <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="12" />
+                          <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                        </StackPanel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="Saved" FontWeight="SemiBold" IsVisible="{Binding Connect.HasSavedConnections}" />
+                <ItemsControl x:Name="QuickSwitchSaved" ItemsSource="{Binding Connect.SavedConnections}" IsVisible="{Binding Connect.HasSavedConnections}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="cred:LoginEntry">
+                      <Button Classes="quickitem" Click="OnQuickSwitchClick" CommandParameter="{Binding}"
+                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickConnectSavedCommand}"
+                              AutomationProperties.Name="{Binding DisplayName, StringFormat='Connect {0}'}" ToolTip.Tip="{Binding Info.Label}">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                          <i:Icon Classes="accent" Value="fa-solid fa-bookmark" FontSize="12" />
+                          <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                        </StackPanel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="QuickSwitchEmpty" Classes="muted" Text="Nothing recent or saved yet." IsVisible="{Binding HasNoQuickSwitchItems}" FontSize="12" />
+                <Border Height="1" Background="{DynamicResource LfmeCardBorderBrush}" />
+                <Button x:Name="ManageAccountsButton" Classes="quickitem" Command="{Binding ManageAccountsCommand}" Click="OnQuickSwitchClick"
+                        AutomationProperties.Name="Manage accounts" ToolTip.Tip="Open the full switcher: connect, accounts and saved logins">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                    <i:Icon Classes="accent" Value="fa-solid fa-user-gear" FontSize="12" />
+                    <TextBlock Text="Manage accounts…" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
         </Button>
 
         <TextBox Grid.Column="1" x:Name="ResourceSearchBox" Classes="search" Text="{Binding QuickView.Filter}"
-                 Watermark="Search resources and receivers   Ctrl+F" AutomationProperties.Name="Search resources and receivers">
+                 Watermark="{Binding SearchHint}" AutomationProperties.Name="Search resources and receivers">
           <TextBox.InnerLeftContent>
             <i:Icon Value="fa-solid fa-magnifying-glass" FontSize="12" Margin="10,0,2,0" Foreground="{DynamicResource LfmeMutedTextBrush}" />
           </TextBox.InnerLeftContent>
         </TextBox>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-          <!-- The mode chip. Its tooltip is the one place the read-only rules are explained. -->
+          <!-- The mode chip (unchanged from #18; where Move lives is being redesigned). Its tooltip is one phrase. -->
           <ToggleButton x:Name="ModeChip" Classes="modechip" Classes.move="{Binding MoveModeOn}" IsChecked="{Binding MoveModeOn}"
                         ToolTip.Tip="{Binding ModeTip}" AutomationProperties.Name="Mode">
             <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
@@ -98,7 +150,7 @@
             <i:Icon Classes="accent" Value="fa-solid fa-microphone" FontSize="14" />
             <TextBlock Classes="title" Text="Grok Voice" />
           </StackPanel>
-          <Button Grid.Column="1" x:Name="CloseVoiceButton" Classes="baricon" Click="OnCloseVoice" ToolTip.Tip="Close (Esc)">
+          <Button Grid.Column="1" x:Name="CloseVoiceButton" Classes="baricon" Click="OnCloseVoice" ToolTip.Tip="Close Voice (Esc)" AutomationProperties.Name="Close Voice">
             <i:Icon Value="fa-solid fa-xmark" FontSize="14" />
           </Button>
         </Grid>
@@ -113,7 +165,7 @@
       </Panel>
       <DockPanel x:Name="MoveWorkspace" IsVisible="{Binding MoveModeOn}" Margin="16">
         <Border DockPanel.Dock="Top" x:Name="MoveModeBanner" Classes="movebanner" Margin="0,0,0,12">
-          <TextBlock x:Name="MoveModeBannerText" Text="{Binding Move.Banner}" TextWrapping="Wrap" FontWeight="SemiBold" />
+          <TextBlock x:Name="MoveModeBannerText" Text="{Binding MoveBannerText}" TextWrapping="Wrap" FontWeight="SemiBold" />
         </Border>
         <views:MoveView x:Name="MovePanel" DataContext="{Binding Move}" />
       </DockPanel>
@@ -128,9 +180,9 @@
                 <i:Icon Classes="accent" Value="fa-solid fa-layer-group" FontSize="15" />
                 <TextBlock Classes="title" Text="Namespaces" />
               </StackPanel>
-              <views:ThemePicker Grid.Column="1" x:Name="SwitcherThemePicker" DataContext="{Binding Theme}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <!-- Appearance lives only in Settings (the gear in the top bar). -->
               <Button Grid.Column="2" x:Name="CloseSwitcherButton" Classes="baricon" Command="{Binding CloseSwitcherCommand}"
-                      IsVisible="{Binding Connect.IsConnected}" ToolTip.Tip="Close (Esc)">
+                      IsVisible="{Binding Connect.IsConnected}" ToolTip.Tip="Close the switcher (Esc)" AutomationProperties.Name="Close the switcher">
                 <i:Icon Value="fa-solid fa-xmark" FontSize="14" />
               </Button>
             </Grid>
@@ -236,6 +288,14 @@
                               <TextBlock Text="Connect saved" />
                             </StackPanel>
                           </Button>
+                          <TextBlock x:Name="ConnectSavedBlockedText" Classes="muted" Text="{Binding ConnectSavedBlockedReason}" FontSize="12" TextWrapping="Wrap">
+                            <TextBlock.IsVisible>
+                              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="HasSavedConnections" />
+                                <Binding Path="HasConnectSavedBlockedReason" />
+                              </MultiBinding>
+                            </TextBlock.IsVisible>
+                          </TextBlock>
                           <TextBlock Classes="muted" Text="Edit, rename, test or delete logins on the Saved logins page." FontSize="11" TextWrapping="Wrap" />
                         </StackPanel>
                       </TabItem>
@@ -313,6 +373,8 @@
                         </StackPanel>
                       </Button>
                     </StackPanel>
+                    <!-- A disabled primary action says why. -->
+                    <TextBlock x:Name="ConnectBlockedText" Classes="muted" Text="{Binding ConnectBlockedReason}" IsVisible="{Binding HasConnectBlockedReason}" FontSize="12" TextWrapping="Wrap" />
                     <StackPanel Classes="il" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsConnected}">
                       <i:Icon Value="fa-solid fa-circle-check" FontSize="12" Foreground="{DynamicResource LfmeSuccessBrush}" />
                       <TextBlock x:Name="ConnectedToText" Classes="muted" Text="{Binding ConnectedTo}" TextWrapping="Wrap" MaxWidth="300" />
@@ -341,7 +403,7 @@
                 <i:Icon Classes="accent" Value="fa-solid fa-flask" FontSize="15" />
                 <TextBlock Classes="title" Text="Test jobs" />
               </StackPanel>
-              <Button Grid.Column="1" x:Name="CloseJobsButton" Classes="baricon" Command="{Binding CloseJobsCommand}" ToolTip.Tip="Close (Esc)">
+              <Button Grid.Column="1" x:Name="CloseJobsButton" Classes="baricon" Command="{Binding CloseJobsCommand}" ToolTip.Tip="Close Test jobs (Esc)" AutomationProperties.Name="Close Test jobs">
                 <i:Icon Value="fa-solid fa-xmark" FontSize="14" />
               </Button>
             </Grid>

@@ -18,14 +18,8 @@ public sealed class ShellModel
 
     public string DataPolicy => "Synthetic data only. Bodies are redacted before they are shown.";
 
-    /// <summary>
-    /// The one place the read-only rules are spelled out: the mode chip's tooltip while it reads "Read-only".
-    /// </summary>
-    public string ReadOnlyTip =>
-        "Read-only. This app peeks: it never receives, renews, defers, settles or changes a message. " +
-        "Counts come from runtime properties; each section peeks only when you open it. " +
-        "Bodies and property values are masked before they are shown. Synthetic data only. " +
-        "Click to switch to Move mode (off every time the app starts; each move asks you to confirm).";
+    /// <summary>The mode chip's tooltip while it reads "Read-only": one phrase.</summary>
+    public string ReadOnlyTip => "Read-only: peeks, never changes messages";
 
     public string EmptyState => "No messages in this view yet.";
 

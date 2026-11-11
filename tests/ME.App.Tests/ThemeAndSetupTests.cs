@@ -18,6 +18,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -224,7 +225,7 @@ public sealed class ThemeAndSetupTests
                 Assert.Equal(variant, Application.Current!.RequestedThemeVariant);
                 Assert.Equal(variant, window.ActualThemeVariant);
 
-                foreach (var name in new[] { "SwitcherThemePicker", "SwitcherRail", "ConnectButton", "ConnectSources", "NamespaceSwitcherButton", "ModeChip" })
+                foreach (var name in new[] { "SwitcherRail", "ConnectButton", "ConnectSources", "NamespaceSwitcherButton", "ModeChip" })
                     Assert.True(Find<Control>(window, name).IsEffectivelyVisible, $"{name} in {variant}");
 
                 auth.WillSignIn("alice@contoso.example");
@@ -232,7 +233,7 @@ public sealed class ThemeAndSetupTests
                 main.OpenSwitcher(SwitcherPage.Accounts);
                 Settle(window);
 
-                foreach (var name in new[] { "SwitcherThemePicker", "AddAccountButton", "SignInWithCodeButton", "AccountList", "BrowseTree", "BrowseSubscriptionBox" })
+                foreach (var name in new[] { "AddAccountButton", "SignInWithCodeButton", "AccountList", "BrowseTree", "BrowseSubscriptionBox" })
                     Assert.True(Find<Control>(window, name).IsEffectivelyVisible, $"{name} in {variant}");
                 var primary = Find<Button>(window, "AddAccountButton");
                 Assert.Equal(ColorOf("Accent", variant), Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color);
@@ -245,7 +246,7 @@ public sealed class ThemeAndSetupTests
                 main.Connect.NamespaceText = "contoso-synthetic";
                 await main.Connect.ConnectCommand.ExecuteAsync();
                 Settle(window);
-                foreach (var name in new[] { "KindFilter", "QuickTree", "QuickSummaryText", "ResourceSearchBox" })
+                foreach (var name in new[] { "KindFilter", "QuickTree", "ResourceSearchBox" })
                     Assert.True(Find<Control>(window, name).IsEffectivelyVisible, $"{name} in {variant}");
                 var queueIcon = Find<TreeView>(window, "QuickTree").GetVisualDescendants().OfType<Projektanker.Icons.Avalonia.Icon>()
                     .First(i => i.Classes.Contains("queue") && i.IsEffectivelyVisible);
@@ -268,15 +269,20 @@ public sealed class ThemeAndSetupTests
             var (window, main, _, _) = OpenWindow(store);
             Assert.Equal(ThemeVariant.Default, Application.Current!.RequestedThemeVariant);
 
-            var dark = Find<ThemePicker>(window, "SwitcherThemePicker").GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark");
+            // Appearance lives only in Settings: no picker on the switcher sheet.
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<ThemePicker>(), p => p.IsEffectivelyVisible);
+            var settings = Find<Button>(window, "SettingsButton");
+            settings.Flyout!.ShowAt(settings);
+            Settle(window);
+            var picker = (ThemePicker)((Control)((Flyout)settings.Flyout).Content!).GetLogicalDescendants().OfType<ThemePicker>().Single(p => p.Name == "SettingsThemePicker");
+            var dark = picker.GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark");
             dark.IsChecked = true;
             Settle(window);
             Assert.Equal((ThemeChoice.Dark, ThemeVariant.Dark, ThemeVariant.Dark), (store.Current.Theme, Application.Current.RequestedThemeVariant, window.ActualThemeVariant));
-            // The same picker stays with the sheet on every page (one picker per surface: the switcher and Settings).
+            settings.Flyout.Hide();
             main.IsAccountsPage = true;
             Settle(window);
-            Assert.True(Find<ThemePicker>(window, "SwitcherThemePicker").GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark").IsChecked);
-            Assert.Single(window.GetVisualDescendants().OfType<ThemePicker>(), p => p.IsEffectivelyVisible);
+            Assert.DoesNotContain(window.GetVisualDescendants().OfType<ThemePicker>(), p => p.IsEffectivelyVisible);
 
             main.Theme.IsSystem = true;
             Settle(window);
@@ -297,13 +303,14 @@ public sealed class ThemeAndSetupTests
         var vault = new TestVault();
         var catalog = new ProviderCatalog([new FakeBrokerProvider(), new ServiceBusBrokerProvider()], ProviderCatalog.PlannedProviders);
         var main = new MainViewModel(catalog, accounts: new AccountServices(auth, new MemoryAccountStore(), arm, vault.Vault), settings: store ?? new MemoryUiSettingsStore());
+        main.OpenSwitcher(SwitcherPage.Connect); // these tests start on the Connect page (first run lands on Accounts)
         var window = new MainWindow { DataContext = main, Width = 1440, Height = 900 };
         window.Show();
         Settle(window);
         return (window, main, auth, vault);
     }
 
-    private static FakeArmReader Arm()
+    internal static FakeArmReader Arm()
     {
         var arm = new FakeArmReader();
         arm.Tenants["alice"] = [new TenantRef(Contoso, "Contoso")];

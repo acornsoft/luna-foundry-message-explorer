@@ -11,16 +11,31 @@ One slim bar (48 px) replaces 0.8.2's observe banner, tab row and namespace / re
 
 | Left | Middle | Right |
 | --- | --- | --- |
-| **Namespace switcher**: the connected namespace and a chevron. Opens a sheet with Connect (Recent, Saved, connection details), Accounts and Saved logins, in the style of Azure Data Studio's connection dialog. | **Search** (Ctrl+F, or Cmd+F on a Mac): one box that finds any resource or receiver. A match on a receiver shows its topic, opened. Esc clears it. | **Mode chip**: "Read-only" (green, lock) or "Move" (amber). Its tooltip is the one place the read-only rules are explained. Then the **Voice** mic (a side panel) and the **Settings** gear (theme, Top N, Test jobs…). |
+| **Namespace switcher**: the connected namespace, with the account and cloud under it (for example "alice@contoso.example · Azure public"), and a chevron. Opens a quick switch: Recent, Saved, and **Manage accounts…**, which opens the full sheet with Connect (Recent, Saved, connection details), Accounts and Saved logins, in the style of Azure Data Studio's connection dialog. | **Search** (⌘F on macOS, Ctrl+F elsewhere; the hint follows the platform): one box that finds any resource or receiver. A match on a receiver shows its topic, opened. Esc clears it. | **Mode chip**: "Read-only" (green, lock) or "Move" (amber). Its tooltip is one phrase: "Read-only: peeks, never changes messages". Then the **Voice** mic (a side panel) and the **Settings** gear (appearance, Top N, Test jobs…). Every icon-only button has a name, a tooltip and a hit area of at least 24 px. |
 
 Esc closes the topmost sheet or panel. The switcher is open at launch and closes once a namespace connects.
+It opens on the page with the next action, worked out from the data: **Connect › Recent** when there are
+recent connections; **Connect › Saved** when there are saved logins but nothing recent; **Accounts** with focus
+on **Add an account** on first run; **Accounts** with **Browse** in view when there are accounts but nothing
+saved. A page you pick stays picked.
+
+While Move mode is on, the amber banner names what it applies to: "Move mode is on for <namespace>
+(<account>, <cloud>)". (The mode chip itself is unchanged in 0.8.4; where Move lives is being redesigned.)
 
 ## Layout
 
 - **Kind filter** (top of the list): one segmented control, **All**, **Queues** or **Topics**, with counts.
   The choice is remembered between launches in `ui-settings.json`. If the selected resource or receiver is
-  hidden, the selection is cleared.
-- **Resources list** (left): one list of resources, sorted by name. Each row has a small kind badge:
+  hidden, the selection is cleared. **Has dead letters** (a toggle under it, this session only) keeps only
+  resources and receivers with dead-lettered or transfer dead-lettered messages.
+- **Match line**: there is no summary line in the normal state. While the kind filter, Has dead letters or
+  the search narrows the list, one line says "N of M match …" (for example "2 of 6 match queues, has dead
+  letters") with a **Clear** link that resets all three.
+- **Pinned selection**: when the search or Has dead letters would hide the selected row, it stays in the list,
+  dimmed (muted italic text, contrast kept), with a note saying why. It isn't counted in the match line.
+- **Resources list** (left): one list of resources, sorted by name. Under **All**, topics and subscriptions
+  carry a small kind badge; queues rely on their icon, whose tooltip and accessible name say "Queue". Under
+  **Queues** or **Topics** no row has a badge, because the filter already says the kind:
 
   | Kind | Icon | Tag | Colour |
   | --- | --- | --- | --- |
@@ -31,10 +46,13 @@ Esc closes the topmost sheet or panel. The switcher is open at launch and closes
   A queue has nothing to expand: picking it opens its messages. A topic expands to its receivers, read the
   first time you open it. The scheduled count stays on the topic (messages wait there until they are due);
   dead letters are counted on each receiver. The same icon and tag show in the entity header. The arrow keys
-  walk the list; Right opens a topic. A summary line counts resources, queues with dead letters, and topics.
-- **Lane cards** (top): one card per message type with its count. Click a card to open that section and jump
-  to it. Dead-letter cards turn red when the count is above zero.
-- **Sections** (middle): Active, Dead-letter, Scheduled and Transfer dead-letter. Each one opens as a
+  walk the list; Right opens a topic. Zero counts are hidden everywhere; the red dead-letter badge is spoken
+  as "N dead-lettered".
+- **Lane cards** (top): one card per message type with its count, in one fixed order for every resource:
+  Active, Dead-letter, Scheduled, Transfer DL. A zero count reads "Empty" instead of 0. Click a card to open
+  that section and jump to it. Dead-letter cards turn red when the count is above zero.
+- **Sections** (middle): Active, Dead-letter, Scheduled and Transfer dead-letter, in the cards' order. The
+  count shows once, on the card; the section headers have no count chip. Each one opens as a
   virtualized list of rows: sequence number, message ID, enqueued time (UTC), subject, a masked body summary,
   size and the dead-letter reason. Icons on each row open it in the drawer or copy its redacted text.
 - **Detail drawer** (right): system properties, application property names with masked values, and the body

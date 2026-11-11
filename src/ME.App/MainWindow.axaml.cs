@@ -7,6 +7,7 @@ using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 
 namespace Acornsoft.MessageExplorer.Shell;
 
@@ -24,7 +25,38 @@ public partial class MainWindow : Window
                 withMove.Move.Confirmer = new Views.WindowMoveConfirmer(this);
         };
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainViewModel main)
+            {
+                main.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName is nameof(MainViewModel.SwitcherFocus) or nameof(MainViewModel.IsSwitcherOpen) or nameof(MainViewModel.SwitcherPage))
+                        Dispatcher.UIThread.Post(ApplySwitcherFocus, DispatcherPriority.Loaded);
+                };
+            }
+        };
+        Opened += (_, _) => Dispatcher.UIThread.Post(ApplySwitcherFocus, DispatcherPriority.Loaded);
     }
+
+    /// <summary>Puts focus where the switcher landed: Add an account on first run, the namespace browser when there are accounts.</summary>
+    private void ApplySwitcherFocus()
+    {
+        if (DataContext is not MainViewModel { IsSwitcherOpen: true } main)
+            return;
+        switch (main.SwitcherFocus)
+        {
+            case SwitcherFocus.AddAccount:
+                AccountsPanel.FindControl<Button>("AddAccountButton")?.Focus();
+                break;
+            case SwitcherFocus.Browse:
+                AccountsPanel.FindControl<Control>("BrowseTree")?.BringIntoView();
+                break;
+        }
+    }
+
+    /// <summary>A pick in the quick switch closes it.</summary>
+    private void OnQuickSwitchClick(object? sender, RoutedEventArgs e) => NamespaceSwitcherButton.Flyout?.Hide();
 
     /// <summary>Ctrl+F (Cmd+F on a Mac) jumps to the search box; Esc closes the topmost sheet or panel.</summary>
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)

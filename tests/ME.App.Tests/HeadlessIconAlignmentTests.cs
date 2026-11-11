@@ -92,7 +92,7 @@ public sealed class HeadlessIconAlignmentTests
         return checkedPairs;
     }
 
-    private static async Task<(MainWindow Window, MainViewModel Main)> QuickViewWithEverythingOpenAsync()
+    internal static async Task<(MainWindow Window, MainViewModel Main)> QuickViewWithEverythingOpenAsync()
     {
         var provider = new FakeBrokerProvider(QuickViewViewModelTests.Entities());
         var browser = QuickViewViewModelTests.Browser();
@@ -172,6 +172,7 @@ public sealed class HeadlessIconAlignmentTests
             {
                 Avalonia.Application.Current!.RequestedThemeVariant = variant;
                 var main = new MainViewModel(MainViewModel.DefaultCatalog(false));
+                main.OpenSwitcher(SwitcherPage.Connect);
                 var window = new MainWindow { DataContext = main, Width = 1440, Height = 900 };
                 window.Show();
                 Pump(window);

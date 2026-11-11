@@ -31,6 +31,7 @@ public class HeadlessWindowTests
     {
         var catalog = new ProviderCatalog([new FakeBrokerProvider()], ProviderCatalog.PlannedProviders);
         var main = new MainViewModel(catalog);
+        main.OpenSwitcher(SwitcherPage.Connect); // these tests are about the Connect page (first run lands on Accounts)
         var window = new MainWindow { DataContext = main };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -55,7 +56,7 @@ public class HeadlessWindowTests
         var (window, _) = Open();
 
         Assert.True(Find<TextBlock>(window, "QuickNotConnectedText").IsVisible);
-        Assert.False(Find<TextBlock>(window, "QuickSummaryText").IsVisible);
+        Assert.False(Find<Grid>(window, "QuickMatchPanel").IsVisible);
         Assert.False(Find<Button>(window, "QuickRefreshButton").IsEffectivelyEnabled);
         Assert.Equal("Acornsoft Message Explorer", window.Title);
     }
@@ -100,13 +101,12 @@ public class HeadlessWindowTests
 
         Assert.False(main.IsSwitcherOpen);
         Assert.False(Find<TextBlock>(window, "QuickNotConnectedText").IsVisible);
-        Assert.StartsWith("4 resources: 4 queues (2 with dead letters)", Find<TextBlock>(window, "QuickSummaryText").Text, StringComparison.Ordinal);
+        Assert.False(Find<Grid>(window, "QuickMatchPanel").IsVisible); // no summary line in the normal state
         var tree = Find<TreeView>(window, "QuickTree");
-        var queueTags = tree.GetVisualDescendants().OfType<Border>()
-            .Where(b => b.Classes.Contains("kind") && b.Classes.Contains("queue") && b.IsEffectivelyVisible)
-            .ToList();
-        Assert.Equal(4, queueTags.Count);
-        Assert.All(queueTags, t => Assert.Equal("QUEUE", ((TextBlock)t.Child!).Text));
+        Assert.DoesNotContain(tree.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("kind") && b.IsEffectivelyVisible);
+        var queueIcons = tree.GetVisualDescendants().OfType<Projektanker.Icons.Avalonia.Icon>().Where(i => i.Classes.Contains("queue") && i.IsEffectivelyVisible).ToList();
+        Assert.Equal(4, queueIcons.Count);
+        Assert.All(queueIcons, i => Assert.Equal("Queue", ToolTip.GetTip(i)));
         // Dead-letter 3 on one queue, transfer dead-letter 1 on another; zero counts get no badge.
         int Badges(string kind) => tree.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains(kind) && b.IsEffectivelyVisible);
         Assert.Equal((1, 1), (Badges("dead"), Badges("transfer")));
@@ -129,7 +129,7 @@ public class HeadlessWindowTests
         var error = Find<TextBlock>(window, "QuickErrorText");
         Assert.True(error.IsVisible);
         Assert.Equal(BrokerException.Explain(BrokerErrorKind.Unreachable), error.Text);
-        Assert.False(Find<TextBlock>(window, "QuickSummaryText").IsVisible);
+        Assert.False(Find<Grid>(window, "QuickMatchPanel").IsVisible);
         Assert.False(Find<TextBlock>(window, "QuickEmptyText").IsVisible);
     }
 

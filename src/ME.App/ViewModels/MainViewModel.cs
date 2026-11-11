@@ -22,6 +22,19 @@ public enum SwitcherPage
     Logins,
 }
 
+/// <summary>Where the switcher puts the user's attention when it lands on a page by itself.</summary>
+public enum SwitcherFocus
+{
+    /// <summary>Nothing special: the Recent or Saved list is the next step.</summary>
+    None,
+
+    /// <summary>First run: focus on "Add an account".</summary>
+    AddAccount,
+
+    /// <summary>Accounts but nothing saved yet: bring the namespace browser into view.</summary>
+    Browse,
+}
+
 /// <summary>Places <c>--tab</c> can open. There are no tabs any more: each maps to a sheet, a panel, or the Resources view.</summary>
 public enum AppSection
 {
@@ -69,11 +82,24 @@ public sealed class MainViewModel : ViewModelBase
         Connect.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(ConnectViewModel.IsConnected) or nameof(ConnectViewModel.ConnectedTo))
-            {
-                OnPropertyChanged(nameof(NamespaceLabel));
-                OnPropertyChanged(nameof(NamespaceDetail));
-            }
+                IdentityChanged();
+            if (e.PropertyName == nameof(ConnectViewModel.HasSavedConnections))
+                QuickSwitchChanged();
         };
+        Connect.SavedConnections.CollectionChanged += (_, _) =>
+        {
+            QuickSwitchChanged();
+            LandSwitcher();
+        };
+        Sources.Recent.CollectionChanged += (_, _) =>
+        {
+            QuickSwitchChanged();
+            LandSwitcher();
+        };
+        Accounts.Accounts.CollectionChanged += (_, _) => LandSwitcher();
+        QuickOpenRecentCommand = new AsyncCommand<RecentItemViewModel>(QuickOpenRecentAsync);
+        QuickConnectSavedCommand = new AsyncCommand<LoginEntry>(QuickConnectSavedAsync);
+        ManageAccountsCommand = new RelayCommand(() => OpenSwitcher());
         OpenSwitcherCommand = new RelayCommand(() => OpenSwitcher());
         CloseSwitcherCommand = new RelayCommand(() => IsSwitcherOpen = false);
         OpenJobsCommand = new RelayCommand(() => IsJobsOpen = true);
@@ -94,7 +120,9 @@ public sealed class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ModeText));
             OnPropertyChanged(nameof(ModeIcon));
             OnPropertyChanged(nameof(ModeTip));
+            OnPropertyChanged(nameof(MoveBannerText));
         };
+        LandSwitcher();
         Accounts.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AccountsViewModel.SignedInAccounts))
@@ -135,10 +163,18 @@ public sealed class MainViewModel : ViewModelBase
 
     public string ModeIcon => MoveModeOn ? "fa-solid fa-right-left" : "fa-solid fa-lock";
 
-    /// <summary>The read-only explanation, shown once: here, as the chip's tooltip.</summary>
+    /// <summary>The chip's tooltip: one phrase while Read-only.</summary>
     public string ModeTip => MoveModeOn
         ? Move.Banner + " Click to go back to Read-only."
         : Shell.ReadOnlyTip;
+
+    /// <summary>The amber banner while Move mode is on: which namespace, as whom, in which cloud.</summary>
+    public string MoveBannerText => string.IsNullOrEmpty(NamespaceAccount)
+        ? Move.Banner
+        : $"Move mode is on for {NamespaceLabel} ({NamespaceAccount}, {NamespaceCloud}). Dropping messages moves them. Every move asks first and is written to the audit log.";
+
+    /// <summary>The search box's watermark, with the platform's shortcut.</summary>
+    public string SearchHint => "Search resources  " + Shortcuts.Format("F");
 
     /// <summary>Push-to-talk Grok Voice with the read-only tools; a side panel opened by the mic in the top bar.</summary>
     public VoiceViewModel Voice { get; }
@@ -158,6 +194,8 @@ public sealed class MainViewModel : ViewModelBase
 
     private bool _isSwitcherOpen = true;
     private SwitcherPage _switcherPage = SwitcherPage.Connect;
+    private SwitcherFocus _switcherFocus;
+    private bool _pagePicked;
 
     /// <summary>
     /// The namespace switcher sheet (Connect, Accounts, Saved logins), in the style of Azure Data Studio's
@@ -174,7 +212,23 @@ public sealed class MainViewModel : ViewModelBase
         get => _switcherPage;
         set
         {
-            if (!Set(ref _switcherPage, value))
+            _pagePicked = true;
+            SwitcherFocus = SwitcherFocus.None;
+            ShowPage(value);
+        }
+    }
+
+    /// <summary>Where the view puts focus when the switcher landed on a page by itself (see <see cref="LandSwitcher"/>).</summary>
+    public SwitcherFocus SwitcherFocus
+    {
+        get => _switcherFocus;
+        private set => Set(ref _switcherFocus, value);
+    }
+
+    private void ShowPage(SwitcherPage value)
+    {
+        {
+            if (!Set(ref _switcherPage, value, nameof(SwitcherPage)))
                 return;
             OnPropertyChanged(nameof(IsConnectPage));
             OnPropertyChanged(nameof(IsAccountsPage));
@@ -219,8 +273,114 @@ public sealed class MainViewModel : ViewModelBase
     /// <summary>The switcher button's text: the open namespace, or a prompt.</summary>
     public string NamespaceLabel => Connect.IsConnected ? QuickView.NamespaceName : "Choose a namespace";
 
+    private string? _namespaceAccount;
+    private string? _namespaceCloud;
+
+    /// <summary>Who the namespace is open as: an account, "Azure sign-in", "connection string" or "synthetic demo".</summary>
+    public string? NamespaceAccount => Connect.IsConnected ? _namespaceAccount : null;
+
+    /// <summary>The cloud the namespace lives in, e.g. "Azure public", or the provider's name.</summary>
+    public string? NamespaceCloud => Connect.IsConnected ? _namespaceCloud : null;
+
+    /// <summary>The switcher's secondary label: "account · cloud".</summary>
+    public string? NamespaceIdentity => NamespaceAccount is { } account ? $"{account} · {NamespaceCloud}" : null;
+
+    public bool HasNamespaceIdentity => NamespaceIdentity is not null;
+
     /// <summary>The switcher button's tooltip: how the namespace was opened (never a secret).</summary>
-    public string NamespaceDetail => Connect.ConnectedTo is { Length: > 0 } to ? to + ". Click to switch." : "Open the namespace switcher: connect, accounts and saved logins.";
+    public string NamespaceDetail => Connect.ConnectedTo is { Length: > 0 } to
+        ? $"{to} ({NamespaceIdentity}). Click for recent and saved namespaces."
+        : "Open the namespace switcher: connect, accounts and saved logins.";
+
+    /// <summary>
+    /// The account and cloud for a namespace, from what the connection knows. Never reads a secret.
+    /// </summary>
+    public static (string Account, string Cloud) IdentityOf(string? endpoint, string? account, string providerName, bool connectionString = false)
+    {
+        var host = endpoint is { Length: > 0 } e && Uri.TryCreate(e.Contains("://", StringComparison.Ordinal) ? e : "sb://" + e, UriKind.Absolute, out var uri) ? uri.Host : endpoint;
+        var cloud = AzureClouds.FromHost(host) is { } c ? CloudLabel(c) : providerName;
+        if (connectionString)
+            return ("connection string", cloud);
+        return (string.IsNullOrWhiteSpace(account) ? "Azure sign-in" : account, cloud);
+    }
+
+    private static string CloudLabel(AzureCloud cloud) => cloud.DisplayName.Replace("(", string.Empty, StringComparison.Ordinal).Replace(")", string.Empty, StringComparison.Ordinal);
+
+    private void IdentityChanged()
+    {
+        OnPropertyChanged(nameof(NamespaceLabel));
+        OnPropertyChanged(nameof(NamespaceAccount));
+        OnPropertyChanged(nameof(NamespaceCloud));
+        OnPropertyChanged(nameof(NamespaceIdentity));
+        OnPropertyChanged(nameof(HasNamespaceIdentity));
+        OnPropertyChanged(nameof(NamespaceDetail));
+        OnPropertyChanged(nameof(MoveBannerText));
+    }
+
+    // ---- Quick switch (the switcher button's popover) ----
+
+    /// <summary>Recent and saved namespaces for the quick switch.</summary>
+    public bool HasQuickSwitchItems => Sources.HasRecent || Connect.HasSavedConnections;
+
+    public bool HasNoQuickSwitchItems => !HasQuickSwitchItems;
+
+    /// <summary>Opens a recent namespace from the quick switch.</summary>
+    public AsyncCommand<RecentItemViewModel> QuickOpenRecentCommand { get; }
+
+    /// <summary>Connects a saved login from the quick switch.</summary>
+    public AsyncCommand<LoginEntry> QuickConnectSavedCommand { get; }
+
+    /// <summary>"Manage accounts…": the full switcher sheet, on the page with the next step.</summary>
+    public RelayCommand ManageAccountsCommand { get; }
+
+    private void QuickSwitchChanged()
+    {
+        OnPropertyChanged(nameof(HasQuickSwitchItems));
+        OnPropertyChanged(nameof(HasNoQuickSwitchItems));
+    }
+
+    private async Task QuickOpenRecentAsync(RecentItemViewModel item)
+    {
+        if (Connect.IsConnected)
+            Connect.DisconnectCommand.Execute(null);
+        await Sources.OpenRecentAsync(item).ConfigureAwait(true);
+    }
+
+    private async Task QuickConnectSavedAsync(LoginEntry login)
+    {
+        if (Connect.IsConnected)
+            Connect.DisconnectCommand.Execute(null);
+        Connect.SelectedSaved = login;
+        await Connect.ConnectSavedCommand.ExecuteAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Opens the switcher on the page with the next action, from the data: Recent if there are recents, else Saved
+    /// if there are saved logins, else Accounts (focus on Add an account on first run; the browser when there are
+    /// accounts). Only while nothing is connected and the user hasn't picked a page.
+    /// </summary>
+    private void LandSwitcher()
+    {
+        if (!IsSwitcherOpen || Connect.IsConnected || _pagePicked)
+            return;
+        if (Sources.HasRecent)
+        {
+            Sources.SelectedTab = ConnectSourcesViewModel.RecentTab;
+            ShowPage(SwitcherPage.Connect);
+            SwitcherFocus = SwitcherFocus.None;
+        }
+        else if (Connect.HasSavedConnections)
+        {
+            Sources.SelectedTab = ConnectSourcesViewModel.SavedTab;
+            ShowPage(SwitcherPage.Connect);
+            SwitcherFocus = SwitcherFocus.None;
+        }
+        else
+        {
+            ShowPage(SwitcherPage.Accounts);
+            SwitcherFocus = Accounts.HasAccounts ? SwitcherFocus.Browse : SwitcherFocus.AddAccount;
+        }
+    }
 
     private bool _isJobsOpen;
 
@@ -235,11 +395,40 @@ public sealed class MainViewModel : ViewModelBase
 
     public RelayCommand CloseJobsCommand { get; }
 
+    /// <summary>Opens the switcher: on <paramref name="page"/>, or (with none) on the page with the next action.</summary>
     public void OpenSwitcher(SwitcherPage? page = null)
     {
         if (page is { } p)
+        {
             SwitcherPage = p;
+            IsSwitcherOpen = true;
+            return;
+        }
+
+        _pagePicked = false;
         IsSwitcherOpen = true;
+        LandFor(Connect.IsConnected);
+    }
+
+    private void LandFor(bool connected)
+    {
+        if (!connected)
+        {
+            LandSwitcher();
+            return;
+        }
+
+        if (Sources.HasRecent || Connect.HasSavedConnections)
+        {
+            Sources.SelectedTab = Sources.HasRecent ? ConnectSourcesViewModel.RecentTab : ConnectSourcesViewModel.SavedTab;
+            ShowPage(SwitcherPage.Connect);
+            SwitcherFocus = SwitcherFocus.None;
+        }
+        else
+        {
+            ShowPage(SwitcherPage.Accounts);
+            SwitcherFocus = Accounts.HasAccounts ? SwitcherFocus.Browse : SwitcherFocus.AddAccount;
+        }
     }
 
     /// <summary>Escape: closes the topmost sheet. The switcher stays open while nothing is connected.</summary>
@@ -328,7 +517,8 @@ public sealed class MainViewModel : ViewModelBase
         var actor = connection?.Credential is not null ? Connect.SelectedAccount?.Username : null;
         await Move.LoadAsync(inventory, MoveServicesFor(inventory, connection), actor ?? ActorFromLabel()).ConfigureAwait(true);
         QuickView.Attach(inventory, NamespaceNameOf(inventory, connection), _quickViewServices.Resolve(inventory, connection));
-        OnPropertyChanged(nameof(NamespaceLabel));
+        (_namespaceAccount, _namespaceCloud) = IdentityFor(inventory, connection, actor ?? ActorFromLabel());
+        IdentityChanged();
         IsSwitcherOpen = false;
         // The Resources view is the main surface: read the resources once, now.
         await QuickView.EnsureLoadedAsync().ConfigureAwait(true);
@@ -340,6 +530,13 @@ public sealed class MainViewModel : ViewModelBase
         _ when inventory.Provider.Id == SyntheticDemoProvider.Id => SyntheticDemoProvider.Namespace,
         _ when connection?.Endpoint is { Length: > 0 } endpoint => endpoint.Split('.')[0],
         _ => inventory.Provider.DisplayName,
+    };
+
+    private static (string Account, string Cloud) IdentityFor(IEntityInventory inventory, BrokerConnection? connection, string? actor) => inventory switch
+    {
+        Adapters.ServiceBus.Arm.ArmEntityInventory arm => (actor ?? "Azure sign-in", CloudLabel(AzureClouds.Find(arm.Namespace.Cloud))),
+        _ when inventory.Provider.Id == SyntheticDemoProvider.Id => ("synthetic demo", inventory.Provider.DisplayName),
+        _ => IdentityOf(connection?.Endpoint, actor, inventory.Provider.DisplayName, connectionString: connection?.AuthMode == AuthMode.ConnectionString),
     };
 
     private string? ActorFromLabel() => Connect.ConnectedTo is { } text && text.LastIndexOf(" as ", StringComparison.Ordinal) is var at and >= 0 ? text[(at + 4)..] : null;
@@ -355,7 +552,7 @@ public sealed class MainViewModel : ViewModelBase
     private void OnDisconnected()
     {
         _ = QuickView.ClearAsync();
-        OnPropertyChanged(nameof(NamespaceLabel));
+        IdentityChanged();
         _ = Move.ClearAsync();
         _ = DisposeInventoryAsync();
     }

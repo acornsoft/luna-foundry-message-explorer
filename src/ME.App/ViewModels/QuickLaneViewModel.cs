@@ -116,6 +116,20 @@ public sealed class QuickLaneViewModel : ViewModelBase
 
     public string CountText => Count?.ToString("N0", CultureInfo.InvariantCulture) ?? "—";
 
+    /// <summary>False for a zero count: the card says "Empty" instead of showing a 0.</summary>
+    public bool ShowsCount => Count != 0;
+
+    /// <summary>The count is known and is zero.</summary>
+    public bool IsEmptyLane => Count == 0;
+
+    /// <summary>What a screen reader says for the card's number.</summary>
+    public string CountName => Count switch
+    {
+        null => $"{Title}: count not known",
+        0 => $"{Title}: empty",
+        _ => $"{Title}: {CountText}",
+    };
+
     /// <summary>True when the count is above zero on a dead-letter lane (the card and badge turn red).</summary>
     public bool Alarm => Lane is MessageLane.DeadLetter or MessageLane.TransferDeadLetter && Count > 0;
 
