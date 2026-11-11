@@ -1,0 +1,16 @@
+{
+  "name": "lfme-readonly",
+  "displayName": "Message Explorer (read-only)",
+  "version": "0.1.0",
+  "description": "Read-only Service Bus inventory and health checks for agents: queues, topics, subscriptions and message counts through the lfme-mcp server. Never reads message bodies, never sends, receives, settles, moves or deletes.",
+  "author": {
+    "name": "Message Explorer contributors"
+  },
+  "repository": "https://github.com/acornsoft/luna-foundry-message-explorer",
+  "license": "MPL-2.0",
+  "keywords": ["service-bus", "queues", "topics", "dead-letter", "mcp", "read-only"],
+  "category": "developer-tools",
+  "tags": ["mcp", "messaging", "read-only"],
+  "mcpServers": "./mcp.json",
+  "skills": "./skills/"
+}

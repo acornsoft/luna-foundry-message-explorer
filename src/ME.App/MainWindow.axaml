@@ -1,0 +1,262 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+        xmlns:views="using:Acornsoft.MessageExplorer.Shell.Views"
+        xmlns:cred="using:Acornsoft.MessageExplorer.Credentials"
+        x:Class="Acornsoft.MessageExplorer.Shell.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1440"
+        Height="860"
+        Title="{Binding Title}">
+  <Window.Styles>
+    <Style Selector="TabControl#ConnectSources TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+  </Window.Styles>
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,12">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <StackPanel Spacing="4">
+          <TextBlock x:Name="BannerText" Text="{Binding Shell.Banner}" FontSize="18" TextWrapping="Wrap" IsVisible="{Binding !MoveModeOn}" />
+          <TextBlock x:Name="PolicyText" Classes="muted" Text="{Binding Shell.DataPolicy}" TextWrapping="Wrap" />
+        </StackPanel>
+        <!-- Connected, the Connect panel steps aside on the explorer and tool tabs; this keeps it open. -->
+        <ToggleButton Grid.Column="1" x:Name="ConnectPinToggle" IsChecked="{Binding ConnectPinned}" VerticalAlignment="Top" Margin="0,0,8,0"
+                      ToolTip.Tip="Show the Connect panel on every tab">
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+            <i:Icon Value="fa-solid fa-plug" FontSize="13" />
+            <TextBlock Text="{Binding Connect.ConnectedTo, FallbackValue=Connect, TargetNullValue=Connect}" MaxWidth="320" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </ToggleButton>
+        <!-- Settings: the app-wide place for the theme (also on the sign-in page and the Connect panel). -->
+        <Button Grid.Column="2" x:Name="SettingsButton" VerticalAlignment="Top" Margin="0,0,12,0" ToolTip.Tip="Settings">
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+            <i:Icon Value="fa-solid fa-gear" FontSize="13" />
+            <TextBlock Text="Settings" />
+          </StackPanel>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <StackPanel x:Name="SettingsPanel" Spacing="8" Width="320">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                  <i:Icon Classes="accent" Value="fa-solid fa-palette" FontSize="14" />
+                  <TextBlock Text="Appearance" FontWeight="SemiBold" />
+                </StackPanel>
+                <views:ThemePicker x:Name="SettingsThemePicker" DataContext="{Binding Theme}" />
+                <TextBlock Classes="muted" Text="{Binding Theme.Description}" TextWrapping="Wrap" FontSize="12" />
+                <TextBlock Classes="muted" Text="Remembered on this computer." FontSize="12" />
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <ToggleSwitch Grid.Column="3" x:Name="MoveModeToggle" IsChecked="{Binding MoveModeOn}"
+                      OnContent="Move mode on" OffContent="Move mode off" VerticalAlignment="Top"
+                      ToolTip.Tip="Off every time the app starts. While on, drops in the Move tab move messages after you confirm each one." />
+      </Grid>
+      <Border x:Name="MoveModeBanner" Classes="movebanner" IsVisible="{Binding MoveModeOn}">
+        <TextBlock x:Name="MoveModeBannerText" Text="{Binding Move.Banner}" TextWrapping="Wrap" FontWeight="SemiBold" />
+      </Border>
+    </StackPanel>
+
+    <!-- Connect panel: Recent and Saved (as in Azure Data Studio's connection dialog), then the connection details,
+         where pasting a connection string stays an option. Browse lives on the Accounts page, beside the accounts. -->
+    <Border DockPanel.Dock="Left" x:Name="ConnectCard" Width="360" Margin="0,0,16,0" Classes="card" Padding="0" IsVisible="{Binding ShowConnectPanel}">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="ConnectPanel" Spacing="10" Margin="12" DataContext="{Binding Connect}" x:DataType="vm:ConnectViewModel">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Classes="accent" Value="fa-solid fa-plug" FontSize="15" />
+              <TextBlock Classes="title" Text="Connect" />
+            </StackPanel>
+            <views:ThemePicker Grid.Column="1" x:Name="ConnectThemePicker" DataContext="{Binding Theme}" VerticalAlignment="Center" />
+          </Grid>
+
+          <TabControl x:Name="ConnectSources" DataContext="{Binding Sources}" x:DataType="vm:ConnectSourcesViewModel" SelectedIndex="{Binding SelectedTab}" Padding="0,6,0,0">
+            <TabItem x:Name="RecentTab">
+              <TabItem.Header>
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                  <i:Icon Value="fa-solid fa-clock-rotate-left" FontSize="12" />
+                  <TextBlock Text="Recent" />
+                </StackPanel>
+              </TabItem.Header>
+              <StackPanel Spacing="6">
+                <TextBlock x:Name="RecentEmptyText" Classes="muted" Text="{Binding RecentEmptyText}" IsVisible="{Binding !HasRecent}" TextWrapping="Wrap" FontSize="12" />
+                <ListBox x:Name="RecentList" ItemsSource="{Binding Recent}" SelectedItem="{Binding SelectedRecent}" IsVisible="{Binding HasRecent}" MaxHeight="220"
+                         DoubleTapped="OnRecentDoubleTapped">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecentItemViewModel">
+                      <Grid ColumnDefinitions="Auto,*" Classes="il">
+                        <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="13" Margin="0,0,10,0" />
+                        <StackPanel Grid.Column="1" Spacing="1">
+                          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="muted" Text="{Binding Detail}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" IsVisible="{Binding HasRecent}">
+                  <Button x:Name="OpenRecentButton" Classes="primary" Command="{Binding OpenRecentCommand}">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                      <i:Icon Value="fa-solid fa-plug-circle-bolt" FontSize="12" />
+                      <TextBlock Text="Connect" />
+                    </StackPanel>
+                  </Button>
+                  <Button x:Name="ForgetRecentButton" Command="{Binding ForgetRecentCommand}">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                      <i:Icon Value="fa-solid fa-xmark" FontSize="12" />
+                      <TextBlock Text="Forget" />
+                    </StackPanel>
+                  </Button>
+                  <Button x:Name="ClearRecentButton" Command="{Binding ClearRecentCommand}">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                      <i:Icon Value="fa-regular fa-trash-can" FontSize="12" />
+                      <TextBlock Text="Clear all" />
+                    </StackPanel>
+                  </Button>
+                </WrapPanel>
+              </StackPanel>
+            </TabItem>
+
+            <TabItem x:Name="SavedTab">
+              <TabItem.Header>
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                  <i:Icon Value="fa-solid fa-bookmark" FontSize="12" />
+                  <TextBlock Text="Saved" />
+                </StackPanel>
+              </TabItem.Header>
+              <StackPanel Spacing="6" DataContext="{Binding Connect}" x:DataType="vm:ConnectViewModel">
+                <TextBlock x:Name="SavedEmptyText" Classes="muted" Text="No saved Service Bus logins yet. Tick Save below when you connect, or add one on the Saved logins tab." IsVisible="{Binding !HasSavedConnections}" TextWrapping="Wrap" FontSize="12" />
+                <ListBox x:Name="SavedConnectionsList" ItemsSource="{Binding SavedConnections}" SelectedItem="{Binding SelectedSaved}" IsVisible="{Binding HasSavedConnections}" MaxHeight="220"
+                         DoubleTapped="OnSavedDoubleTapped">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="cred:LoginEntry">
+                      <Grid ColumnDefinitions="Auto,*" Classes="il">
+                        <i:Icon Classes="accent" Value="fa-solid fa-bookmark" FontSize="13" Margin="0,0,10,0" />
+                        <StackPanel Grid.Column="1" Spacing="1">
+                          <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="muted" Text="{Binding Info.Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <Button x:Name="ConnectSavedButton" Classes="primary" Command="{Binding ConnectSavedCommand}" IsVisible="{Binding HasSavedConnections}">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                    <i:Icon Value="fa-solid fa-plug-circle-bolt" FontSize="12" />
+                    <TextBlock Text="Connect saved" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Classes="muted" Text="Edit, rename, test or delete logins on the Saved logins tab." FontSize="11" TextWrapping="Wrap" />
+              </StackPanel>
+            </TabItem>
+
+          </TabControl>
+          <TextBlock x:Name="SourcesMessageText" DataContext="{Binding Sources}" x:DataType="vm:ConnectSourcesViewModel" Text="{Binding Message}" IsVisible="{Binding HasMessage}"
+                     Classes.error="{Binding MessageIsError}" Classes.passed="{Binding !MessageIsError}" TextWrapping="Wrap" FontSize="12" />
+
+          <Border Height="1" Background="{DynamicResource LfmeCardBorderBrush}" Margin="0,4" />
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+            <i:Icon Classes="accent" Value="fa-solid fa-sliders" FontSize="13" />
+            <TextBlock Text="Connection details" FontWeight="SemiBold" />
+          </StackPanel>
+          <TextBlock Text="Provider" Classes="muted" FontSize="12" />
+          <ItemsControl x:Name="ProviderList" ItemsSource="{Binding Providers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProviderOption">
+                <StackPanel Margin="0,2">
+                  <RadioButton GroupName="provider"
+                               Content="{Binding Label}"
+                               IsEnabled="{Binding IsEnabled}"
+                               IsChecked="{Binding IsSelected}"
+                               ToolTip.Tip="{Binding Note}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="Sign in with" Classes="muted" FontSize="12" Margin="0,6,0,0" />
+          <RadioButton x:Name="EntraOption" GroupName="auth" Content="Microsoft Entra ID" IsChecked="{Binding UseEntra}" />
+          <RadioButton x:Name="ConnectionStringOption" GroupName="auth" Content="Connection string" IsChecked="{Binding UseConnectionString}" />
+
+          <StackPanel Spacing="4" IsVisible="{Binding UseEntra}">
+            <TextBlock Text="Namespace" />
+            <TextBox x:Name="NamespaceBox" Text="{Binding NamespaceText}" Watermark="contoso-synthetic.servicebus.windows.net" />
+            <TextBlock x:Name="EntraHintText" Classes="muted" Text="{Binding EntraHint}" TextWrapping="Wrap" FontSize="12" />
+          </StackPanel>
+
+          <StackPanel Spacing="4" IsVisible="{Binding UseConnectionString}">
+            <TextBlock Text="Connection string or SAS token" />
+            <TextBox x:Name="ConnectionStringBox" Text="{Binding ConnectionString}" PasswordChar="•" RevealPassword="False" Watermark="Endpoint=sb://... or SharedAccessSignature sr=..." />
+            <TextBlock x:Name="DetectedText" Text="{Binding DetectedText}" IsVisible="{Binding HasDetectedText}" Classes.error="{Binding DetectedIsError}" TextWrapping="Wrap" FontSize="12" />
+            <TextBlock Classes="muted" Text="Namespace key, entity key (EntityPath), SAS token, Endpoint only (signs in with your account), or the local emulator." TextWrapping="Wrap" FontSize="11" />
+          </StackPanel>
+
+          <StackPanel Spacing="4" IsVisible="{Binding ShowAccountPicker}">
+            <TextBlock Text="Entra account" />
+            <ComboBox x:Name="ConnectAccountBox" ItemsSource="{Binding AccountChoices}" SelectedItem="{Binding SelectedAccount}" HorizontalAlignment="Stretch" PlaceholderText="Choose a signed-in account" />
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <CheckBox x:Name="SaveConnectionBox" Content="{Binding SaveLabel}" IsChecked="{Binding SaveConnection}" IsEnabled="{Binding CanSave}" />
+            <TextBox x:Name="SaveNameBox" Text="{Binding SaveName}" Watermark="Name (optional)" IsVisible="{Binding SaveConnection}" />
+            <TextBlock x:Name="SaveNoteText" Classes="muted" Text="{Binding SaveNote}" TextWrapping="Wrap" FontSize="12" />
+          </StackPanel>
+
+          <Border Classes="callout" IsVisible="{Binding HasValidationMessage}">
+            <Grid ColumnDefinitions="Auto,*" Classes="il">
+              <i:Icon Classes="error" Value="fa-solid fa-triangle-exclamation" FontSize="13" Margin="0,0,8,0" />
+              <TextBlock Grid.Column="1" x:Name="ValidationText" Classes="error" Text="{Binding ValidationMessage}" TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="ConnectButton" Classes="primary" Command="{Binding ConnectCommand}">
+              <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                <i:Icon Value="fa-solid fa-plug-circle-bolt" FontSize="13" />
+                <TextBlock Text="Connect" />
+              </StackPanel>
+            </Button>
+            <Button x:Name="DisconnectButton" Command="{Binding DisconnectCommand}">
+              <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                <i:Icon Value="fa-solid fa-plug-circle-xmark" FontSize="13" />
+                <TextBlock Text="Disconnect" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsConnected}">
+            <i:Icon Value="fa-solid fa-circle-check" FontSize="12" Foreground="{DynamicResource LfmeSuccessBrush}" />
+            <TextBlock x:Name="ConnectedToText" Classes="muted" Text="{Binding ConnectedTo}" TextWrapping="Wrap" MaxWidth="300" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <TabControl x:Name="MainTabs" SelectedIndex="{Binding SelectedTab}">
+      <TabItem x:Name="AccountsTab" Header="Accounts">
+        <views:AccountsView x:Name="AccountsPanel" DataContext="{Binding Accounts}" />
+      </TabItem>
+      <TabItem x:Name="LoginsTab" Header="Saved logins">
+        <views:LoginsView x:Name="LoginsPanel" DataContext="{Binding Logins}" />
+      </TabItem>
+      <TabItem x:Name="QuickViewTab" Header="Queues &amp; topics">
+        <views:QuickView x:Name="QuickViewPanel" DataContext="{Binding QuickView}" />
+      </TabItem>
+      <TabItem x:Name="JobsTab" Header="Test jobs">
+        <views:JobsView x:Name="JobsPanel" DataContext="{Binding Jobs}" />
+      </TabItem>
+      <TabItem x:Name="MoveTab" Header="Move">
+        <views:MoveView x:Name="MovePanel" DataContext="{Binding Move}" />
+      </TabItem>
+      <TabItem x:Name="VoiceTab" Header="Voice">
+        <views:VoiceView x:Name="VoicePanel" DataContext="{Binding Voice}" />
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

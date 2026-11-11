@@ -1,0 +1,148 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             xmlns:cred="using:Acornsoft.MessageExplorer.Credentials"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.LoginsView"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             x:DataType="vm:LoginsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.badge">
+      <Setter Property="Background" Value="{DynamicResource LfmeBadgeBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Width" Value="40" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12" />
+    </Style>
+    <Style Selector="Border.weak TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="Border.weak">
+      <Setter Property="Background" Value="{DynamicResource LfmeWarningBackgroundBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="*,Auto,Auto">
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+          <i:Icon Classes="accent" Value="fa-solid fa-bookmark" FontSize="15" />
+          <TextBlock Classes="title" Text="Saved logins" />
+        </StackPanel>
+        <Border Classes.weak="{Binding StoreIsWeak}">
+          <StackPanel Spacing="2">
+            <TextBlock x:Name="StoreBadgeText" Text="{Binding StoreBadge}" FontWeight="SemiBold" FontSize="12" />
+            <TextBlock x:Name="StoreText" Text="{Binding StoreText}" TextWrapping="Wrap" FontSize="12" />
+          </StackPanel>
+        </Border>
+        <!-- Wraps on a phone-width screen instead of cutting buttons off. -->
+        <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0">
+          <Button x:Name="AddLoginButton" Content="Add…" Command="{Binding AddCommand}" />
+          <Button x:Name="EditLoginButton" Content="Edit…" Command="{Binding EditCommand}" />
+          <Button x:Name="RenameLoginButton" Content="Rename" Command="{Binding RenameCommand}" />
+          <Button x:Name="DeleteLoginButton" Content="Delete…" Command="{Binding DeleteCommand}" />
+          <Button x:Name="TestLoginButton" Content="Test connection" Command="{Binding TestCommand}" ToolTip.Tip="Read-only: lists queues and changes nothing." />
+        </WrapPanel>
+        <StackPanel x:Name="RenamePanel" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsRenaming}">
+          <TextBox x:Name="RenameBox" Text="{Binding RenameText}" Width="320" />
+          <Button x:Name="ApplyRenameButton" Content="Rename" Command="{Binding ApplyRenameCommand}" />
+          <Button Content="Cancel" Command="{Binding CancelRenameCommand}" />
+        </StackPanel>
+        <Border Classes="panel" x:Name="DeleteConfirmPanel" IsVisible="{Binding IsConfirmingDelete}">
+          <StackPanel Spacing="8">
+            <TextBlock x:Name="DeletePromptText" Text="{Binding DeletePrompt}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="ConfirmDeleteButton" Content="Delete" Command="{Binding ConfirmDeleteCommand}" />
+              <Button x:Name="CancelDeleteButton" Content="Cancel" Command="{Binding CancelDeleteCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <TextBlock x:Name="LoginStatusText" Text="{Binding Status}" IsVisible="{Binding HasStatus}" Classes.error="{Binding StatusIsError}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Panel>
+        <TextBlock Classes="state muted" Text="No saved logins yet. Add one, or tick Save when you connect." IsVisible="{Binding !HasItems}" />
+        <ListBox x:Name="LoginsList" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" IsVisible="{Binding HasItems}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:LoginItemViewModel">
+              <DockPanel Margin="0,2">
+                <Border Classes="badge" DockPanel.Dock="Left" ToolTip.Tip="{Binding SystemText}">
+                  <TextBlock Text="{Binding Badge}" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding LastUsedText}" FontSize="12" VerticalAlignment="Center" Margin="12,0,4,0" />
+                <StackPanel Spacing="1">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding SystemText}" />
+                    <Run Text=" · " />
+                    <Run Text="{Binding KindText}" />
+                    <Run Text=" · " />
+                    <Run Text="{Binding DetailText}" />
+                  </TextBlock>
+                </StackPanel>
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Panel>
+    </DockPanel>
+
+    <!-- Editor -->
+    <Border Grid.Column="2" Classes="panel" Width="420" Margin="16,0,0,0" VerticalAlignment="Top" IsVisible="{Binding IsEditing}">
+      <StackPanel x:Name="LoginEditorPanel" Spacing="6" DataContext="{Binding Editor}" x:DataType="vm:LoginEditorViewModel">
+        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" />
+        <TextBlock Text="System" />
+        <ComboBox x:Name="SystemBox" ItemsSource="{Binding Systems}" SelectedItem="{Binding SelectedSystem}" IsEnabled="{Binding IsNew}" HorizontalAlignment="Stretch" />
+        <TextBlock Text="Kind" />
+        <ComboBox x:Name="KindBox" ItemsSource="{Binding Kinds}" SelectedItem="{Binding SelectedKind}" IsEnabled="{Binding IsNew}" HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="cred:LoginKindInfo">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBlock Text="Name *" />
+        <TextBox x:Name="LoginNameBox" Text="{Binding Name}" Watermark="A name you'll recognise" />
+        <ItemsControl x:Name="FieldList" ItemsSource="{Binding Fields}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:LoginFieldEditor">
+              <StackPanel Spacing="2" Margin="0,2">
+                <TextBlock Text="{Binding Label}" />
+                <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}" IsVisible="{Binding IsText}" />
+                <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" IsVisible="{Binding HasChoices}" HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Spacing="2" IsVisible="{Binding UsesAccount}">
+          <TextBlock Text="{Binding AccountLabel}" />
+          <ComboBox x:Name="LoginAccountBox" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" HorizontalAlignment="Stretch" PlaceholderText="Choose a signed-in account" />
+          <TextBlock Classes="muted" Text="Sign in on the Accounts tab to pick an account." IsVisible="{Binding HasNoAccounts}" FontSize="12" />
+        </StackPanel>
+        <StackPanel Spacing="2" IsVisible="{Binding HasSecret}">
+          <TextBlock Text="{Binding SecretLabel}" />
+          <!-- Masked, no reveal button, copy and cut blocked in code-behind. -->
+          <TextBox x:Name="SecretBox" Text="{Binding Secret}" PasswordChar="•" />
+          <TextBlock x:Name="SecretHintText" Classes="muted" Text="{Binding SecretHint}" TextWrapping="Wrap" FontSize="12" />
+        </StackPanel>
+        <TextBlock x:Name="EditorErrorText" Classes="error" Text="{Binding Error}" IsVisible="{Binding HasError}" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+          <Button x:Name="SaveLoginButton" Classes="primary" Content="Save" Command="{Binding SaveCommand}" />
+          <Button x:Name="CancelLoginButton" Content="Cancel" Command="{Binding CancelCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

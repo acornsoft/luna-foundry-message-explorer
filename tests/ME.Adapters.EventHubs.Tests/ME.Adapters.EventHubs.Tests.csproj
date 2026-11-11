@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Adapters.EventHubs\ME.Adapters.EventHubs.csproj" />
+    <ProjectReference Include="..\..\src\ME.Redaction\ME.Redaction.csproj" />
+  </ItemGroup>
+</Project>

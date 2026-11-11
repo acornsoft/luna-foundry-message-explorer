@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Acornsoft.MessageExplorer.Jobs.Cli</RootNamespace>
+    <AssemblyName>me-jobs</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Jobs\ME.Jobs.csproj" />
+  </ItemGroup>
+</Project>
