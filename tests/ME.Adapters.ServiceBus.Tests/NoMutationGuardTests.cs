@@ -55,7 +55,7 @@ public class NoMutationGuardTests
         foreach (var expected in new[]
         {
             "GetTenants", "GetSubscriptions", "GetAllAsync", "GetServiceBusNamespacesAsync",
-            "GetServiceBusQueues", "GetServiceBusTopics", "GetServiceBusSubscriptions",
+            "GetServiceBusQueues", "GetServiceBusTopics", "GetServiceBusSubscriptions", "GetGenericResourcesAsync",
         })
         {
             Assert.Contains(expected, calls);

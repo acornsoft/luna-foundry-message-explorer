@@ -53,6 +53,8 @@ internal static class MutationScanner
         "GetServiceBusQueues",
         "GetServiceBusTopics",
         "GetServiceBusSubscriptions",
+        // Event Hubs namespaces for browsing: GET /subscriptions/{id}/resources with a resourceType filter.
+        "GetGenericResourcesAsync",
         "ToString",
         "Equals",
         "GetHashCode",

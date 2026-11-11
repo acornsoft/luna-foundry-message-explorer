@@ -56,6 +56,73 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         CopySignInLinkCommand = new AsyncCommand(CopySignInLinkAsync, () => SignInLink is not null);
         CancelSignInCommand = new RelayCommand(CancelSignIn, () => IsSigningIn);
         OpenCommand = new AsyncCommand(() => OpenAsync(SelectedNode), () => SelectedNode is { IsNamespace: true });
+        RefreshAllCommand = new AsyncCommand(RefreshAllAsync, () => Accounts.Any(a => a.IsSignedIn));
+        CopyDeviceCodeCommand = new AsyncCommand(CopyDeviceCodeAsync, () => DeviceCode is not null);
+    }
+
+    /// <summary>Browse (subscription, resource group, namespace) beside the accounts. Set by the main view model.</summary>
+    public ConnectSourcesViewModel? Browse { get; set; }
+
+    /// <summary>The app theme, so the sign-in page can switch it. Set by the main view model.</summary>
+    public ThemeViewModel? Theme { get; set; }
+
+    /// <summary>Raised when a namespace opens, from this page or from Browse, for the Recent list.</summary>
+    public event Action<NamespaceRef, AccountItemViewModel>? NamespaceOpened;
+
+    /// <summary>Lists every signed-in account's tenants, subscriptions and namespaces again. Read-only.</summary>
+    public AsyncCommand RefreshAllCommand { get; }
+
+    /// <summary>Copies just the device code, ready to paste at the Microsoft device login page.</summary>
+    public AsyncCommand CopyDeviceCodeCommand { get; }
+
+    /// <summary>The short code from the device code message, or null when none is waiting.</summary>
+    public string? DeviceCode => ParseDeviceCode(_deviceCodeText);
+
+    /// <summary>The page to enter the code at, from the same message.</summary>
+    public string? DeviceCodeUrl => _deviceCodeText is { } text && System.Text.RegularExpressions.Regex.Match(text, @"https://\S+[^\s.,;)]") is { Success: true } m ? m.Value : null;
+
+    /// <summary>The code in MSAL's device code message: the run of 8 or more capital letters and digits after "code".</summary>
+    public static string? ParseDeviceCode(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"\bcode\s+([A-Z0-9][A-Z0-9-]{6,14}[A-Z0-9])\b");
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    private async Task CopyDeviceCodeAsync()
+    {
+        if (DeviceCode is not { } code || Clipboard is not { } clipboard)
+            return;
+        await clipboard(code).ConfigureAwait(true);
+        _log.Write("device code copied to the clipboard");
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        Message = null;
+        await Task.WhenAll(Accounts.Where(a => a.IsSignedIn).ToList().Select(RefreshAsync)).ConfigureAwait(true);
+    }
+
+    /// <summary>Runs discovery again for one signed-in account with the credential it already has.</summary>
+    private async Task RefreshAsync(AccountItemViewModel item)
+    {
+        if (item.Credential is not { } credential)
+            return;
+        await UseAsync(item, new SignedInAccount(item.Account, credential), CancellationToken.None).ConfigureAwait(true);
+    }
+
+    /// <summary>Opens <paramref name="ns"/> with <paramref name="account"/>'s credential: ARM counts, read-only.</summary>
+    public async Task OpenNamespaceAsync(NamespaceRef ns, AccountItemViewModel account)
+    {
+        ArgumentNullException.ThrowIfNull(ns);
+        ArgumentNullException.ThrowIfNull(account);
+        if (account.Credential is not { } credential || ns.Kind != NamespaceKind.ServiceBus)
+            return;
+        Message = null;
+        var inventory = new ArmEntityInventory(_arm.ForCloud(AzureClouds.Find(ns.Cloud)), credential, ns);
+        await _open(inventory, $"{ns.Name} as {account.Username}").ConfigureAwait(true);
+        NamespaceOpened?.Invoke(ns, account);
     }
 
     private BrowserChoice _selectedBrowser;
@@ -95,7 +162,12 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         private set
         {
             if (Set(ref _deviceCodeText, value))
+            {
                 OnPropertyChanged(nameof(HasDeviceCode));
+                OnPropertyChanged(nameof(DeviceCode));
+                OnPropertyChanged(nameof(DeviceCodeUrl));
+                CopyDeviceCodeCommand?.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -371,16 +443,14 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
 
     public async Task OpenAsync(DiscoveryNode? node)
     {
-        if (node is not { Namespace: { } ns, Account: { Credential: { } credential } account })
+        if (node is not { Namespace: { } ns, Account: { Credential: not null } account })
             return;
-        Message = null;
-        var inventory = new ArmEntityInventory(_arm.ForCloud(AzureClouds.Find(ns.Cloud)), credential, ns);
-        await _open(inventory, $"{ns.Name} as {account.Username}").ConfigureAwait(true);
+        await OpenNamespaceAsync(ns, account).ConfigureAwait(true);
     }
 
     private AccountItemViewModel Track(StoredAccount account)
     {
-        var item = new AccountItemViewModel(account, SignInAgainAsync, SignOut, Remove, Browsers, SaveBrowser);
+        var item = new AccountItemViewModel(account, SignInAgainAsync, SignOut, Remove, Browsers, SaveBrowser, RefreshAsync);
         Accounts.Add(item);
         OnPropertyChanged(nameof(HasAccounts));
         return item;
@@ -501,6 +571,7 @@ public sealed class AccountsViewModel : ViewModelBase, IAccountCredentialSource
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(Namespaces));
         OnPropertyChanged(nameof(SignedInAccounts));
+        RefreshAllCommand.RaiseCanExecuteChanged();
     }
 
     private static DiscoveryNode BuildAccountNode(AccountItemViewModel account)

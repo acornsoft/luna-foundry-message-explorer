@@ -74,6 +74,18 @@ public sealed class ConnectViewModel : ViewModelBase
         ReloadSaved();
     }
 
+    /// <summary>Raised after a saved login connects, for the Recent list.</summary>
+    public event Action<LoginEntry>? LoginUsed;
+
+    /// <summary>Raised after Connect saves a new login, so the Saved list can come to the front.</summary>
+    public event Action<LoginEntry>? LoginSaved;
+
+    /// <summary>The app theme, so the setup panel can switch it. Set by the main view model.</summary>
+    public ThemeViewModel? Theme { get; set; }
+
+    /// <summary>Recent, Saved and Browse. Set by the main view model.</summary>
+    public ConnectSourcesViewModel? Sources { get; set; }
+
     /// <summary>Set by the main view model once accounts exist.</summary>
     public IAccountCredentialSource? Accounts
     {
@@ -390,6 +402,7 @@ public sealed class ConnectViewModel : ViewModelBase
             SaveName = string.Empty;
             ReloadSaved();
             SelectedSaved = SavedConnections.FirstOrDefault(e => e.Id == saved.Id);
+            LoginSaved?.Invoke(saved);
         }
         catch (Exception exception) when (exception is LoginRejectedException or SecretStoreException)
         {
@@ -457,6 +470,9 @@ public sealed class ConnectViewModel : ViewModelBase
         {
             _usingLoginId = null;
         }
+
+        if (IsConnected)
+            LoginUsed?.Invoke(login);
     }
 
     private void MarkUsed(string id)

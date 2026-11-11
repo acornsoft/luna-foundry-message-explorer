@@ -37,14 +37,26 @@ public class HeadlessWindowTests
         return (window, main);
     }
 
+    private static T Find<T>(Window window, string name)
+        where T : Control =>
+        window.GetVisualDescendants().OfType<T>().FirstOrDefault(c => c.Name == name)
+        ?? throw new InvalidOperationException($"No visible {typeof(T).Name} named {name}.");
+
+    private static void Settle(Window window)
+    {
+        Dispatcher.UIThread.RunJobs();
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+    }
+
     [AvaloniaFact]
     public void Window_starts_in_the_not_connected_state()
     {
         var (window, _) = Open();
 
-        Assert.True(window.FindControl<TextBlock>("NotConnectedText")!.IsVisible);
-        Assert.False(window.FindControl<DataGrid>("QueuesGrid")!.IsVisible);
-        Assert.False(window.FindControl<Button>("RefreshButton")!.IsEffectivelyEnabled);
+        Assert.True(Find<TextBlock>(window, "QuickNotConnectedText").IsVisible);
+        Assert.False(Find<TextBlock>(window, "QuickSummaryText").IsVisible);
+        Assert.False(Find<Button>(window, "QuickRefreshButton").IsEffectivelyEnabled);
         Assert.Equal("Acornsoft Message Explorer", window.Title);
     }
 
@@ -78,33 +90,31 @@ public class HeadlessWindowTests
     }
 
     [AvaloniaFact]
-    public async Task Connect_fills_the_grid_and_highlights_dead_letters()
+    public async Task Connect_fills_the_tree_and_highlights_dead_letters()
     {
         var (window, main) = Open();
         main.Connect.NamespaceText = "contoso-synthetic";
 
         await main.Connect.ConnectCommand.ExecuteAsync();
-        Dispatcher.UIThread.RunJobs();
-        window.UpdateLayout();
+        Settle(window);
 
-        var grid = window.FindControl<DataGrid>("QueuesGrid")!;
-        Assert.True(grid.IsVisible);
-        Assert.Same(main.Queues.Rows, grid.ItemsSource);
-        Assert.Equal(7, grid.Columns.Count);
-        Assert.Equal("4 queues, 2 with dead letters. Read-only.", window.FindControl<TextBlock>("SummaryText")!.Text);
-
-        var highlighted = window.GetVisualDescendants()
-            .OfType<TextBlock>()
-            .Where(t => t.Classes.Contains("deadletter"))
-            .Select(t => t.Text ?? string.Empty)
+        Assert.Equal(MainViewModel.ExplorerTab, main.SelectedTab);
+        Assert.False(Find<TextBlock>(window, "QuickNotConnectedText").IsVisible);
+        Assert.StartsWith("4 queues (2 with dead letters), ", Find<TextBlock>(window, "QuickSummaryText").Text, StringComparison.Ordinal);
+        var tree = Find<TreeView>(window, "QuickTree");
+        var queueTags = tree.GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("kind") && b.Classes.Contains("queue") && b.IsEffectivelyVisible)
             .ToList();
-        // Dead-letter 3 on one queue, transfer dead-letter 1 on another. Zero counts stay plain.
-        Assert.Equal(["1", "3"], highlighted.Order(StringComparer.Ordinal).ToArray());
-        Assert.True(window.FindControl<Button>("RefreshButton")!.IsEffectivelyEnabled);
+        Assert.Equal(4, queueTags.Count);
+        Assert.All(queueTags, t => Assert.Equal("QUEUE", ((TextBlock)t.Child!).Text));
+        // Dead-letter 3 on one queue, transfer dead-letter 1 on another; zero counts get no badge.
+        int Badges(string kind) => tree.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains(kind) && b.IsEffectivelyVisible);
+        Assert.Equal((1, 1), (Badges("dead"), Badges("transfer")));
+        Assert.True(Find<Button>(window, "QuickRefreshButton").IsEffectivelyEnabled);
     }
 
     [AvaloniaFact]
-    public async Task Error_state_shows_the_message_and_hides_the_grid()
+    public async Task Error_state_shows_the_message()
     {
         var provider = new FakeBrokerProvider();
         provider.Inventory.FailWith = new BrokerException(BrokerErrorKind.Unreachable, BrokerException.Explain(BrokerErrorKind.Unreachable));
@@ -114,16 +124,17 @@ public class HeadlessWindowTests
         main.Connect.NamespaceText = "contoso-synthetic";
 
         await main.Connect.ConnectCommand.ExecuteAsync();
-        Dispatcher.UIThread.RunJobs();
+        Settle(window);
 
-        var error = window.FindControl<TextBlock>("ErrorText")!;
+        var error = Find<TextBlock>(window, "QuickErrorText");
         Assert.True(error.IsVisible);
         Assert.Equal(BrokerException.Explain(BrokerErrorKind.Unreachable), error.Text);
-        Assert.False(window.FindControl<DataGrid>("QueuesGrid")!.IsVisible);
+        Assert.False(Find<TextBlock>(window, "QuickSummaryText").IsVisible);
+        Assert.False(Find<TextBlock>(window, "QuickEmptyText").IsVisible);
     }
 
     [AvaloniaFact]
-    public async Task Empty_state_is_shown_for_a_namespace_with_no_queues()
+    public async Task Empty_state_is_shown_for_a_namespace_with_no_queues_or_topics()
     {
         var provider = new FakeBrokerProvider([]);
         var main = new MainViewModel(new ProviderCatalog([provider], [])) { SelectedTab = MainViewModel.QueuesTab };
@@ -132,8 +143,9 @@ public class HeadlessWindowTests
         main.Connect.NamespaceText = "contoso-synthetic";
 
         await main.Connect.ConnectCommand.ExecuteAsync();
-        Dispatcher.UIThread.RunJobs();
+        Settle(window);
 
-        Assert.True(window.FindControl<TextBlock>("EmptyText")!.IsVisible);
+        Assert.True(Find<TextBlock>(window, "QuickEmptyText").IsVisible);
+        Assert.Equal("This namespace has no queues or topics.", Find<TextBlock>(window, "QuickEmptyText").Text);
     }
 }

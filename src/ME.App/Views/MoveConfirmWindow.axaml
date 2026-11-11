@@ -19,7 +19,7 @@
     <ItemsControl x:Name="ConfirmWarnings">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="x:String">
-          <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#B26A00" Margin="0,2" />
+          <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="{DynamicResource LfmeWarningBrush}" Margin="0,2" />
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>

@@ -99,12 +99,14 @@ public sealed class QuickEntityViewModel : ViewModelBase
 
     public string Breadcrumb { get; }
 
-    public string Icon => Snapshot.Kind switch
-    {
-        EntityKind.Queue => "fa-solid fa-inbox",
-        EntityKind.Topic => "fa-solid fa-tower-broadcast",
-        _ => "fa-solid fa-code-branch",
-    };
+    public string Icon => EntityKindStyle.Icon(Snapshot.Kind);
+
+    /// <summary>QUEUE, TOPIC or SUB beside the title, in the kind's colour.</summary>
+    public string KindTag => EntityKindStyle.Tag(Snapshot.Kind);
+
+    public bool IsQueueFamily => EntityKindStyle.IsQueueFamily(Snapshot.Kind);
+
+    public bool IsTopicFamily => !IsQueueFamily;
 
     public string? Status => Snapshot.Status;
 

@@ -23,15 +23,21 @@ public partial class MainWindow : Window
         };
     }
 
-    /// <summary>Header clicks sort in the view model, so the order is the same one the tests check.</summary>
-    private void OnQueuesGridSorting(object? sender, DataGridColumnEventArgs e)
+    private void OnRecentDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
-        if (DataContext is not MainViewModel main)
-            return;
-        if (Enum.TryParse<QueueSortColumn>(e.Column.SortMemberPath, out var column))
-        {
-            main.Queues.Sort(column);
-            e.Handled = true;
-        }
+        if (DataContext is MainViewModel main && main.Sources.OpenRecentCommand.CanExecute(null))
+            main.Sources.OpenRecentCommand.Execute(null);
+    }
+
+    private void OnSavedDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (DataContext is MainViewModel main && main.Connect.ConnectSavedCommand.CanExecute(null))
+            main.Connect.ConnectSavedCommand.Execute(null);
+    }
+
+    private void OnBrowseDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (DataContext is MainViewModel main && main.Sources.OpenCommand.CanExecute(null))
+            main.Sources.OpenCommand.Execute(null);
     }
 }

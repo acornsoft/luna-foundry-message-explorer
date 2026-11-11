@@ -1,13 +1,26 @@
-# Quick view
+# Queues & topics (the quick view)
 
-The Quick view tab shows the top messages of any queue, topic or subscription, by message type, without
-changing anything.
+The **Queues & topics** tab is the one entity view. It shows the counts and top messages of any queue, topic
+or subscription, by message type, without changing anything. (Before 0.8.2 there were separate Queues and
+Topics grid tabs and a Quick view tab; they are now this one tab. `--tab queues`, `--tab topics` and
+`--tab quick` all open it.)
 
 ## Layout
 
-- **Entity tree** (left): the namespace, then Queues and Topics. A topic's subscriptions are read the first
-  time you expand it. The find box hides entities whose names don't match. Badges show the active,
-  dead-letter, scheduled and transfer dead-letter counts.
+- **Show/hide toggles** (top of the tree): **Queues** and **Topics** icon toggles with counts. Turn one off
+  to hide that kind (hiding Topics hides their subscriptions too). The choice is remembered between launches
+  in `ui-settings.json`. If the selected entity is hidden, the selection is cleared.
+- **Entity tree** (left): the namespace, then Queues and Topics. You can tell the kinds apart at a glance:
+
+  | Kind | Icon | Tag | Colour |
+  | --- | --- | --- | --- |
+  | Queue (channel) | `fa-inbox` | QUEUE | teal |
+  | Topic | `fa-tower-broadcast` | TOPIC | purple |
+  | Subscription (under its topic) | `fa-code-branch` | SUB | purple |
+
+  The same icon and tag show in the entity header. A topic's subscriptions are read the first time you expand
+  it. The find box hides entities whose names don't match. Badges show the active, dead-letter, scheduled and
+  transfer dead-letter counts. A summary line counts queues, dead-lettered queues and topics.
 - **Lane cards** (top): one card per message type with its count. Click a card to open that section and jump
   to it. Dead-letter cards turn red when the count is above zero.
 - **Sections** (middle): Active, Dead-letter, Scheduled and Transfer dead-letter. Each one opens as a
@@ -27,7 +40,7 @@ the icon and its TextBlock in a panel with class `il` and both are centered on t
 
 | What | From |
 | --- | --- |
-| Counts | Runtime properties, the same read as the Queues and Topics tabs. |
+| Counts | Runtime properties (one list of queues and one of topics per load; subscriptions per topic when expanded). |
 | Active and Scheduled rows (queue) | A peek of the entity. One peek returns active, deferred and scheduled messages; they are split by state. |
 | Dead-letter rows | A peek of `<entity>/$DeadLetterQueue`. |
 | Transfer dead-letter rows | A peek of `<entity>/$Transfer/$DeadLetterQueue`. |

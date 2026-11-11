@@ -12,7 +12,14 @@ public sealed record TenantRef(string TenantId, string DisplayName);
 
 public sealed record SubscriptionRef(string SubscriptionId, string DisplayName, string TenantId);
 
-/// <summary>A Service Bus namespace the account can read in Azure Resource Manager.</summary>
+/// <summary>Which kind of messaging namespace an ARM resource is.</summary>
+public enum NamespaceKind
+{
+    ServiceBus,
+    EventHubs,
+}
+
+/// <summary>A Service Bus (or, for browsing, Event Hubs) namespace the account can read in Azure Resource Manager.</summary>
 public sealed record NamespaceRef(
     string Name,
     string FullyQualifiedNamespace,
@@ -21,7 +28,8 @@ public sealed record NamespaceRef(
     string Location,
     string SubscriptionId,
     string TenantId,
-    string Cloud = AzureClouds.PublicId);
+    string Cloud = AzureClouds.PublicId,
+    NamespaceKind Kind = NamespaceKind.ServiceBus);
 
 /// <summary>
 /// Read-only Azure Resource Manager calls: list tenants, subscriptions, namespaces, and a namespace's
@@ -36,6 +44,13 @@ public interface IArmReader
 
     IAsyncEnumerable<NamespaceRef> ListNamespacesAsync(TokenCredential credential, SubscriptionRef subscription, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Event Hubs namespaces in a subscription, for browsing only (a resource list GET filtered by type).
+    /// Readers that know none (older fakes) return nothing.
+    /// </summary>
+    IAsyncEnumerable<NamespaceRef> ListEventHubsNamespacesAsync(TokenCredential credential, SubscriptionRef subscription, CancellationToken cancellationToken) =>
+        NoNamespaces();
+
     IAsyncEnumerable<EntitySnapshot> ListQueuesAsync(TokenCredential credential, NamespaceRef serviceBusNamespace, CancellationToken cancellationToken);
 
     IAsyncEnumerable<EntitySnapshot> ListTopicsAsync(TokenCredential credential, NamespaceRef serviceBusNamespace, CancellationToken cancellationToken);
@@ -47,4 +62,10 @@ public interface IArmReader
     /// cloud (in-memory fakes) return themselves.
     /// </summary>
     IArmReader ForCloud(AzureCloud cloud) => this;
+
+    private static async IAsyncEnumerable<NamespaceRef> NoNamespaces()
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+        yield break;
+    }
 }

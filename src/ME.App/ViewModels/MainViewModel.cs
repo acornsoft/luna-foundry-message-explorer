@@ -9,6 +9,7 @@ using Acornsoft.MessageExplorer.Credentials;
 using Acornsoft.MessageExplorer.Credentials.Stores;
 using Acornsoft.MessageExplorer.Shell.Accounts;
 using Acornsoft.MessageExplorer.Shell.Demo;
+using Acornsoft.MessageExplorer.Shell.Settings;
 using Azure.Identity;
 
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
@@ -26,19 +27,33 @@ public sealed class MainViewModel : ViewModelBase
         AccountServices? accounts = null,
         MoveServices? move = null,
         QuickViewServices? quickView = null,
-        VoiceServices? voice = null)
+        VoiceServices? voice = null,
+        IUiSettingsStore? settings = null)
     {
+        var uiSettings = settings ?? new MemoryUiSettingsStore();
+        Theme = new ThemeViewModel(uiSettings);
         _quickViewServices = quickView ?? QuickViewServices.Default();
         ArgumentNullException.ThrowIfNull(catalog);
         var services = accounts ?? AccountServices.None();
         Shell = ShellModel.Observe();
         Queues = new QueuesViewModel();
         Topics = new TopicsViewModel();
-        QuickView = new QuickViewViewModel(scheduler);
+        QuickView = new QuickViewViewModel(scheduler, settings: uiSettings);
         Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance, runnerFactory: runnerFactory, samplesFolder: samplesFolder);
         Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected, services.Vault);
         Accounts = new AccountsViewModel(services.Authenticator, services.Store, services.Arm, OpenFromAccountsAsync, services.SignInLog, browsers: services.Browsers);
         Connect.Accounts = Accounts;
+        Sources = new ConnectSourcesViewModel(Accounts, Connect, uiSettings, services.Vault);
+        Connect.Sources = Sources;
+        Connect.Theme = Theme;
+        Accounts.Theme = Theme;
+        Accounts.Browse = Sources;
+        Connect.LoginSaved += _ => Sources.SelectedTab = ConnectSourcesViewModel.SavedTab;
+        Connect.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ConnectViewModel.IsConnected))
+                OnPropertyChanged(nameof(ShowConnectPanel));
+        };
         var vault = services.Vault ?? new CredentialVault(
             new UnavailableSecretStore("secure store", "Saving logins is not available in this window."),
             new MemoryLoginMetadataStore());
@@ -55,6 +70,12 @@ public sealed class MainViewModel : ViewModelBase
                 Connect.RefreshAccountText();
         };
     }
+
+    /// <summary>Light, Dark or System; shared by every theme picker in the window and remembered between launches.</summary>
+    public ThemeViewModel Theme { get; }
+
+    /// <summary>Recent, Saved and Browse on the Connect panel.</summary>
+    public ConnectSourcesViewModel Sources { get; }
 
     /// <summary>Signed-in Entra accounts and the namespaces each can read.</summary>
     public AccountsViewModel Accounts { get; }
@@ -96,12 +117,17 @@ public sealed class MainViewModel : ViewModelBase
 
     public const int AccountsTab = 0;
     public const int LoginsTab = 1;
-    public const int QueuesTab = 2;
-    public const int TopicsTab = 3;
-    public const int QuickViewTab = 4;
-    public const int JobsTab = 5;
-    public const int MoveTab = 6;
-    public const int VoiceTab = 7;
+
+    /// <summary>Queues and topics: the quick-view layout is the one entity view (tree, lane cards, sections, drawer).</summary>
+    public const int ExplorerTab = 2;
+
+    // The old Queues, Topics and Quick view tabs are one tab now; the names stay so --tab and callers still land there.
+    public const int QueuesTab = ExplorerTab;
+    public const int TopicsTab = ExplorerTab;
+    public const int QuickViewTab = ExplorerTab;
+    public const int JobsTab = 3;
+    public const int MoveTab = 4;
+    public const int VoiceTab = 5;
 
     private int _selectedTab;
 
@@ -110,10 +136,32 @@ public sealed class MainViewModel : ViewModelBase
         get => _selectedTab;
         set
         {
-            if (Set(ref _selectedTab, value) && value == QuickViewTab)
+            if (!Set(ref _selectedTab, value))
+                return;
+            OnPropertyChanged(nameof(ShowConnectPanel));
+            if (value == QuickViewTab)
                 _ = QuickView.EnsureLoadedAsync();
         }
     }
+
+    private bool _connectPinned;
+
+    /// <summary>Keeps the Connect panel open on every tab (the plug button in the header).</summary>
+    public bool ConnectPinned
+    {
+        get => _connectPinned;
+        set
+        {
+            if (Set(ref _connectPinned, value))
+                OnPropertyChanged(nameof(ShowConnectPanel));
+        }
+    }
+
+    /// <summary>
+    /// The Connect panel shows on the setup tabs (Accounts, Saved logins), whenever nothing is connected, or when
+    /// pinned. Once connected, the other tabs get the full width.
+    /// </summary>
+    public bool ShowConnectPanel => _connectPinned || !Connect.IsConnected || _selectedTab is AccountsTab or LoginsTab;
 
     /// <summary>The production catalog: Service Bus enabled, Kafka and AWS SQS/SNS listed as planned.</summary>
     /// <param name="syntheticDemo">Adds a synthetic, in-memory demo provider (for screenshots and walkthroughs).</param>

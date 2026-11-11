@@ -27,9 +27,9 @@ public partial class AccountsView : UserControl
         };
     }
 
-    private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
+    private void OnBrowseDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (DataContext is AccountsViewModel accounts && accounts.OpenCommand.CanExecute(null))
-            accounts.OpenCommand.Execute(null);
+        if (DataContext is AccountsViewModel { Browse: { } browse } && browse.OpenCommand.CanExecute(null))
+            browse.OpenCommand.Execute(null);
     }
 }

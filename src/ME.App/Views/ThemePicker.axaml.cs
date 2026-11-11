@@ -4,13 +4,16 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
 
 namespace Acornsoft.MessageExplorer.Shell.Views;
 
-public partial class TopicsView : UserControl
+public partial class ThemePicker : UserControl
 {
-    public TopicsView()
+    public ThemePicker()
     {
         InitializeComponent();
     }
+
+    private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 }

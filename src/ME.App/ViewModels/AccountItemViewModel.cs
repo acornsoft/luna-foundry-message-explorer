@@ -37,7 +37,8 @@ public sealed class AccountItemViewModel : ViewModelBase
         Action<AccountItemViewModel> signOut,
         Action<AccountItemViewModel> remove,
         IReadOnlyList<BrowserChoice>? browsers = null,
-        Action<AccountItemViewModel>? browserChanged = null)
+        Action<AccountItemViewModel>? browserChanged = null,
+        Func<AccountItemViewModel, Task>? refresh = null)
     {
         _account = account;
         Browsers = browsers ?? [BrowserChoices.SystemDefault, BrowserChoices.CopyLinkOnly];
@@ -46,7 +47,49 @@ public sealed class AccountItemViewModel : ViewModelBase
         SignInCommand = new AsyncCommand(() => signIn(this), () => CanSignIn);
         SignOutCommand = new RelayCommand(() => signOut(this), () => IsSignedIn);
         RemoveCommand = new RelayCommand(() => remove(this));
+        RefreshCommand = new AsyncCommand(() => refresh?.Invoke(this) ?? Task.CompletedTask, () => refresh is not null && IsSignedIn);
     }
+
+    private bool _isExpanded;
+
+    /// <summary>Lists this account's namespaces again with the credential it has. Read-only.</summary>
+    public AsyncCommand RefreshCommand { get; }
+
+    /// <summary>Open to show the account's tenants, as in Azure Data Studio's Linked accounts.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => Set(ref _isExpanded, value);
+    }
+
+    /// <summary>Two letters for the account's badge: the first letters of the name part of the user name.</summary>
+    public string Initials
+    {
+        get
+        {
+            var name = Username.Split('@')[0];
+            var parts = name.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+            var letters = parts.Length >= 2 ? $"{parts[0][0]}{parts[1][0]}" : name.Length >= 2 ? name[..2] : name;
+            return letters.ToUpperInvariant();
+        }
+    }
+
+    /// <summary>The tenants discovery found, each with its subscription count or its error.</summary>
+    public IReadOnlyList<TenantRow> Tenants => _discovery?.Tenants
+        .Select(t => new TenantRow(
+            t.Tenant.DisplayName,
+            t.Error ?? (t.Subscriptions.Count == 1 ? "1 subscription" : $"{t.Subscriptions.Count} subscriptions"),
+            t.Error is not null))
+        .ToList() ?? [];
+
+    public bool HasTenants => Tenants.Count > 0;
+
+    public string TenantsToggleText => Tenants.Count switch
+    {
+        0 => "No tenants yet",
+        1 => "1 tenant",
+        var n => $"{n} tenants",
+    };
 
     public StoredAccount Account
     {
@@ -172,7 +215,14 @@ public sealed class AccountItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanSignIn));
         OnPropertyChanged(nameof(HasError));
         OnPropertyChanged(nameof(Namespaces));
+        OnPropertyChanged(nameof(Tenants));
+        OnPropertyChanged(nameof(HasTenants));
+        OnPropertyChanged(nameof(TenantsToggleText));
         SignInCommand.RaiseCanExecuteChanged();
         SignOutCommand.RaiseCanExecuteChanged();
+        RefreshCommand?.RaiseCanExecuteChanged();
     }
 }
+
+/// <summary>A tenant under an account in the Linked accounts list.</summary>
+public sealed record TenantRow(string Name, string Detail, bool IsError);

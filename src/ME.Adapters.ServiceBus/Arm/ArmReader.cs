@@ -76,6 +76,30 @@ public sealed class ArmReader(AzureCloud? cloud = null) : IArmReader
         }
     }
 
+    /// <summary>The ARM resource type of an Event Hubs namespace. Listed with a type filter on the subscription's resources.</summary>
+    public const string EventHubsNamespaceType = "Microsoft.EventHub/namespaces";
+
+    public async IAsyncEnumerable<NamespaceRef> ListEventHubsNamespacesAsync(TokenCredential credential, SubscriptionRef subscription, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var arm = Client(new TenantScopedCredential(credential, subscription.TenantId));
+        var resource = arm.GetSubscriptionResource(Azure.ResourceManager.Resources.SubscriptionResource.CreateResourceIdentifier(subscription.SubscriptionId));
+        // GET /subscriptions/{id}/resources?$filter=resourceType eq '...'. A read; no Event Hubs management package needed.
+        await foreach (var ns in resource.GetGenericResourcesAsync($"resourceType eq '{EventHubsNamespaceType}'", cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            var data = ns.Data;
+            yield return new NamespaceRef(
+                data.Name,
+                Cloud.NamespaceHost(data.Name),
+                ns.Id.ToString(),
+                ns.Id.ResourceGroupName ?? string.Empty,
+                data.Location.DisplayName ?? data.Location.Name,
+                subscription.SubscriptionId,
+                subscription.TenantId,
+                Cloud.Id,
+                NamespaceKind.EventHubs);
+        }
+    }
+
     public async IAsyncEnumerable<EntitySnapshot> ListQueuesAsync(TokenCredential credential, NamespaceRef serviceBusNamespace, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var queue in Namespace(credential, serviceBusNamespace).GetServiceBusQueues().GetAllAsync(cancellationToken: cancellationToken).ConfigureAwait(false))

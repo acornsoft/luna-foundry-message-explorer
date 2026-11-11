@@ -41,6 +41,16 @@ public sealed class DiscoveryNode : ViewModelBase
 
     public bool IsError => Kind == DiscoveryNodeKind.Error;
 
+    /// <summary>Font Awesome icon for the row: account, subscription key, namespace, or a warning.</summary>
+    public string Icon => Kind switch
+    {
+        DiscoveryNodeKind.Account => "fa-solid fa-circle-user",
+        DiscoveryNodeKind.Subscription => "fa-solid fa-key",
+        DiscoveryNodeKind.Namespace => "fa-solid fa-envelopes-bulk",
+        DiscoveryNodeKind.Error => "fa-solid fa-triangle-exclamation",
+        _ => "fa-solid fa-circle-info",
+    };
+
     public bool IsNamespace => Kind == DiscoveryNodeKind.Namespace;
 
     public NamespaceRef? Namespace { get; }

@@ -127,7 +127,7 @@ public class HeadlessAccountsTests
         main.SelectedTab = MainViewModel.QueuesTab;
         Settle(window);
 
-        Assert.True(Find<TextBlock>(window, "QueuesNoticeText").IsVisible);
+        Assert.True(Find<TextBlock>(window, "QuickNoticeText").IsVisible);
         Assert.Equal("orders", Assert.Single(main.Queues.Rows).Name);
         Assert.Equal("Azure Service Bus: Key (listen) for orders only, on sbns-demo-001.servicebus.windows.net", main.Connect.ConnectedTo);
         Assert.Empty(main.Connect.ConnectionString);
@@ -154,7 +154,8 @@ public class HeadlessAccountsTests
         Assert.Equal(login.Id, Assert.Single(main.Connect.SavedConnections).Id);
         Assert.Empty(main.Connect.ConnectionString);
         Assert.DoesNotContain(FakeKey, main.Connect.ConnectedTo, StringComparison.Ordinal);
-        Assert.True(Find<ComboBox>(window, "SavedConnectionsBox").IsEffectivelyVisible);
+        Assert.True(Find<ListBox>(window, "SavedConnectionsList").IsEffectivelyVisible);
+        Assert.Equal(ConnectSourcesViewModel.SavedTab, main.Sources.SelectedTab);
         Assert.Contains(main.Logins.Items, i => i.Name == "demo reader");
 
         main.Connect.DisconnectCommand.Execute(null);

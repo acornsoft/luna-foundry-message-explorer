@@ -7,6 +7,7 @@ using Acornsoft.MessageExplorer.Brokers;
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Acornsoft.MessageExplorer.Testing;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -38,60 +39,108 @@ public class HeadlessJobsAndTopicsTests
         Dispatcher.UIThread.RunJobs();
     }
 
-    private static List<string> Highlighted(Control root) =>
-        root.GetVisualDescendants().OfType<TextBlock>()
-            .Where(t => t.Classes.Contains("deadletter"))
-            .Select(t => t.Text ?? string.Empty)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-
     [AvaloniaFact]
-    public void Main_window_opens_on_accounts_then_queues_topics_quick_view_and_test_jobs_tabs()
+    public void Main_window_opens_on_accounts_with_one_queues_and_topics_tab()
     {
         var (window, _, _) = Open();
 
         var tabs = window.FindControl<TabControl>("MainTabs")!;
-        Assert.Equal(["Accounts", "Saved logins", "Queues", "Topics", "Quick view", "Test jobs", "Move", "Voice"], tabs.Items.OfType<TabItem>().Select(t => (string)t.Header!));
+        Assert.Equal(["Accounts", "Saved logins", "Queues & topics", "Test jobs", "Move", "Voice"], tabs.Items.OfType<TabItem>().Select(t => (string)t.Header!));
         Assert.Equal(MainViewModel.AccountsTab, tabs.SelectedIndex);
+        Assert.Equal(MainViewModel.QueuesTab, MainViewModel.TopicsTab);
+        Assert.Equal(MainViewModel.QuickViewTab, MainViewModel.ExplorerTab);
     }
 
     [AvaloniaFact]
-    public async Task Topics_tab_lists_topics_then_subscriptions_with_dead_letter_cells_highlighted()
+    public async Task One_tree_holds_queues_and_topics_told_apart_by_icon_and_tag()
     {
         var (window, main, _) = Open();
         main.Connect.NamespaceText = "synthetic.example";
         await main.Connect.ConnectCommand.ExecuteAsync();
         Show(window, main, MainViewModel.TopicsTab);
 
-        var topicsGrid = Find<DataGrid>(window, "TopicsGrid");
-        Assert.True(topicsGrid.IsVisible);
-        Assert.Same(main.Topics.Topics, topicsGrid.ItemsSource);
-        Assert.Equal("2 topics, 4 subscriptions. Read-only.", Find<TextBlock>(window, "TopicsSummaryText").Text);
-        Assert.True(Find<TextBlock>(window, "NoTopicText").IsVisible);
+        var quick = main.QuickView;
+        Assert.Equal(2, quick.TopicCount);
+        var topic = quick.Find("gsl-dispute-events")!;
+        Assert.Equal(("fa-solid fa-tower-broadcast", "TOPIC"), (topic.Icon, topic.KindTag));
+        var queue = quick.Tree[0].Children[0].Children[0];
+        Assert.Equal(("fa-solid fa-inbox", "QUEUE"), (queue.Icon, queue.KindTag));
 
-        topicsGrid.SelectedItem = main.Topics.Topics[0];
-        await main.Topics.SubscriptionsLoad;
-        Dispatcher.UIThread.RunJobs();
-        window.UpdateLayout();
+        topic.IsExpanded = true;
+        await topic.ExpandTask;
+        Show(window, main, MainViewModel.TopicsTab);
+        var subscription = topic.Children[0];
+        Assert.Equal(("fa-solid fa-code-branch", "SUB"), (subscription.Icon, subscription.KindTag));
 
-        var subscriptions = Find<DataGrid>(window, "SubscriptionsGrid");
-        Assert.True(subscriptions.IsVisible);
-        Assert.Equal(5, subscriptions.Columns.Count);
-        Assert.Equal("Subscriptions of gsl-dispute-events", Find<TextBlock>(window, "SubscriptionsTitleText").Text);
-        // Dead-letter 2 on one subscription, transfer dead-letter 4 on another. Zero counts stay plain.
-        Assert.Equal(["2", "4"], Highlighted(subscriptions));
+        quick.SelectedNode = subscription;
+        Show(window, main, MainViewModel.TopicsTab);
+        Assert.Equal(subscription.Name, Find<TextBlock>(window, "QuickEntityTitle").Text);
+        var tag = Find<Border>(window, "QuickEntityKind");
+        Assert.Contains("topic", tag.Classes);
+        Assert.Equal("SUB", ((TextBlock)tag.Child!).Text);
 
-        // Counts sort as numbers, not as text.
-        Assert.Equal(
-            ["SubscriptionCount", "Scheduled", "SizeInBytes"],
-            topicsGrid.Columns.Skip(1).Where(c => c.Header is "Subscriptions" or "Scheduled" or "Size").Select(c => c.SortMemberPath));
-        Assert.Equal(
-            ["Name", "Active", "DeadLetter", "TransferDeadLetter", "Status"],
-            subscriptions.Columns.Select(c => c.SortMemberPath));
+        var tags = Find<TreeView>(window, "QuickTree").GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("kind") && b.IsEffectivelyVisible).Select(b => ((TextBlock)b.Child!).Text).ToList();
+        Assert.Contains("QUEUE", tags);
+        Assert.Contains("TOPIC", tags);
+        Assert.Contains("SUB", tags);
     }
 
     [AvaloniaFact]
-    public async Task Topics_tab_shows_the_error_state()
+    public async Task The_queues_and_topics_toggles_hide_a_kind_and_clear_a_hidden_selection()
+    {
+        var (window, main, _) = Open();
+        main.Connect.NamespaceText = "synthetic.example";
+        await main.Connect.ConnectCommand.ExecuteAsync();
+        Show(window, main, MainViewModel.ExplorerTab);
+        var quick = main.QuickView;
+        quick.SelectedNode = quick.Find("gsl-dispute-events");
+        Assert.True(quick.HasEntity);
+
+        Find<ToggleButton>(window, "ShowTopicsToggle").IsChecked = false;
+        Show(window, main, MainViewModel.ExplorerTab);
+
+        Assert.False(quick.ShowTopics);
+        Assert.Null(quick.SelectedNode);
+        Assert.False(quick.HasEntity);
+        var tags = Find<TreeView>(window, "QuickTree").GetVisualDescendants().OfType<Border>()
+            .Where(b => b.Classes.Contains("kind") && b.IsEffectivelyVisible).Select(b => ((TextBlock)b.Child!).Text).Distinct().ToList();
+        Assert.Equal(["QUEUE"], tags);
+
+        Find<ToggleButton>(window, "ShowQueuesToggle").IsChecked = false;
+        Show(window, main, MainViewModel.ExplorerTab);
+        Assert.True(quick.NothingShown);
+        Assert.DoesNotContain(Find<TreeView>(window, "QuickTree").GetVisualDescendants().OfType<Border>(),
+            b => b.Classes.Contains("kind") && b.IsEffectivelyVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task Once_connected_the_connect_panel_steps_aside_on_the_explorer_unless_pinned()
+    {
+        var (window, main, _) = Open();
+        Assert.True(Find<Border>(window, "ConnectCard").IsVisible);
+
+        main.Connect.NamespaceText = "synthetic.example";
+        await main.Connect.ConnectCommand.ExecuteAsync();
+        Show(window, main, MainViewModel.ExplorerTab);
+        Assert.False(main.ShowConnectPanel);
+        Assert.False(window.FindControl<Border>("ConnectCard")!.IsVisible);
+
+        Find<ToggleButton>(window, "ConnectPinToggle").IsChecked = true;
+        Show(window, main, MainViewModel.ExplorerTab);
+        Assert.True(Find<Border>(window, "ConnectCard").IsVisible);
+
+        main.ConnectPinned = false;
+        Show(window, main, MainViewModel.AccountsTab);
+        Assert.True(Find<Border>(window, "ConnectCard").IsVisible);
+
+        main.Connect.DisconnectCommand.Execute(null);
+        Show(window, main, MainViewModel.ExplorerTab);
+        Assert.True(Find<Border>(window, "ConnectCard").IsVisible);
+    }
+
+    [AvaloniaFact]
+    public async Task The_explorer_shows_the_error_state()
     {
         var (window, main, provider) = Open();
         provider.Inventory.FailWith = new BrokerException(BrokerErrorKind.Unreachable, BrokerException.Explain(BrokerErrorKind.Unreachable));
@@ -99,8 +148,8 @@ public class HeadlessJobsAndTopicsTests
         await main.Connect.ConnectCommand.ExecuteAsync();
         Show(window, main, MainViewModel.TopicsTab);
 
-        Assert.True(Find<TextBlock>(window, "TopicsErrorText").IsVisible);
-        Assert.False(Find<DataGrid>(window, "TopicsGrid").IsVisible);
+        Assert.True(Find<TextBlock>(window, "QuickErrorText").IsVisible);
+        Assert.Empty(main.QuickView.Tree);
     }
 
     [AvaloniaFact]

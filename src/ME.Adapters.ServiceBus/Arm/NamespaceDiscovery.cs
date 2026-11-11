@@ -8,7 +8,12 @@ using Azure.Core;
 
 namespace Acornsoft.MessageExplorer.Adapters.ServiceBus.Arm;
 
-public sealed record SubscriptionDiscovery(SubscriptionRef Subscription, IReadOnlyList<NamespaceRef> Namespaces, string? Error);
+/// <param name="Namespaces">Service Bus namespaces: the ones the grids can open.</param>
+/// <param name="EventHubs">Event Hubs namespaces, for browsing. Empty when the reader lists none.</param>
+public sealed record SubscriptionDiscovery(SubscriptionRef Subscription, IReadOnlyList<NamespaceRef> Namespaces, string? Error)
+{
+    public IReadOnlyList<NamespaceRef> EventHubs { get; init; } = [];
+}
 
 public sealed record TenantDiscovery(TenantRef Tenant, IReadOnlyList<SubscriptionDiscovery> Subscriptions, string? Error);
 
@@ -68,7 +73,8 @@ public static class NamespaceDiscovery
             try
             {
                 var namespaces = await ToListAsync(reader.ListNamespacesAsync(credential, subscription, cancellationToken), cancellationToken).ConfigureAwait(false);
-                return new SubscriptionDiscovery(subscription, namespaces.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase).ToList(), null);
+                var (hubs, hubsError) = await EventHubsAsync(reader, credential, subscription, cancellationToken).ConfigureAwait(false);
+                return new SubscriptionDiscovery(subscription, namespaces.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase).ToList(), hubsError) { EventHubs = hubs };
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -76,6 +82,20 @@ public static class NamespaceDiscovery
             }
         })).ConfigureAwait(false);
         return new TenantDiscovery(tenant, found.OrderBy(s => s.Subscription.DisplayName, StringComparer.OrdinalIgnoreCase).ToList(), null);
+    }
+
+    /// <summary>Event Hubs namespaces are a bonus for browsing: a failure there is reported, and Service Bus still loads.</summary>
+    private static async Task<(IReadOnlyList<NamespaceRef> Hubs, string? Error)> EventHubsAsync(IArmReader reader, TokenCredential credential, SubscriptionRef subscription, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var hubs = await ToListAsync(reader.ListEventHubsNamespacesAsync(credential, subscription, cancellationToken), cancellationToken).ConfigureAwait(false);
+            return (hubs.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase).ToList(), null);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return ([], "Event Hubs namespaces could not be listed: " + Explain(exception));
+        }
     }
 
     /// <summary>Plain words for a discovery failure. Discovery has no connection string, so it says what to do instead.</summary>

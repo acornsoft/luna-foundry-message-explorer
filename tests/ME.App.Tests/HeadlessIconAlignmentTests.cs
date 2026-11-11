@@ -155,6 +155,39 @@ public sealed class HeadlessIconAlignmentTests
     }
 
     [AvaloniaFact]
+    public async Task The_queues_and_topics_toggles_and_the_entity_header_keep_icons_on_the_text_middle()
+    {
+        var (window, _) = await QuickViewWithEverythingOpenAsync();
+
+        Assert.Equal(2, AssertAligned(Named<StackPanel>(window, "QuickKindToggles"), window, "kind toggles"));
+        Assert.True(AssertAligned(Named<Panel>(window, "QuickEntityPanel"), window, "entity header") >= 1);
+    }
+
+    [AvaloniaFact]
+    public void Setup_pages_keep_icons_on_the_text_middle_in_light_and_dark()
+    {
+        try
+        {
+            foreach (var variant in new[] { Avalonia.Styling.ThemeVariant.Light, Avalonia.Styling.ThemeVariant.Dark })
+            {
+                Avalonia.Application.Current!.RequestedThemeVariant = variant;
+                var main = new MainViewModel(MainViewModel.DefaultCatalog(false));
+                var window = new MainWindow { DataContext = main, Width = 1440, Height = 900 };
+                window.Show();
+                Pump(window);
+
+                Assert.True(AssertAligned(Named<Control>(window, "AccountsPanel"), window, $"accounts ({variant})") >= 4);
+                Assert.True(AssertAligned(Named<Control>(window, "ConnectPanel"), window, $"connect ({variant})") >= 3);
+                window.Close();
+            }
+        }
+        finally
+        {
+            Avalonia.Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
+        }
+    }
+
+    [AvaloniaFact]
     public void The_push_to_talk_button_centers_its_microphone_with_its_label()
     {
         var main = new MainViewModel(MainViewModel.DefaultCatalog(false)) { SelectedTab = MainViewModel.VoiceTab };

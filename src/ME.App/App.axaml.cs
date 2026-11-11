@@ -51,7 +51,7 @@ public partial class App : Application
             var move = options.SyntheticDemo ? MoveServices.ForDemo(Demo.SyntheticDemoProvider.SharedBroker) : MoveServices.ForThisComputer(Environment.GetEnvironmentVariable);
             var quick = options.SyntheticDemo ? QuickViewServices.ForDemo(Demo.SyntheticDemoProvider.SharedBroker) : QuickViewServices.Default();
             var voice = VoiceServices.ForThisComputer(PlatformVoiceAudio);
-            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts, move, quick, voice);
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(options.SyntheticDemo), new DispatcherUiScheduler(), RunnerFactory(), samples, accounts, move, quick, voice, UiSettings(options.SyntheticDemo));
             desktop.Exit += (_, _) => (voice.Audio as IDisposable)?.Dispose();
             if (options.ExitAfterRunReport is { } report)
                 ExitAfterRun(desktop, main.Jobs, report);
@@ -66,12 +66,22 @@ public partial class App : Application
         {
             // Mobile: saved logins and accounts only. No plugin processes, and Move mode is not offered.
             var accounts = AccountServices.ForThisComputer(Environment.GetEnvironmentVariable, PlatformSecretStore?.Invoke());
-            var main = new MainViewModel(MainViewModel.DefaultCatalog(false), new DispatcherUiScheduler(), null, null, accounts, MoveServices.InMemory());
+            var main = new MainViewModel(MainViewModel.DefaultCatalog(false), new DispatcherUiScheduler(), null, null, accounts, MoveServices.InMemory(), settings: UiSettings(false));
             single.MainView = new Views.MobileShellView { DataContext = main };
             _ = main.Accounts.RestoreAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Theme and recent connections, in ui-settings.json in the config folder. The synthetic demo keeps its recent
+    /// list in memory (so made-up namespaces never land in the real file) but still remembers the theme.
+    /// </summary>
+    private static Settings.IUiSettingsStore UiSettings(bool syntheticDemo)
+    {
+        var file = new Settings.FileUiSettingsStore(Accounts.AppPaths.ConfigDirectory(Environment.GetEnvironmentVariable));
+        return syntheticDemo ? new Settings.ThemeOnlyUiSettingsStore(file) : file;
     }
 
     /// <summary>The packaged app is self-contained; it runs <c>dotnet plugin.dll</c> commands itself.</summary>

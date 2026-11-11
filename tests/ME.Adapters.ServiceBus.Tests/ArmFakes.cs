@@ -42,6 +42,9 @@ internal sealed class FakeArmReader : IArmReader
 
     public Dictionary<string, List<EntitySnapshot>> Entities { get; } = [];
 
+    /// <summary>Event Hubs namespaces by subscription id (browse only).</summary>
+    public Dictionary<string, List<NamespaceRef>> Hubs { get; } = [];
+
     public HashSet<string> FailingTenants { get; } = [];
 
     public HashSet<string> FailingSubscriptions { get; } = [];
@@ -78,6 +81,13 @@ internal sealed class FakeArmReader : IArmReader
         if (FailingSubscriptions.Contains(subscription.SubscriptionId))
             throw new RequestFailedException(403, "The client does not have authorization to perform action 'read'.");
         foreach (var ns in Namespaces.GetValueOrDefault(subscription.SubscriptionId, []))
+            yield return ns;
+    }
+
+    public async IAsyncEnumerable<NamespaceRef> ListEventHubsNamespacesAsync(TokenCredential credential, SubscriptionRef subscription, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await Token(credential, subscription.TenantId);
+        foreach (var ns in Hubs.GetValueOrDefault(subscription.SubscriptionId, []))
             yield return ns;
     }
 

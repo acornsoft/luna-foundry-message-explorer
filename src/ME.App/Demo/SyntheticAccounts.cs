@@ -64,6 +64,24 @@ internal static class SyntheticAccounts
         Ns("sbns-cn-demo-001", Subscriptions[5], "rg-orders-demo", "China North 3", AzureClouds.China),
     ];
 
+    /// <summary>Made-up Event Hubs namespaces, for the Browse tree.</summary>
+    private static readonly NamespaceRef[] Hubs =
+    [
+        Hub("evhns-orders-demo", Subscriptions[0], "rg-payments-demo", "East US"),
+        Hub("evhns-demo-001", Subscriptions[3], "rg-dev-demo", "UK South"),
+    ];
+
+    private static NamespaceRef Hub(string name, SubscriptionRef subscription, string group, string location) => new(
+        name,
+        AzureClouds.Public.NamespaceHost(name),
+        $"/subscriptions/{subscription.SubscriptionId}/resourceGroups/{group}/providers/Microsoft.EventHub/namespaces/{name}",
+        group,
+        location,
+        subscription.SubscriptionId,
+        subscription.TenantId,
+        AzureClouds.PublicId,
+        NamespaceKind.EventHubs);
+
     public static AccountServices Create()
     {
         var vault = new CredentialVault(new MemorySecretStore(), new MemoryLoginMetadataStore(), Clock.Instance);
@@ -204,6 +222,13 @@ internal static class SyntheticAccounts
         {
             await Task.CompletedTask;
             foreach (var ns in Namespaces.Where(n => n.SubscriptionId == subscription.SubscriptionId))
+                yield return ns;
+        }
+
+        public async IAsyncEnumerable<NamespaceRef> ListEventHubsNamespacesAsync(TokenCredential credential, SubscriptionRef subscription, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask;
+            foreach (var ns in Hubs.Where(n => n.SubscriptionId == subscription.SubscriptionId))
                 yield return ns;
         }
 

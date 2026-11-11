@@ -132,9 +132,9 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 
 `lfme-mcp` is a read-only MCP server over stdio with four tools: `list_entities`, `get_entity`, `check_limits` and `summarize_dead_letters`. It speaks MCP 2026-07-28 and the older `initialize` handshake. It reads counts only. A Cursor plugin scaffold, never published, is in `plugins/cursor/lfme-readonly`. See [MCP server](docs/mcp-server.md).
 
-## Quick view
+## Queues & topics
 
-The Quick view tab is a split view: the entity tree on the left, a strip of lane cards (Active, Dead-letter, Scheduled, Transfer dead-letter) whose counts you click to jump to that section, sections that cascade open as rows, and a message detail drawer. Counts come from runtime properties. Each section peeks the top N messages (25 by default, 1 to 100) only when it is opened, with one sequence cursor per sub-queue and "load more". It is peek only, bodies are masked, and any provider can plug in a browser. Icons are Font Awesome Free (see [third-party notices](THIRD-PARTY-NOTICES.md)). See [Quick view](docs/quick-view.md).
+The Queues & topics tab is the one entity view for queues, topics and subscriptions, told apart by icon, tag and colour, with Queues and Topics show/hide toggles that are remembered. It is a split view: the entity tree on the left, a strip of lane cards (Active, Dead-letter, Scheduled, Transfer dead-letter) whose counts you click to jump to that section, sections that cascade open as rows, and a message detail drawer. Counts come from runtime properties. Each section peeks the top N messages (25 by default, 1 to 100) only when it is opened, with one sequence cursor per sub-queue and "load more". It is peek only, bodies are masked, and any provider can plug in a browser. Icons are Font Awesome Free (see [third-party notices](THIRD-PARTY-NOTICES.md)). See [Queues & topics](docs/quick-view.md) and [Setup and themes](docs/setup-and-themes.md).
 
 ## Grok Voice
 
