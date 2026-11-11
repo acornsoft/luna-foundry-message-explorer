@@ -47,6 +47,8 @@ read-only Azure Resource Manager listing.
 resource id and account). A pasted connection string that you don't save is never kept. **Saved** lists
 saved logins. Beside them, **Connection details** still takes a namespace with an Entra account, or a pasted
 connection string. A disabled **Connect** or **Connect saved** says why on a line under it (for example
-"Enter a namespace to connect.").
+"Enter a namespace to connect.", or "Choose an Entra account to connect." when accounts are signed in and
+none is chosen). The namespace box's example ("e.g. contoso-synthetic.servicebus.windows.net") is muted and
+italic so it doesn't read as typed text. With exactly one saved login, it is selected for you.
 
 Once connected, the switcher closes so Resources gets the whole window. Open it again from the namespace name.

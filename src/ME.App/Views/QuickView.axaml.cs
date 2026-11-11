@@ -6,6 +6,7 @@
 using System.ComponentModel;
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -21,6 +22,28 @@ public partial class QuickView : UserControl
     {
         AvaloniaXamlLoader.Load(this);
         DataContextChanged += (_, _) => Bind(DataContext as QuickViewViewModel);
+        // A narrow main pane (Voice open, a small window) stacks the lane cards 2 by 2.
+        var cards = this.FindControl<ItemsControl>("QuickLaneCards");
+        if (cards is not null)
+            cards.LayoutUpdated += (_, _) => ApplyCardGrid(cards);
+    }
+
+    /// <summary>Below this main-pane width, more than two lane cards wrap to two rows.</summary>
+    public const double NarrowCardsWidth = 720;
+
+    /// <summary>Rows and columns for the lane cards: one row when wide, 2 by 2 when narrow (with more than two cards).</summary>
+    public static (int Rows, int Columns) CardGrid(double width, int cards) =>
+        width < NarrowCardsWidth && cards > 2 ? (2, 2) : (1, Math.Max(cards, 1));
+
+    private static void ApplyCardGrid(ItemsControl cards)
+    {
+        if (cards.ItemsPanelRoot is not UniformGrid grid || cards.Parent is not Control pane)
+            return;
+        var (rows, columns) = CardGrid(pane.Bounds.Width, cards.ItemCount);
+        if (grid.Rows != rows)
+            grid.Rows = rows;
+        if (grid.Columns != columns)
+            grid.Columns = columns;
     }
 
     private void Bind(QuickViewViewModel? model)

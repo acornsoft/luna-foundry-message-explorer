@@ -109,9 +109,13 @@ public sealed class ConnectViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(EntraHint));
                 OnPropertyChanged(nameof(DetectedText));
+                Refresh();
             }
         }
     }
+
+    /// <summary>The account picker shows and nothing is chosen in it: Connect waits for an account.</summary>
+    public bool NeedsAccount => ShowAccountPicker && SelectedAccount is null;
 
     public bool HasAccountChoices => AccountChoices.Count > 0;
 
@@ -120,6 +124,7 @@ public sealed class ConnectViewModel : ViewModelBase
 
     public string EntraHint => SelectedAccount is { } account
         ? $"Uses {account.Username}. No secret is stored."
+        : HasAccountChoices ? "Choose which signed-in account to use."
         : "Uses your Azure sign-in. Add an account on the Accounts page to choose which one.";
 
     public IReadOnlyList<ProviderOption> Providers { get; }
@@ -289,7 +294,8 @@ public sealed class ConnectViewModel : ViewModelBase
     public bool CanConnect =>
         SelectedProvider is { IsEnabled: true }
         && !IsConnected
-        && (UseConnectionString ? !string.IsNullOrWhiteSpace(ConnectionString) : !string.IsNullOrWhiteSpace(NamespaceText));
+        && (UseConnectionString ? !string.IsNullOrWhiteSpace(ConnectionString) : !string.IsNullOrWhiteSpace(NamespaceText))
+        && !NeedsAccount;
 
     public AsyncCommand ConnectCommand { get; }
 
@@ -298,8 +304,9 @@ public sealed class ConnectViewModel : ViewModelBase
         CanConnect ? null
         : IsConnected ? "Already connected. Disconnect first."
         : SelectedProvider is not { IsEnabled: true } ? "This provider is planned and can't connect yet."
-        : UseConnectionString ? "Paste a connection string to connect."
-        : "Enter a namespace to connect.";
+        : UseConnectionString && string.IsNullOrWhiteSpace(ConnectionString) ? "Paste a connection string to connect."
+        : !UseConnectionString && string.IsNullOrWhiteSpace(NamespaceText) ? "Enter a namespace to connect."
+        : "Choose an Entra account to connect.";
 
     public bool HasConnectBlockedReason => ConnectBlockedReason is not null;
 
@@ -514,10 +521,12 @@ public sealed class ConnectViewModel : ViewModelBase
         SavedConnections.Clear();
         foreach (var login in _vault?.List().Where(e => ConnectKinds.Contains(e.Kind)) ?? [])
             SavedConnections.Add(login);
-        _selectedSaved = SavedConnections.FirstOrDefault(e => e.Id == selected);
+        // Exactly one saved login: it is the one to use, so it is selected for you.
+        _selectedSaved = SavedConnections.FirstOrDefault(e => e.Id == selected) ?? (SavedConnections.Count == 1 ? SavedConnections[0] : null);
         OnPropertyChanged(nameof(SelectedSaved));
         OnPropertyChanged(nameof(HasSavedConnections));
         ConnectSavedCommand?.RaiseCanExecuteChanged();
+        Refresh();
     }
 
     public override string ToString() => $"Connect: {(IsConnected ? ConnectedTo : "not connected")}, {SavedConnections.Count} saved logins";
@@ -534,6 +543,7 @@ public sealed class ConnectViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowAccountPicker));
         OnPropertyChanged(nameof(EntraHint));
         OnPropertyChanged(nameof(DetectedText));
+        Refresh();
     }
 
     private void Disconnect()

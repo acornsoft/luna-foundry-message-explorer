@@ -130,38 +130,30 @@ public sealed class QuickTreeNode : ViewModelBase
     /// <summary>The resource a row belongs to: itself, or a receiver's topic.</summary>
     public string? ResourceName => Resource?.Name ?? Receiver?.ResourceName;
 
-    /// <summary>The first badge: active count (or a topic's receiver count). Zero counts are not shown.</summary>
-    public string? PrimaryBadge => Resource is { HasImplicitReceiver: false } topic
-        ? topic.ReceiverCount is > 0 and var receivers ? receivers.ToString(CultureInfo.InvariantCulture) : null
+    /// <summary>
+    /// The first badge: the active count. A topic has none of its own (its receivers carry the counts), so a
+    /// topic row shows only a dead-letter badge, if any. Zero counts are not shown.
+    /// </summary>
+    public string? PrimaryBadge => Resource is { HasImplicitReceiver: false } ? null
         : Snapshot?.Counts.Active is > 0 and var active ? Short(active) : null;
 
     public bool HasPrimaryBadge => PrimaryBadge is not null;
 
-    /// <summary>What a screen reader says for the first badge.</summary>
+    /// <summary>The first badge's spoken name and tooltip, e.g. "12 active".</summary>
     public string? PrimaryBadgeName => PrimaryBadge is null ? null
-        : Resource is { HasImplicitReceiver: false } topic ? $"{topic.ReceiverCount} receivers"
-        : $"{Snapshot!.Counts.Active} active";
+        : string.Create(CultureInfo.InvariantCulture, $"{Snapshot!.Counts.Active} active");
 
     public string? DeadLetterBadge => Snapshot?.Counts.DeadLetter is > 0 and var dead ? Short(dead) : null;
 
     public bool HasDeadLetterBadge => DeadLetterBadge is not null;
 
-    /// <summary>The red badge's spoken name, e.g. "3 dead-lettered".</summary>
+    /// <summary>The red badge's spoken name and tooltip, e.g. "3 dead-lettered".</summary>
     public string? DeadLetterName => Snapshot?.Counts.DeadLetter is > 0 and var dead
         ? string.Create(CultureInfo.InvariantCulture, $"{dead} dead-lettered")
         : null;
 
-    public string? ScheduledName => Snapshot?.Counts.Scheduled is > 0 and var due ? string.Create(CultureInfo.InvariantCulture, $"{due} scheduled") : null;
-
-    public string? TransferName => Snapshot?.Counts.TransferDeadLetter is > 0 and var t ? string.Create(CultureInfo.InvariantCulture, $"{t} transfer dead-lettered") : null;
-
-    public string? ScheduledBadge => Snapshot is { Kind: not EntityKind.Topic } && Snapshot.Counts.Scheduled is > 0 and var due ? Short(due) : null;
-
-    public bool HasScheduledBadge => ScheduledBadge is not null;
-
-    public string? TransferBadge => Snapshot?.Counts.TransferDeadLetter is > 0 and var transfer ? Short(transfer) : null;
-
-    public bool HasTransferBadge => TransferBadge is not null;
+    /// <summary>How many count badges the row shows: at most two (active, and dead-lettered above 0).</summary>
+    public int BadgeCount => (HasPrimaryBadge ? 1 : 0) + (HasDeadLetterBadge ? 1 : 0);
 
     public bool IsExpanded
     {
@@ -203,6 +195,18 @@ public sealed class QuickTreeNode : ViewModelBase
         get => _isPinned;
         internal set => Set(ref _isPinned, value);
     }
+
+    /// <summary>The selected row itself (not its topic) while it is pinned: it gets the pin icon.</summary>
+    public bool IsPinnedSelection
+    {
+        get => _isPinnedSelection;
+        internal set => Set(ref _isPinnedSelection, value);
+    }
+
+    private bool _isPinnedSelection;
+
+    /// <summary>The pin icon's tooltip and spoken name.</summary>
+    public const string PinTip = "Selected, doesn't match";
 
     internal static string? Short(long? value) => value switch
     {
@@ -248,7 +252,6 @@ public sealed class QuickViewViewModel : ViewModelBase
     private string? _notice;
     private bool _onlyDeadLetters;
     private int _shownCount;
-    private string? _pinnedNote;
 
     /// <param name="settings">Remembers the kind filter between launches; null keeps it for this session.</param>
     public QuickViewViewModel(IUiScheduler? scheduler = null, RedactionPipeline? redaction = null, Settings.IUiSettingsStore? settings = null)
@@ -366,41 +369,32 @@ public sealed class QuickViewViewModel : ViewModelBase
     /// <summary>True while the kind filter, the dead-letters filter or the search hides part of the list.</summary>
     public bool IsNarrowed => _loaded && (_kindFilter != ResourceKindFilter.All || _onlyDeadLetters || _filter.Trim().Length > 0);
 
-    /// <summary>"N of M match 'x'" while the list is narrowed; empty otherwise (there is no summary line).</summary>
+    /// <summary>
+    /// While the list is narrowed: "6 of 9: Queues", "1 of 9 match 'audit'", "2 of 9: Queues, Has dead letters".
+    /// The search is quoted after "match"; filters follow a colon. Empty otherwise (there is no summary line).
+    /// </summary>
     public string MatchText
     {
         get
         {
             if (!IsNarrowed)
                 return string.Empty;
-            var what = new List<string>();
+            var filters = new List<string>();
             if (_kindFilter == ResourceKindFilter.Queues)
-                what.Add("queues");
+                filters.Add("Queues");
             else if (_kindFilter == ResourceKindFilter.Topics)
-                what.Add("topics");
+                filters.Add("Topics");
             if (_onlyDeadLetters)
-                what.Add("has dead letters");
-            if (_filter.Trim() is { Length: > 0 } text)
-                what.Add($"'{text}'");
-            return string.Create(CultureInfo.InvariantCulture, $"{_shownCount} of {AllCount} match {string.Join(", ", what)}");
+                filters.Add("Has dead letters");
+            var text = _filter.Trim();
+            return string.Create(CultureInfo.InvariantCulture, $"{_shownCount} of {AllCount}")
+                + (text.Length > 0 ? $" match '{text}'" : string.Empty)
+                + (filters.Count > 0 ? ": " + string.Join(", ", filters) : string.Empty);
         }
     }
 
     /// <summary>Clears the search, the kind filter and the dead-letters filter.</summary>
     public RelayCommand ClearFiltersCommand { get; }
-
-    /// <summary>Says why a row that doesn't match is still shown: it is the selection.</summary>
-    public string? PinnedNote
-    {
-        get => _pinnedNote;
-        private set
-        {
-            if (Set(ref _pinnedNote, value))
-                OnPropertyChanged(nameof(HasPinnedNote));
-        }
-    }
-
-    public bool HasPinnedNote => _pinnedNote is not null;
 
     private void ClearFilters()
     {
@@ -732,6 +726,7 @@ public sealed class QuickViewViewModel : ViewModelBase
                 var childDead = !_onlyDeadLetters || (child.IsEntity && Dead(child));
                 child.IsVisible = kindShown && childText && childDead;
                 child.IsPinned = false;
+                child.IsPinnedSelection = false;
                 child.ShowKindTag = _kindFilter == ResourceKindFilter.All && child.IsTopicFamily;
 
                 // A receiver that matches on its own (by name, or by dead letters) keeps its topic in the list.
@@ -743,6 +738,7 @@ public sealed class QuickViewViewModel : ViewModelBase
             var selfDead = !_onlyDeadLetters || Dead(resource);
             resource.IsVisible = kindShown && ((selfText && selfDead) || anyReceiver);
             resource.IsPinned = false;
+            resource.IsPinnedSelection = false;
             resource.ShowKindTag = _kindFilter == ResourceKindFilter.All && resource.IsTopicFamily;
             if (resource.IsVisible)
                 shown++;
@@ -751,11 +747,11 @@ public sealed class QuickViewViewModel : ViewModelBase
         }
 
         _shownCount = shown;
-        PinnedNote = null;
         if (_selectedNode is { } selected && !selected.IsVisible && Shows(selected))
         {
             selected.IsVisible = true;
             selected.IsPinned = true;
+            selected.IsPinnedSelection = true;
             if (selected.Receiver is not null && Tree.FirstOrDefault(t => t.Children.Contains(selected)) is { } parent)
             {
                 if (!parent.IsVisible)
@@ -766,8 +762,6 @@ public sealed class QuickViewViewModel : ViewModelBase
 
                 parent.IsExpanded = true;
             }
-
-            PinnedNote = $"{selected.Name} stays in the list because it is selected; it doesn't match.";
         }
 
         Narrowed();

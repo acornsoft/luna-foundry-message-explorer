@@ -45,9 +45,12 @@
     </Style>
     <Style Selector="Border.badge TextBlock">
       <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeActiveTextBrush}" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.badge.dead"><Setter Property="Background" Value="{DynamicResource LfmeDeadSoftBrush}" /></Style>
+    <Style Selector="Border.badge.dead TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeDeadTextBrush}" /></Style>
     <Style Selector="Border.badge.dead TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeDeadTextBrush}" /></Style>
     <Style Selector="Border.badge.scheduled"><Setter Property="Background" Value="{DynamicResource LfmeScheduledSoftBrush}" /></Style>
     <Style Selector="Border.badge.scheduled TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeScheduledTextBrush}" /></Style>
@@ -66,7 +69,7 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="10" />
       <Setter Property="Padding" Value="14,10" />
-      <Setter Property="Margin" Value="0,0,10,0" />
+      <Setter Property="Margin" Value="0,0,10,8" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
@@ -238,7 +241,6 @@
                   <TextBlock Text="Clear" FontSize="12" />
                 </Button>
               </Grid>
-              <TextBlock DockPanel.Dock="Top" x:Name="QuickPinnedNote" Text="{Binding PinnedNote}" IsVisible="{Binding HasPinnedNote}" TextWrapping="Wrap" Classes="dim" FontSize="12" FontStyle="Italic" Margin="0,0,0,6" />
               <Border DockPanel.Dock="Top" x:Name="QuickNoticePanel" Classes="callout warn" IsVisible="{Binding HasNotice}" Margin="0,0,0,6">
                 <TextBlock x:Name="QuickNoticeText" Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12" />
               </Border>
@@ -253,19 +255,22 @@
                 </TreeView.Styles>
                 <TreeView.ItemTemplate>
                   <TreeDataTemplate x:DataType="vm:QuickTreeNode" ItemsSource="{Binding Children}">
-                    <Grid Classes="il" ColumnDefinitions="Auto,*,Auto" Classes.pinned="{Binding IsPinned}">
+                    <Grid Classes="il row" ColumnDefinitions="Auto,*,Auto,Auto" Classes.pinned="{Binding IsPinned}">
                       <i:Icon Value="{Binding Icon}" FontSize="12" Margin="0,0,6,0" IsVisible="{Binding !IsPlaceholder}"
                               Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}"
                               ToolTip.Tip="{Binding KindName}" AutomationProperties.Name="{Binding KindName}" />
                       <TextBlock Grid.Column="1" Classes="name" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                  Classes.dim="{Binding IsPlaceholder}" FontSize="13" />
-                      <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
+                      <!-- The selection a search hides stays in its place, dimmed, with a pin that says why. -->
+                      <i:Icon Grid.Column="2" x:Name="QuickPinIcon" Value="fa-solid fa-thumbtack" FontSize="10" Margin="4,0,0,0" Classes="muted"
+                              IsVisible="{Binding IsPinnedSelection}" Foreground="{DynamicResource LfmeMutedTextBrush}"
+                              ToolTip.Tip="{x:Static vm:QuickTreeNode.PinTip}" AutomationProperties.Name="{x:Static vm:QuickTreeNode.PinTip}" />
+                      <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
                         <Border Classes="kind" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" IsVisible="{Binding ShowKindTag}"
                                 Margin="0,0,4,0" AutomationProperties.Name="{Binding KindName}"><TextBlock Text="{Binding KindTag}" /></Border>
                         <Border Classes="badge" IsVisible="{Binding HasPrimaryBadge}" AutomationProperties.Name="{Binding PrimaryBadgeName}" ToolTip.Tip="{Binding PrimaryBadgeName}"><TextBlock Text="{Binding PrimaryBadge}" /></Border>
                         <Border Classes="badge dead" IsVisible="{Binding HasDeadLetterBadge}" AutomationProperties.Name="{Binding DeadLetterName}" ToolTip.Tip="{Binding DeadLetterName}"><TextBlock Text="{Binding DeadLetterBadge}" /></Border>
-                        <Border Classes="badge scheduled" IsVisible="{Binding HasScheduledBadge}" AutomationProperties.Name="{Binding ScheduledName}" ToolTip.Tip="{Binding ScheduledName}"><TextBlock Text="{Binding ScheduledBadge}" /></Border>
-                        <Border Classes="badge transfer" IsVisible="{Binding HasTransferBadge}" AutomationProperties.Name="{Binding TransferName}" ToolTip.Tip="{Binding TransferName}"><TextBlock Text="{Binding TransferBadge}" /></Border>
+                        <!-- At most two badges: active and (above 0) dead-lettered. Scheduled and transfer counts live on the cards. -->
                       </StackPanel>
                     </Grid>
                   </TreeDataTemplate>
@@ -288,7 +293,7 @@
               </StackPanel>
 
               <!-- Lane cards strip (counts are clickable: open and jump to the section) -->
-              <ItemsControl DockPanel.Dock="Top" x:Name="QuickLaneCards" ItemsSource="{Binding Lanes}" Margin="0,0,0,12">
+              <ItemsControl DockPanel.Dock="Top" x:Name="QuickLaneCards" ItemsSource="{Binding Lanes}" Margin="0,0,0,4">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -305,11 +310,7 @@
                           <i:Icon Grid.Column="2" Value="fa-solid fa-chevron-down" FontSize="10" Foreground="{DynamicResource LfmeMutedTextBrush}" />
                           <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path}" Classes="dim mono" FontSize="11" TextTrimming="CharacterEllipsis" />
                         </Grid>
-                        <Panel AutomationProperties.Name="{Binding CountName}">
-                          <TextBlock Text="{Binding CountText}" FontSize="28" FontWeight="Bold" Classes.reason="{Binding Alarm}" IsVisible="{Binding ShowsCount}" />
-                          <!-- Zero counts are not shown: the card says Empty. -->
-                          <TextBlock Text="Empty" Classes="dim" FontSize="20" FontWeight="SemiBold" Margin="0,6,0,5" IsVisible="{Binding IsEmptyLane}" />
-                        </Panel>
+                        <TextBlock Text="{Binding CountText}" FontSize="28" FontWeight="Bold" Classes.reason="{Binding Alarm}" AutomationProperties.Name="{Binding CountName}" />
                         <TextBlock Text="{Binding CardFooter}" Classes="dim" FontSize="11" />
                       </StackPanel>
                     </Button>

@@ -11,7 +11,7 @@ One slim bar (48 px) replaces 0.8.2's observe banner, tab row and namespace / re
 
 | Left | Middle | Right |
 | --- | --- | --- |
-| **Namespace switcher**: the connected namespace, with the account and cloud under it (for example "alice@contoso.example · Azure public"), and a chevron. Opens a quick switch: Recent, Saved, and **Manage accounts…**, which opens the full sheet with Connect (Recent, Saved, connection details), Accounts and Saved logins, in the style of Azure Data Studio's connection dialog. | **Search** (⌘F on macOS, Ctrl+F elsewhere; the hint follows the platform): one box that finds any resource or receiver. A match on a receiver shows its topic, opened. Esc clears it. | **Mode chip**: "Read-only" (green, lock) or "Move" (amber). Its tooltip is one phrase: "Read-only: peeks, never changes messages". Then the **Voice** mic (a side panel) and the **Settings** gear (appearance, Top N, Test jobs…). Every icon-only button has a name, a tooltip and a hit area of at least 24 px. |
+| **Namespace switcher**: the connected namespace, with the account and cloud under it (for example "alice@contoso.example · Azure public"), and a chevron. Opens a quick switch: Recent and Saved (two-line rows, the namespace on top and the account and cloud under it, with a check on the namespace open now), and **Manage accounts…**, which opens the full sheet with Connect (Recent, Saved, connection details), Accounts and Saved logins, in the style of Azure Data Studio's connection dialog. | **Search** (⌘F on macOS, Ctrl+F elsewhere; the hint follows the platform): one box that finds any resource or receiver. A match on a receiver shows its topic, opened. Esc clears it. | **Mode chip**: "Read-only" (green, lock) or "Move" (amber). Its tooltip is one phrase: "Read-only: peeks, never changes messages". Then the **Voice** mic (a side panel) and the **Settings** gear (appearance, Top N, Test jobs…). Every icon-only button has a name, a tooltip and a hit area of at least 24 px. |
 
 Esc closes the topmost sheet or panel. The switcher is open at launch and closes once a namespace connects.
 It opens on the page with the next action, worked out from the data: **Connect › Recent** when there are
@@ -29,10 +29,12 @@ While Move mode is on, the amber banner names what it applies to: "Move mode is 
   hidden, the selection is cleared. **Has dead letters** (a toggle under it, this session only) keeps only
   resources and receivers with dead-lettered or transfer dead-lettered messages.
 - **Match line**: there is no summary line in the normal state. While the kind filter, Has dead letters or
-  the search narrows the list, one line says "N of M match …" (for example "2 of 6 match queues, has dead
-  letters") with a **Clear** link that resets all three.
+  the search narrows the list, one line says how many show: the search is quoted after "match" and filters
+  follow a colon ("6 of 9: Queues", "1 of 9 match 'audit'", "2 of 9: Queues, Has dead letters"), with a
+  **Clear** link that resets all three.
 - **Pinned selection**: when the search or Has dead letters would hide the selected row, it stays in the list,
-  dimmed (muted italic text, contrast kept), with a note saying why. It isn't counted in the match line.
+  in its place in the tree, dimmed (muted italic text, contrast kept), with a small pin whose tooltip and
+  spoken name are "Selected, doesn't match". It isn't counted in the match line.
 - **Resources list** (left): one list of resources, sorted by name. Under **All**, topics and subscriptions
   carry a small kind badge; queues rely on their icon, whose tooltip and accessible name say "Queue". Under
   **Queues** or **Topics** no row has a badge, because the filter already says the kind:
@@ -46,11 +48,14 @@ While Move mode is on, the amber banner names what it applies to: "Move mode is 
   A queue has nothing to expand: picking it opens its messages. A topic expands to its receivers, read the
   first time you open it. The scheduled count stays on the topic (messages wait there until they are due);
   dead letters are counted on each receiver. The same icon and tag show in the entity header. The arrow keys
-  walk the list; Right opens a topic. Zero counts are hidden everywhere; the red dead-letter badge is spoken
-  as "N dead-lettered".
+  walk the list; Right opens a topic. A row shows at most two count badges: active, and dead-lettered when
+  above 0 (scheduled and transfer counts are on the cards). Each badge has a tooltip and spoken name ("12
+  active", "3 dead-lettered") and its text meets 4.5:1 in both themes. A topic has no active count of its
+  own, so its row shows only a dead-letter badge, if any. Zero badges are hidden.
 - **Lane cards** (top): one card per message type with its count, in one fixed order for every resource:
-  Active, Dead-letter, Scheduled, Transfer DL. A zero count reads "Empty" instead of 0. Click a card to open
-  that section and jump to it. Dead-letter cards turn red when the count is above zero.
+  Active, Dead-letter, Scheduled, Transfer DL. A zero card shows 0 like the others, captioned "Nothing to
+  peek". Click a card to open that section and jump to it. Dead-letter cards turn red when the count is above
+  zero. When the main pane is narrower than 720 px (for example with Voice open), the cards wrap to 2 by 2.
 - **Sections** (middle): Active, Dead-letter, Scheduled and Transfer dead-letter, in the cards' order. The
   count shows once, on the card; the section headers have no count chip. Each one opens as a
   virtualized list of rows: sequence number, message ID, enqueued time (UTC), subject, a masked body summary,

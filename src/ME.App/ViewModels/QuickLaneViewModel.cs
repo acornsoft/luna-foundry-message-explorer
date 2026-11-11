@@ -116,12 +116,6 @@ public sealed class QuickLaneViewModel : ViewModelBase
 
     public string CountText => Count?.ToString("N0", CultureInfo.InvariantCulture) ?? "—";
 
-    /// <summary>False for a zero count: the card says "Empty" instead of showing a 0.</summary>
-    public bool ShowsCount => Count != 0;
-
-    /// <summary>The count is known and is zero.</summary>
-    public bool IsEmptyLane => Count == 0;
-
     /// <summary>What a screen reader says for the card's number.</summary>
     public string CountName => Count switch
     {
@@ -204,7 +198,7 @@ public sealed class QuickLaneViewModel : ViewModelBase
         : $"all {Rows.Count} peeked";
 
     /// <summary>The card's footer.</summary>
-    public string CardFooter => !IsPeekable ? (Note is null ? "count only" : "count only, see note")
+    public string CardFooter => Count == 0 ? "Nothing to peek" : !IsPeekable ? (Note is null ? "count only" : "count only, see note")
         : _loaded ? $"{Rows.Count} peeked" : $"top {_pageSize()} ready to peek";
 
     /// <summary>The load-more button text, with the cursor it continues from.</summary>

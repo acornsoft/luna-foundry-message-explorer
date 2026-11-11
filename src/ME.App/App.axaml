@@ -25,6 +25,7 @@
           <Color x:Key="LfmeScrimColor">#661F1A17</Color>
           <Color x:Key="LfmeActiveColor">#1A5FB4</Color>
           <Color x:Key="LfmeActiveSoftColor">#E3EDFA</Color>
+          <Color x:Key="LfmeActiveTextColor">#0B4A9B</Color>
           <Color x:Key="LfmeDeadColor">#C0262D</Color>
           <Color x:Key="LfmeDeadSoftColor">#FCE8E6</Color>
           <Color x:Key="LfmeDeadTextColor">#A4161A</Color>
@@ -47,6 +48,7 @@
           <SolidColorBrush x:Key="LfmeScrimBrush" Color="{StaticResource LfmeScrimColor}" />
           <SolidColorBrush x:Key="LfmeActiveBrush" Color="{StaticResource LfmeActiveColor}" />
           <SolidColorBrush x:Key="LfmeActiveSoftBrush" Color="{StaticResource LfmeActiveSoftColor}" />
+          <SolidColorBrush x:Key="LfmeActiveTextBrush" Color="{StaticResource LfmeActiveTextColor}" />
           <SolidColorBrush x:Key="LfmeDeadBrush" Color="{StaticResource LfmeDeadColor}" />
           <SolidColorBrush x:Key="LfmeDeadSoftBrush" Color="{StaticResource LfmeDeadSoftColor}" />
           <SolidColorBrush x:Key="LfmeDeadTextBrush" Color="{StaticResource LfmeDeadTextColor}" />
@@ -116,6 +118,7 @@
           <Color x:Key="LfmeScrimColor">#99000000</Color>
           <Color x:Key="LfmeActiveColor">#4FA3FF</Color>
           <Color x:Key="LfmeActiveSoftColor">#22324A</Color>
+          <Color x:Key="LfmeActiveTextColor">#A8CDFF</Color>
           <Color x:Key="LfmeDeadColor">#FF5A5F</Color>
           <Color x:Key="LfmeDeadSoftColor">#4A1E22</Color>
           <Color x:Key="LfmeDeadTextColor">#FF8A8E</Color>
@@ -138,6 +141,7 @@
           <SolidColorBrush x:Key="LfmeScrimBrush" Color="{StaticResource LfmeScrimColor}" />
           <SolidColorBrush x:Key="LfmeActiveBrush" Color="{StaticResource LfmeActiveColor}" />
           <SolidColorBrush x:Key="LfmeActiveSoftBrush" Color="{StaticResource LfmeActiveSoftColor}" />
+          <SolidColorBrush x:Key="LfmeActiveTextBrush" Color="{StaticResource LfmeActiveTextColor}" />
           <SolidColorBrush x:Key="LfmeDeadBrush" Color="{StaticResource LfmeDeadColor}" />
           <SolidColorBrush x:Key="LfmeDeadSoftBrush" Color="{StaticResource LfmeDeadSoftColor}" />
           <SolidColorBrush x:Key="LfmeDeadTextBrush" Color="{StaticResource LfmeDeadTextColor}" />
@@ -370,10 +374,16 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Padding" Value="8,5" />
       <Setter Property="MinHeight" Value="28" />
       <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <!-- An example in an empty box ("e.g. …"): muted and italic, so it doesn't read as typed text. -->
+    <Style Selector="TextBox.example /template/ TextBlock#PART_Watermark">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="Button.quickitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />

@@ -42,31 +42,39 @@
             <Flyout Placement="BottomEdgeAlignedLeft">
               <StackPanel x:Name="QuickSwitchPanel" Spacing="6" Width="320">
                 <TextBlock Text="Recent" FontWeight="SemiBold" IsVisible="{Binding Sources.HasRecent}" />
-                <ItemsControl x:Name="QuickSwitchRecent" ItemsSource="{Binding Sources.Recent}" IsVisible="{Binding Sources.HasRecent}">
+                <ItemsControl x:Name="QuickSwitchRecent" ItemsSource="{Binding QuickRecent}" IsVisible="{Binding Sources.HasRecent}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:RecentItemViewModel">
+                    <DataTemplate x:DataType="vm:QuickSwitchItem">
                       <Button Classes="quickitem" Click="OnQuickSwitchClick" CommandParameter="{Binding}"
-                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickOpenRecentCommand}"
-                              AutomationProperties.Name="{Binding Title, StringFormat='Open {0}'}" ToolTip.Tip="{Binding Detail}">
-                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
-                          <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="12" />
-                          <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
-                        </StackPanel>
+                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickSwitchCommand}"
+                              AutomationProperties.Name="{Binding Name}" ToolTip.Tip="{Binding Tip}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                          <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                          <i:Icon Grid.Column="2" Grid.RowSpan="2" x:Name="QuickSwitchCheck" Classes="accent" Value="fa-solid fa-check" FontSize="12"
+                                  Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsCurrent}"
+                                  ToolTip.Tip="Open now" AutomationProperties.Name="Open now" />
+                        </Grid>
                       </Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock Text="Saved" FontWeight="SemiBold" IsVisible="{Binding Connect.HasSavedConnections}" />
-                <ItemsControl x:Name="QuickSwitchSaved" ItemsSource="{Binding Connect.SavedConnections}" IsVisible="{Binding Connect.HasSavedConnections}">
+                <ItemsControl x:Name="QuickSwitchSaved" ItemsSource="{Binding QuickSaved}" IsVisible="{Binding Connect.HasSavedConnections}">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="cred:LoginEntry">
+                    <DataTemplate x:DataType="vm:QuickSwitchItem">
                       <Button Classes="quickitem" Click="OnQuickSwitchClick" CommandParameter="{Binding}"
-                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickConnectSavedCommand}"
-                              AutomationProperties.Name="{Binding DisplayName, StringFormat='Connect {0}'}" ToolTip.Tip="{Binding Info.Label}">
-                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
-                          <i:Icon Classes="accent" Value="fa-solid fa-bookmark" FontSize="12" />
-                          <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
-                        </StackPanel>
+                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickSwitchCommand}"
+                              AutomationProperties.Name="{Binding Name}" ToolTip.Tip="{Binding Tip}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                          <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                          <i:Icon Grid.Column="2" Grid.RowSpan="2" x:Name="QuickSwitchCheck" Classes="accent" Value="fa-solid fa-check" FontSize="12"
+                                  Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsCurrent}"
+                                  ToolTip.Tip="Open now" AutomationProperties.Name="Open now" />
+                        </Grid>
                       </Button>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -330,7 +338,7 @@
 
                     <StackPanel Spacing="4" IsVisible="{Binding UseEntra}">
                       <TextBlock Text="Namespace" />
-                      <TextBox x:Name="NamespaceBox" Text="{Binding NamespaceText}" Watermark="contoso-synthetic.servicebus.windows.net" />
+                      <TextBox x:Name="NamespaceBox" Text="{Binding NamespaceText}" Classes="example" Watermark="e.g. contoso-synthetic.servicebus.windows.net" />
                       <TextBlock x:Name="EntraHintText" Classes="muted" Text="{Binding EntraHint}" TextWrapping="Wrap" FontSize="12" />
                     </StackPanel>
 

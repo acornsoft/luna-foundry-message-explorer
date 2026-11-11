@@ -93,7 +93,7 @@ public sealed class ThemeAndSetupTests
     private static readonly (string Foreground, string Background)[] TextPairs =
     [
         ("Text", "Surface"), ("Text", "Card"), ("MutedText", "Surface"), ("MutedText", "Card"),
-        ("AccentText", "Surface"), ("AccentText", "Card"), ("AccentText", "AccentSoft"), ("Text", "AccentSoft"),
+        ("AccentText", "Surface"), ("AccentText", "Card"), ("AccentText", "AccentSoft"), ("Text", "AccentSoft"), ("ActiveText", "ActiveSoft"),
         ("OnAccent", "Accent"), ("OnAccent", "AccentHover"), ("OnAccent", "AccentPressed"),
         ("Error", "ErrorBackground"), ("Error", "Card"), ("Success", "SuccessBackground"), ("Success", "Card"),
         ("WarningText", "WarningBackground"), ("Text", "Badge"), ("Text", "Code"),

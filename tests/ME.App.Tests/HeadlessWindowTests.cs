@@ -107,9 +107,10 @@ public class HeadlessWindowTests
         var queueIcons = tree.GetVisualDescendants().OfType<Projektanker.Icons.Avalonia.Icon>().Where(i => i.Classes.Contains("queue") && i.IsEffectivelyVisible).ToList();
         Assert.Equal(4, queueIcons.Count);
         Assert.All(queueIcons, i => Assert.Equal("Queue", ToolTip.GetTip(i)));
-        // Dead-letter 3 on one queue, transfer dead-letter 1 on another; zero counts get no badge.
+        // Dead-letter 3 on one queue gets a badge; rows carry only active and dead-lettered badges, so the
+        // transfer dead-letter 1 on another queue shows on its card, not its row. Zero counts get no badge.
         int Badges(string kind) => tree.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains(kind) && b.IsEffectivelyVisible);
-        Assert.Equal((1, 1), (Badges("dead"), Badges("transfer")));
+        Assert.Equal((1, 0, 0), (Badges("dead"), Badges("transfer"), Badges("scheduled")));
         Assert.True(Find<Button>(window, "QuickRefreshButton").IsEffectivelyEnabled);
     }
 

@@ -3,6 +3,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+using System.Collections.ObjectModel;
 using Acornsoft.MessageExplorer.Adapters.ServiceBus;
 using Acornsoft.MessageExplorer.Brokers;
 using Acornsoft.MessageExplorer.Credentials;
@@ -99,6 +100,9 @@ public sealed class MainViewModel : ViewModelBase
         Accounts.Accounts.CollectionChanged += (_, _) => LandSwitcher();
         QuickOpenRecentCommand = new AsyncCommand<RecentItemViewModel>(QuickOpenRecentAsync);
         QuickConnectSavedCommand = new AsyncCommand<LoginEntry>(QuickConnectSavedAsync);
+        QuickSwitchCommand = new AsyncCommand<QuickSwitchItem>(item => item.Login is { } login ? QuickConnectSavedAsync(login)
+            : item.Recent is { } recent ? QuickOpenRecentAsync(recent) : Task.CompletedTask);
+        RebuildQuickSwitch();
         ManageAccountsCommand = new RelayCommand(() => OpenSwitcher());
         OpenSwitcherCommand = new RelayCommand(() => OpenSwitcher());
         CloseSwitcherCommand = new RelayCommand(() => IsSwitcherOpen = false);
@@ -315,6 +319,7 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasNamespaceIdentity));
         OnPropertyChanged(nameof(NamespaceDetail));
         OnPropertyChanged(nameof(MoveBannerText));
+        RebuildQuickSwitch();
     }
 
     // ---- Quick switch (the switcher button's popover) ----
@@ -333,11 +338,66 @@ public sealed class MainViewModel : ViewModelBase
     /// <summary>"Manage accounts…": the full switcher sheet, on the page with the next step.</summary>
     public RelayCommand ManageAccountsCommand { get; }
 
+    /// <summary>Opens a quick-switch row: its recent namespace or its saved login.</summary>
+    public AsyncCommand<QuickSwitchItem> QuickSwitchCommand { get; }
+
+    /// <summary>The quick switch's Recent rows: namespace on top, account and cloud below.</summary>
+    public ObservableCollection<QuickSwitchItem> QuickRecent { get; } = [];
+
+    /// <summary>The quick switch's Saved rows: namespace on top, account and cloud below.</summary>
+    public ObservableCollection<QuickSwitchItem> QuickSaved { get; } = [];
+
     private void QuickSwitchChanged()
     {
         OnPropertyChanged(nameof(HasQuickSwitchItems));
         OnPropertyChanged(nameof(HasNoQuickSwitchItems));
+        RebuildQuickSwitch();
     }
+
+    private void RebuildQuickSwitch()
+    {
+        // The constructor wires events before every part exists.
+        if (Sources is null || Connect is null || QuickView is null)
+            return;
+        var open = Connect.IsConnected ? QuickView.NamespaceName : null;
+        QuickRecent.Clear();
+        foreach (var recent in Sources.Recent)
+            QuickRecent.Add(QuickSwitchFor(recent, Connect.SavedConnections, open));
+        QuickSaved.Clear();
+        foreach (var login in Connect.SavedConnections)
+            QuickSaved.Add(QuickSwitchFor(login, open));
+    }
+
+    /// <summary>A recent namespace (or a recent use of a saved login) as a two-line quick-switch row.</summary>
+    public static QuickSwitchItem QuickSwitchFor(RecentItemViewModel recent, IEnumerable<LoginEntry> saved, string? openNamespace)
+    {
+        if (recent.Recent.LoginId is { } id && saved.FirstOrDefault(l => l.Id == id) is { } login)
+            return QuickSwitchFor(login, openNamespace) with { Recent = recent, Login = null, Icon = recent.Icon };
+        if (recent.Recent.Namespace is { } ns)
+        {
+            var cloud = CloudLabel(AzureClouds.Find(ns.Cloud));
+            var account = string.IsNullOrWhiteSpace(recent.Recent.AccountName) ? "Azure sign-in" : recent.Recent.AccountName;
+            return new QuickSwitchItem(ns.Name, $"{account} · {cloud}", IsOpen(ns.Name, openNamespace), recent.Icon) { Recent = recent };
+        }
+
+        return new QuickSwitchItem(recent.Title, recent.Detail, IsOpen(recent.Title, openNamespace), recent.Icon) { Recent = recent };
+    }
+
+    /// <summary>A saved login as a two-line quick-switch row. Reads only the login's non-secret fields.</summary>
+    public static QuickSwitchItem QuickSwitchFor(LoginEntry login, string? openNamespace)
+    {
+        var endpoint = login.Field("endpoint") is { Length: > 0 } given ? given : login.Field("namespace");
+        var title = endpoint is { Length: > 0 } e ? HostOf(e).Split('.')[0] : login.DisplayName;
+        var connectionString = login.Kind.ToString().EndsWith("ConnectionString", StringComparison.Ordinal);
+        var (account, cloud) = IdentityOf(endpoint, login.Field("accountName"), LoginKinds.SystemLabel(login.System), connectionString);
+        return new QuickSwitchItem(title, $"{account} · {cloud}", IsOpen(title, openNamespace), "fa-solid fa-bookmark") { Login = login, LoginName = login.DisplayName };
+    }
+
+    private static bool IsOpen(string title, string? openNamespace) =>
+        openNamespace is { Length: > 0 } && string.Equals(title, openNamespace, StringComparison.OrdinalIgnoreCase);
+
+    private static string HostOf(string endpoint) =>
+        Uri.TryCreate(endpoint.Contains("://", StringComparison.Ordinal) ? endpoint : "sb://" + endpoint, UriKind.Absolute, out var uri) ? uri.Host : endpoint;
 
     private async Task QuickOpenRecentAsync(RecentItemViewModel item)
     {

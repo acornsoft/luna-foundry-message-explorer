@@ -115,7 +115,7 @@ public sealed class UxPassTests
 
         quick.Filter = string.Empty;
         quick.KindFilter = ResourceKindFilter.Queues;
-        Assert.Equal("4 of 6 match queues", quick.MatchText);
+        Assert.Equal("4 of 6: Queues", quick.MatchText);
 
         quick.ClearFiltersCommand.Execute(null);
         Assert.False(quick.IsNarrowed);
@@ -136,10 +136,10 @@ public sealed class UxPassTests
             quick.Tree.Where(n => n.IsVisible).Select(n => n.Name).Order(StringComparer.Ordinal));
         var events = quick.Find("gsl-dispute-events")!;
         Assert.Equal(["audit-copy", "notice-writer"], events.Children.Where(c => c.IsVisible).Select(c => c.Name).Order(StringComparer.Ordinal));
-        Assert.Equal("3 of 6 match has dead letters", quick.MatchText);
+        Assert.Equal("3 of 6: Has dead letters", quick.MatchText);
 
         quick.KindFilter = ResourceKindFilter.Queues;
-        Assert.Equal("2 of 6 match queues, has dead letters", quick.MatchText);
+        Assert.Equal("2 of 6: Queues, Has dead letters", quick.MatchText);
     }
 
     // ---- Mode chip (findings 1 and 2 held pending the Move redesign: chip unchanged, one-phrase tooltip) ----
@@ -191,10 +191,11 @@ public sealed class UxPassTests
         Assert.Equal("3 dead-lettered", credit.DeadLetterName);
 
         quick.SelectedNode = notices;
+        // A zero card shows 0 like the others (never "Empty"), captioned "Nothing to peek".
         var active = quick.Entity!.LaneOf(MessageLane.Active)!;
-        Assert.False(active.ShowsCount);
-        Assert.True(active.IsEmptyLane);
-        Assert.True(quick.Entity.LaneOf(MessageLane.Scheduled)!.ShowsCount);
+        Assert.Equal("0", active.CountText);
+        Assert.Equal("Nothing to peek", active.CardFooter);
+        Assert.Equal("9", quick.Entity.LaneOf(MessageLane.Scheduled)!.CountText);
     }
 
     [Fact]
@@ -240,7 +241,7 @@ public sealed class UxPassTests
     // ---- 8 Search keeps the selection ----
 
     [Fact]
-    public async Task Search_that_hides_the_selection_keeps_it_pinned_with_a_note()
+    public async Task Search_that_hides_the_selection_keeps_it_pinned_with_a_pin_tip()
     {
         var (main, _) = await ConnectedAsync();
         var quick = main.QuickView;
@@ -253,13 +254,11 @@ public sealed class UxPassTests
         Assert.Same(intake, quick.SelectedNode);
         Assert.True(intake.IsVisible);
         Assert.True(intake.IsPinned);
-        Assert.True(quick.HasPinnedNote);
-        Assert.Contains("gsl-disputes-intake", quick.PinnedNote, StringComparison.Ordinal);
+        Assert.Equal("Selected, doesn't match", QuickTreeNode.PinTip);
         Assert.Equal("1 of 6 match 'ledger'", quick.MatchText);
 
         quick.Filter = string.Empty;
         Assert.False(intake.IsPinned);
-        Assert.False(quick.HasPinnedNote);
     }
 
     // ---- 12 Shortcuts, 13 reasons ----

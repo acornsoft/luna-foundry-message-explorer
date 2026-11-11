@@ -170,7 +170,7 @@ public sealed class ResourcesViewTests
         Assert.False(quick.IsNarrowed);
         Assert.Equal(string.Empty, quick.MatchText);
         quick.KindFilter = ResourceKindFilter.Queues;
-        Assert.Equal("2 of 3 match queues", quick.MatchText);
+        Assert.Equal("2 of 3: Queues", quick.MatchText);
     }
 
     [Fact]

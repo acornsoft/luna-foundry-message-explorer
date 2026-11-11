@@ -233,7 +233,7 @@ public sealed class HeadlessUxPassTests
     }
 
     [AvaloniaFact]
-    public async Task A_pinned_selection_is_dimmed_with_a_note_and_sections_have_no_count_chips()
+    public async Task A_pinned_selection_is_dimmed_with_a_pin_and_sections_have_no_count_chips()
     {
         var (window, main) = await ConnectedAsync();
         var quick = main.QuickView;
@@ -242,10 +242,14 @@ public sealed class HeadlessUxPassTests
         await quick.SearchLoad;
         Pump(window);
 
-        Assert.True(Find<TextBlock>(window, "QuickPinnedNote").IsEffectivelyVisible);
+        Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Name == "QuickPinnedNote");
         var tree = Find<TreeView>(window, "QuickTree");
         var row = (TreeViewItem)tree.ContainerFromItem(quick.SelectedNode!)!;
         Assert.True(row.IsVisible);
+        var pin = row.GetVisualDescendants().OfType<Projektanker.Icons.Avalonia.Icon>().Single(i => i.Name == "QuickPinIcon");
+        Assert.True(pin.IsEffectivelyVisible);
+        Assert.Equal("Selected, doesn't match", ToolTip.GetTip(pin));
+        Assert.Equal("Selected, doesn't match", AutomationProperties.GetName(pin));
         Assert.Contains(row.GetVisualDescendants().OfType<Grid>(), g => g.Classes.Contains("pinned"));
 
         var sections = Find<ItemsControl>(window, "QuickSections");
