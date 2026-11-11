@@ -3,15 +3,22 @@
 ## Light, dark or system
 
 The app follows the operating system's light or dark setting by default. Pick **System**, **Light** or **Dark**
-on the Accounts page, at the top of the Connect panel, or under **Settings**. All three pickers share one
-choice, and it is remembered on this computer in `ui-settings.json` in the app's config folder (with the
-Queues and Topics toggles and the recent connections list; no secrets).
+in the namespace switcher's header (on every page of it) or under **Settings** (the gear in the top bar). Both
+pickers share one choice, and it is remembered on this computer in `ui-settings.json` in the app's config
+folder (with the kind filter and the recent connections list; no secrets).
 
 Colours come from one palette in `App.axaml` with a Light and a Dark dictionary, used through
 `DynamicResource`, so views never hard-code a colour. Maroon (#4F2001) is the accent in light and gold
 (#FF9900) in dark. Every text colour pair passes 4.5:1 contrast and every icon pair 3:1 in both themes;
 `ThemeAndSetupTests` checks the palette, checks that every resource key the views use exists in both
 themes, and fails if a view hard-codes a colour.
+
+## The namespace switcher
+
+The namespace name at the top left opens one sheet with a left rail, in the style of Azure Data Studio's
+connection dialog: **Connect** (Recent and Saved on the left, connection details on the right), **Accounts**
+and **Saved logins**. It is open at launch, closes when a namespace connects, and Esc or a click outside closes
+it once something is connected. These used to be the Accounts and Saved logins tabs and the Connect panel.
 
 ## Accounts (linked accounts)
 
@@ -28,17 +35,15 @@ Like Azure Data Studio's Linked accounts:
 
 Beside the accounts, **Browse** lists subscription, then resource group, then Service Bus and Event Hubs
 namespaces, from every signed-in account. Pick one subscription or all, and filter by namespace or resource
-group. **Open** (or double-click) opens a Service Bus namespace in Queues & topics. Event Hubs namespaces are
+group. **Open** (or double-click) opens a Service Bus namespace in Resources. Event Hubs namespaces are
 listed for completeness; **Save as Event Hubs login** saves one to Saved logins (no secret). All of this is
 read-only Azure Resource Manager listing.
 
-## Connect panel
+## Connect page
 
 **Recent** lists the last ten connections (saved logins by id, and namespaces opened from Browse by their
 resource id and account). A pasted connection string that you don't save is never kept. **Saved** lists
-saved logins. Below them, **Connection details** still takes a namespace with an Entra account, or a pasted
+saved logins. Beside them, **Connection details** still takes a namespace with an Entra account, or a pasted
 connection string.
 
-Once connected, the Connect panel steps aside on the Queues & topics and tool tabs so they get the full
-width; it stays on Accounts and Saved logins. The plug button in the header (which shows the current
-connection) pins it open on every tab.
+Once connected, the switcher closes so Resources gets the whole window. Open it again from the namespace name.

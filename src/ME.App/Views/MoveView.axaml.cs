@@ -13,7 +13,7 @@ using Avalonia.VisualTree;
 namespace Acornsoft.MessageExplorer.Shell.Views;
 
 /// <summary>
-/// Drag and drop for the Move tab. Dragging picked messages (or a source node) starts an in-app drag; the
+/// Drag and drop for Move mode. Dragging picked messages (or a source node) starts an in-app drag; the
 /// tree highlights each queue or topic the drop is allowed on, and a drop hands the target to the view model,
 /// which checks, asks and moves. Only an in-app marker travels with the drag, never message data.
 /// </summary>

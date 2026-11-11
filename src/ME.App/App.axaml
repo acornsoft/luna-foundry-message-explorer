@@ -22,6 +22,7 @@
           <Color x:Key="LfmeQvRaisedColor">#F6F2EE</Color>
           <Color x:Key="LfmeQvHoverColor">#EFE7E0</Color>
           <Color x:Key="LfmeQvLineColor">#DDD5CE</Color>
+          <Color x:Key="LfmeScrimColor">#661F1A17</Color>
           <Color x:Key="LfmeActiveColor">#1A5FB4</Color>
           <Color x:Key="LfmeActiveSoftColor">#E3EDFA</Color>
           <Color x:Key="LfmeDeadColor">#C0262D</Color>
@@ -43,6 +44,7 @@
           <SolidColorBrush x:Key="LfmeQvRaisedBrush" Color="{StaticResource LfmeQvRaisedColor}" />
           <SolidColorBrush x:Key="LfmeQvHoverBrush" Color="{StaticResource LfmeQvHoverColor}" />
           <SolidColorBrush x:Key="LfmeQvLineBrush" Color="{StaticResource LfmeQvLineColor}" />
+          <SolidColorBrush x:Key="LfmeScrimBrush" Color="{StaticResource LfmeScrimColor}" />
           <SolidColorBrush x:Key="LfmeActiveBrush" Color="{StaticResource LfmeActiveColor}" />
           <SolidColorBrush x:Key="LfmeActiveSoftBrush" Color="{StaticResource LfmeActiveSoftColor}" />
           <SolidColorBrush x:Key="LfmeDeadBrush" Color="{StaticResource LfmeDeadColor}" />
@@ -111,6 +113,7 @@
           <Color x:Key="LfmeQvRaisedColor">#1A1D22</Color>
           <Color x:Key="LfmeQvHoverColor">#20252C</Color>
           <Color x:Key="LfmeQvLineColor">#2A2F37</Color>
+          <Color x:Key="LfmeScrimColor">#99000000</Color>
           <Color x:Key="LfmeActiveColor">#4FA3FF</Color>
           <Color x:Key="LfmeActiveSoftColor">#22324A</Color>
           <Color x:Key="LfmeDeadColor">#FF5A5F</Color>
@@ -132,6 +135,7 @@
           <SolidColorBrush x:Key="LfmeQvRaisedBrush" Color="{StaticResource LfmeQvRaisedColor}" />
           <SolidColorBrush x:Key="LfmeQvHoverBrush" Color="{StaticResource LfmeQvHoverColor}" />
           <SolidColorBrush x:Key="LfmeQvLineBrush" Color="{StaticResource LfmeQvLineColor}" />
+          <SolidColorBrush x:Key="LfmeScrimBrush" Color="{StaticResource LfmeScrimColor}" />
           <SolidColorBrush x:Key="LfmeActiveBrush" Color="{StaticResource LfmeActiveColor}" />
           <SolidColorBrush x:Key="LfmeActiveSoftBrush" Color="{StaticResource LfmeActiveSoftColor}" />
           <SolidColorBrush x:Key="LfmeDeadBrush" Color="{StaticResource LfmeDeadColor}" />
@@ -304,6 +308,126 @@
     </Style>
     <Style Selector="Button.primary:disabled i|Icon">
       <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundDisabled}" />
+    </Style>
+
+    <!-- The slim top bar and its controls. -->
+    <Style Selector="Border.topbar">
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Height" Value="48" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="Button.switcher">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.switcher:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="TextBox.search">
+      <Setter Property="Width" Value="520" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <Style Selector="ToggleButton.modechip">
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="12,4" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Background" Value="{DynamicResource LfmeSuccessBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ToggleButton.modechip /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeSuccessBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip.move /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeWarningBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeWarningBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip.move i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <Style Selector=":is(Button).baricon">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="17" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector=":is(Button).baricon i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector=":is(Button).baricon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.baricon:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.baricon:checked i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="i|Icon.muted">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector="Border.sidepanel">
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <!-- Sheets (namespace switcher, test jobs) over the main view, with a scrim behind. -->
+    <Style Selector="Border.scrim">
+      <Setter Property="Background" Value="{DynamicResource LfmeScrimBrush}" />
+    </Style>
+    <Style Selector="Border.sheet">
+      <Setter Property="Background" Value="{DynamicResource LfmeSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="BoxShadow" Value="0 8 28 0 #40000000" />
+    </Style>
+    <Style Selector="RadioButton.nav">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_Nav" Background="Transparent" CornerRadius="6" Padding="12,8">
+            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="RadioButton.nav:pointerover /template/ Border#PART_Nav">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="RadioButton.nav:checked /template/ Border#PART_Nav">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="RadioButton.nav:checked">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <!-- Theme picker: three radio buttons drawn as one segmented control. -->

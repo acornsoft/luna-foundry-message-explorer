@@ -7,6 +7,7 @@ using Acornsoft.MessageExplorer.Operations.Move;
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Acornsoft.MessageExplorer.Shell.Views;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
@@ -29,38 +30,38 @@ public class HeadlessMoveTests
     }
 
     [AvaloniaFact]
-    public async Task The_toggle_starts_off_and_the_banner_shows_only_while_on()
+    public async Task The_mode_chip_starts_read_only_and_the_move_banner_shows_only_while_on()
     {
         var (main, _, _, _) = await MoveDemo.OpenAsync(turnOn: false);
         var window = new MainWindow { DataContext = main };
         window.Show();
         Pump(window);
 
-        var toggle = Find<ToggleSwitch>(window, "MoveModeToggle");
-        Assert.False(toggle.IsChecked);
-        Assert.False(window.FindControl<Border>("MoveModeBanner")!.IsVisible);
-        Assert.True(window.FindControl<TextBlock>("BannerText")!.IsVisible);
+        var chip = Find<ToggleButton>(window, "ModeChip");
+        Assert.False(chip.IsChecked);
+        Assert.Equal("Read-only", Find<TextBlock>(window, "ModeChipText").Text);
+        Assert.False(window.FindControl<Border>("MoveModeBanner")!.IsEffectivelyVisible);
 
-        toggle.IsChecked = true;
+        chip.IsChecked = true;
         Pump(window);
 
         Assert.True(main.MoveModeOn);
-        Assert.True(window.FindControl<Border>("MoveModeBanner")!.IsVisible);
+        Assert.True(window.FindControl<Border>("MoveModeBanner")!.IsEffectivelyVisible);
         Assert.Equal(MoveModeSwitch.Banner, window.FindControl<TextBlock>("MoveModeBannerText")!.Text);
-        Assert.False(window.FindControl<TextBlock>("BannerText")!.IsVisible);
+        Assert.Equal("Move", Find<TextBlock>(window, "ModeChipText").Text);
     }
 
     [AvaloniaFact]
-    public async Task The_move_tab_explains_the_off_state_and_shows_the_tree_and_list_when_on()
+    public async Task The_move_workspace_explains_the_off_state_and_shows_the_tree_and_list_when_on()
     {
         var (main, _, _, _) = await MoveDemo.OpenAsync(turnOn: false);
-        main.SelectedTab = MainViewModel.MoveTab;
         var window = new MainWindow { DataContext = main };
         window.Show();
         Pump(window);
 
-        Assert.True(Find<TextBlock>(window, "MoveOffText").IsVisible);
-        Assert.False(Find<TreeView>(window, "MoveTree").IsEffectivelyEnabled);
+        // Off: the Move workspace isn't shown at all; the resources view is.
+        Assert.False(window.FindControl<DockPanel>("MoveWorkspace")!.IsVisible);
+        Assert.False(main.Move.CanWork);
 
         main.MoveModeOn = true;
         await main.Move.TreeLoad;

@@ -34,4 +34,36 @@ public static class EntityKindStyle
 
     /// <summary>True for queues: the channel colour. Topics and subscriptions use the topic colour.</summary>
     public static bool IsQueueFamily(EntityKind kind) => kind == EntityKind.Queue;
+
+    public static string Icon(ResourceKind kind) => kind switch
+    {
+        ResourceKind.Queue => QueueIcon,
+        ResourceKind.Topic => TopicIcon,
+        ResourceKind.EventHub => "fa-solid fa-wave-square",
+        _ => "fa-solid fa-bars-staggered",
+    };
+
+    public static string Tag(ResourceKind kind) => kind switch
+    {
+        ResourceKind.Queue => "QUEUE",
+        ResourceKind.Topic => "TOPIC",
+        ResourceKind.EventHub => "HUB",
+        _ => "KAFKA",
+    };
+
+    public static bool IsQueueFamily(ResourceKind kind) => kind == ResourceKind.Queue;
+
+    public static string Icon(ReceiverKind kind) => kind switch
+    {
+        ReceiverKind.Implicit => QueueIcon,
+        ReceiverKind.Subscription => SubscriptionIcon,
+        _ => "fa-solid fa-users",
+    };
+
+    public static string Tag(ReceiverKind kind) => kind switch
+    {
+        ReceiverKind.Implicit => "QUEUE",
+        ReceiverKind.Subscription => "SUB",
+        _ => "GROUP",
+    };
 }

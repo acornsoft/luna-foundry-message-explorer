@@ -12,7 +12,7 @@ using Acornsoft.MessageExplorer.Shell.Accounts;
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
 /// <summary>
-/// The Saved logins tab: every login for every system in one list. Secrets are never shown, copied or
+/// The Saved logins page: every login for every system in one list. Secrets are never shown, copied or
 /// revealed here; the editor takes a new secret in a masked box and hands it straight to the vault.
 /// </summary>
 public sealed class LoginsViewModel : ViewModelBase
@@ -308,12 +308,12 @@ public sealed class LoginItemViewModel(LoginEntry entry, string secureStoreName)
                 parts.Add($"Uses {account}");
             parts.Add(Entry.HasSecret ? $"Secret in {secureStoreName}" : "No stored secret");
             if (Entry.Kind == LoginKind.EntraAccount)
-                parts.Add("Managed on the Accounts tab");
+                parts.Add("Managed on the Accounts page");
             return string.Join(" · ", parts);
         }
     }
 
-    /// <summary>Entra accounts are added and removed on the Accounts tab.</summary>
+    /// <summary>Entra accounts are added and removed on the Accounts page.</summary>
     public bool CanEdit => Entry.Kind != LoginKind.EntraAccount;
 
     public override string ToString() => Entry.ToString();
@@ -387,7 +387,7 @@ public sealed class LoginEditorViewModel : ViewModelBase
 
     public string Title => IsNew ? "Add a login" : $"Edit '{_existing!.DisplayName}'";
 
-    /// <summary>Entra accounts are added by signing in on the Accounts tab, so they are not offered here.</summary>
+    /// <summary>Entra accounts are added by signing in on the Accounts page, so they are not offered here.</summary>
     public IReadOnlyList<SystemOption> Systems { get; } = Enum.GetValues<LoginSystem>()
         .Where(s => s != LoginSystem.Entra)
         .Select(s => new SystemOption(s, LoginKinds.SystemLabel(s)))

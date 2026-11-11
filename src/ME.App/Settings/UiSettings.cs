@@ -49,11 +49,8 @@ public sealed record UiSettingsData
 
     public IReadOnlyList<RecentConnection> Recent { get; init; } = [];
 
-    /// <summary>The Queues toggle above the entity tree.</summary>
-    public bool ShowQueues { get; init; } = true;
-
-    /// <summary>The Topics toggle above the entity tree.</summary>
-    public bool ShowTopics { get; init; } = true;
+    /// <summary>The kind filter over the Resources list: All, Queues or Topics.</summary>
+    public Brokers.ResourceKindFilter KindFilter { get; init; } = Brokers.ResourceKindFilter.All;
 }
 
 public interface IUiSettingsStore
@@ -90,7 +87,7 @@ public sealed class ThemeOnlyUiSettingsStore(IUiSettingsStore inner) : IUiSettin
     {
         ArgumentNullException.ThrowIfNull(settings);
         _recent = settings.Recent;
-        inner.Save(inner.Load() with { Theme = settings.Theme, ShowQueues = settings.ShowQueues, ShowTopics = settings.ShowTopics });
+        inner.Save(inner.Load() with { Theme = settings.Theme, KindFilter = settings.KindFilter });
     }
 }
 

@@ -16,7 +16,7 @@ using Avalonia.VisualTree;
 
 namespace Acornsoft.MessageExplorer.Shell.Tests;
 
-/// <summary>The Accounts tab and the paste box in a real (headless) window. Fake accounts and keys only.</summary>
+/// <summary>The switcher's Accounts page and the paste box in a real (headless) window. Fake accounts and keys only.</summary>
 public class HeadlessAccountsTests
 {
     private const string Contoso = "00000000-0000-0000-0000-00000000c001";
@@ -58,9 +58,13 @@ public class HeadlessAccountsTests
     }
 
     [AvaloniaFact]
-    public void The_accounts_tab_opens_first_and_invites_an_account()
+    public void The_switcher_opens_first_and_its_accounts_page_invites_an_account()
     {
-        var (window, _, _, _) = Open();
+        var (window, main, _, _) = Open();
+        Assert.True(main.IsSwitcherOpen);
+        Assert.True(main.IsConnectPage);
+        main.IsAccountsPage = true;
+        Settle(window);
 
         Assert.True(Find<TextBlock>(window, "NoAccountsText").IsVisible);
         Assert.True(Find<Button>(window, "AddAccountButton").IsEffectivelyEnabled);
@@ -74,6 +78,7 @@ public class HeadlessAccountsTests
         auth.WillSignIn("alice@contoso.example");
 
         await main.Accounts.AddAccountAsync();
+        main.OpenSwitcher(SwitcherPage.Accounts);
         Settle(window);
 
         var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
@@ -85,7 +90,7 @@ public class HeadlessAccountsTests
     }
 
     [AvaloniaFact]
-    public async Task Opening_a_namespace_from_the_tree_fills_the_queues_grid()
+    public async Task Opening_a_namespace_from_the_tree_closes_the_switcher_and_fills_the_resources()
     {
         var (window, main, auth, _) = Open();
         auth.WillSignIn("alice@contoso.example");
@@ -95,8 +100,8 @@ public class HeadlessAccountsTests
         await main.Accounts.OpenCommand.ExecuteAsync();
         Settle(window);
 
-        Assert.Equal(MainViewModel.QueuesTab, main.SelectedTab);
-        Assert.Equal("orders", Assert.Single(main.Queues.Rows).Name);
+        Assert.False(main.IsSwitcherOpen);
+        Assert.Equal("orders", Assert.Single(main.QuickView.Tree).Name);
         Assert.Equal("Azure Service Bus: sbns-demo-001 as alice@contoso.example", main.Connect.ConnectedTo);
     }
 
@@ -124,11 +129,10 @@ public class HeadlessAccountsTests
         main.Connect.ConnectionString = $"Endpoint=sb://sbns-demo-001.servicebus.windows.net/;{KeyName}=listen;{Key}={FakeKey};EntityPath=orders";
 
         await main.Connect.ConnectCommand.ExecuteAsync();
-        main.SelectedTab = MainViewModel.QueuesTab;
         Settle(window);
 
         Assert.True(Find<TextBlock>(window, "QuickNoticeText").IsVisible);
-        Assert.Equal("orders", Assert.Single(main.Queues.Rows).Name);
+        Assert.Equal("orders", Assert.Single(main.QuickView.Tree).Name);
         Assert.Equal("Azure Service Bus: Key (listen) for orders only, on sbns-demo-001.servicebus.windows.net", main.Connect.ConnectedTo);
         Assert.Empty(main.Connect.ConnectionString);
     }
@@ -154,6 +158,9 @@ public class HeadlessAccountsTests
         Assert.Equal(login.Id, Assert.Single(main.Connect.SavedConnections).Id);
         Assert.Empty(main.Connect.ConnectionString);
         Assert.DoesNotContain(FakeKey, main.Connect.ConnectedTo, StringComparison.Ordinal);
+        Assert.False(main.IsSwitcherOpen);
+        main.OpenSwitcher(SwitcherPage.Connect);
+        Settle(window);
         Assert.True(Find<ListBox>(window, "SavedConnectionsList").IsEffectivelyVisible);
         Assert.Equal(ConnectSourcesViewModel.SavedTab, main.Sources.SelectedTab);
         Assert.Contains(main.Logins.Items, i => i.Name == "demo reader");
@@ -183,11 +190,11 @@ public class HeadlessAccountsTests
     }
 
     [AvaloniaFact]
-    public void The_saved_logins_tab_lists_rows_and_its_secret_box_is_masked_with_copy_blocked()
+    public void The_saved_logins_page_lists_rows_and_its_secret_box_is_masked_with_copy_blocked()
     {
         var (window, main, _, vault) = Open();
         vault.Vault.AddAsync(new LoginDraft("Kafka dev (demo)", LoginKind.KafkaSasl, new Dictionary<string, string> { ["bootstrapServers"] = "kafka-demo.contoso.example:9093", ["mechanism"] = "PLAIN", ["username"] = "demo" }), new RuntimeSecret("fake-kafka-demo")).GetAwaiter().GetResult();
-        main.SelectedTab = MainViewModel.LoginsTab;
+        main.OpenSwitcher(SwitcherPage.Logins);
         main.Logins.Selected = main.Logins.Items[0];
         main.Logins.EditCommand.Execute(null);
         Settle(window);

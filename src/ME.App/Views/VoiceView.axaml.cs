@@ -10,7 +10,7 @@ using Avalonia.Interactivity;
 
 namespace Acornsoft.MessageExplorer.Shell.Views;
 
-/// <summary>The Voice tab. The talk button sends audio only while it is held.</summary>
+/// <summary>The Voice panel. The talk button sends audio only while it is held.</summary>
 public partial class VoiceView : UserControl
 {
     public VoiceView()

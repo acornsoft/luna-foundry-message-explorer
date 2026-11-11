@@ -84,10 +84,10 @@ public sealed class AccountsInfrastructureTests : IDisposable
     }
 
     [Fact]
-    public void The_accounts_tab_can_be_picked_on_the_command_line()
+    public void The_accounts_page_can_be_picked_on_the_command_line()
     {
-        Assert.Equal(MainViewModel.AccountsTab, StartupOptions.Parse(["--tab", "accounts"], _ => null).Tab);
-        Assert.Equal(MainViewModel.QueuesTab, StartupOptions.Parse(["--tab", "queues"], _ => null).Tab);
+        Assert.Equal(AppSection.Accounts, StartupOptions.Parse(["--tab", "accounts"], _ => null).Section);
+        Assert.Equal(AppSection.Resources, StartupOptions.Parse(["--tab", "queues"], _ => null).Section);
     }
 
     [Fact]

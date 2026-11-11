@@ -101,7 +101,6 @@ public sealed class HeadlessIconAlignmentTests
         window.Show();
         main.Connect.NamespaceText = "synthetic.example";
         await main.Connect.ConnectCommand.ExecuteAsync();
-        main.SelectedTab = MainViewModel.QuickViewTab;
         await main.QuickView.EnsureLoadedAsync();
         Pump(window);
         main.QuickView.PageSize = 5;
@@ -155,11 +154,12 @@ public sealed class HeadlessIconAlignmentTests
     }
 
     [AvaloniaFact]
-    public async Task The_queues_and_topics_toggles_and_the_entity_header_keep_icons_on_the_text_middle()
+    public async Task The_top_bar_the_kind_filter_and_the_entity_header_keep_icons_on_the_text_middle()
     {
         var (window, _) = await QuickViewWithEverythingOpenAsync();
 
-        Assert.Equal(2, AssertAligned(Named<StackPanel>(window, "QuickKindToggles"), window, "kind toggles"));
+        Assert.True(AssertAligned(Named<Border>(window, "TopBar"), window, "top bar") >= 2);
+        Assert.Equal(2, AssertAligned(Named<Border>(window, "KindFilter"), window, "kind filter"));
         Assert.True(AssertAligned(Named<Panel>(window, "QuickEntityPanel"), window, "entity header") >= 1);
     }
 
@@ -176,8 +176,11 @@ public sealed class HeadlessIconAlignmentTests
                 window.Show();
                 Pump(window);
 
-                Assert.True(AssertAligned(Named<Control>(window, "AccountsPanel"), window, $"accounts ({variant})") >= 4);
                 Assert.True(AssertAligned(Named<Control>(window, "ConnectPanel"), window, $"connect ({variant})") >= 3);
+                Assert.Equal(3, AssertAligned(Named<Control>(window, "SwitcherRail"), window, $"switcher rail ({variant})"));
+                main.IsAccountsPage = true;
+                Pump(window);
+                Assert.True(AssertAligned(Named<Control>(window, "AccountsPanel"), window, $"accounts ({variant})") >= 3);
                 window.Close();
             }
         }
@@ -190,7 +193,7 @@ public sealed class HeadlessIconAlignmentTests
     [AvaloniaFact]
     public void The_push_to_talk_button_centers_its_microphone_with_its_label()
     {
-        var main = new MainViewModel(MainViewModel.DefaultCatalog(false)) { SelectedTab = MainViewModel.VoiceTab };
+        var main = new MainViewModel(MainViewModel.DefaultCatalog(false)) { IsVoiceOpen = true };
         var window = new MainWindow { DataContext = main };
         window.Show();
         Pump(window);

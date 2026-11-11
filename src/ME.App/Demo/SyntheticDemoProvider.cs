@@ -21,7 +21,7 @@ public sealed class SyntheticDemoProvider(InMemoryMoveBroker? broker = null) : I
 
     private static readonly Lazy<InMemoryMoveBroker> Shared = new(CreateBroker);
 
-    /// <summary>The broker shared by the demo's Connect panel and its Accounts tab.</summary>
+    /// <summary>The broker shared by the demo's Connect panel and its Accounts page.</summary>
     public static InMemoryMoveBroker SharedBroker => Shared.Value;
 
     public InMemoryMoveBroker Broker { get; } = broker ?? SharedBroker;

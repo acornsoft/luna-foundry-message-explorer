@@ -41,7 +41,7 @@ public sealed class LoginTester(ICredentialVault vault, Func<IBrokerProvider?> s
         ArgumentNullException.ThrowIfNull(login);
         var account = login.AccountId is { } id ? accounts()?.SignedInAccounts.FirstOrDefault(a => a.Id == id) : null;
         if (login.AccountId is not null && account is null)
-            return new(LoginTestOutcome.Failed, $"Not signed in as {AccountName(login)}. Sign in on the Accounts tab, then test again.");
+            return new(LoginTestOutcome.Failed, $"Not signed in as {AccountName(login)}. Sign in on the Accounts page, then test again.");
 
         switch (login.Kind)
         {
@@ -49,7 +49,7 @@ public sealed class LoginTester(ICredentialVault vault, Func<IBrokerProvider?> s
                 var signedIn = accounts()?.SignedInAccounts.Any(a => a.Id == login.Field("homeAccountId")) == true;
                 return signedIn
                     ? new(LoginTestOutcome.Passed, "Signed in.")
-                    : new(LoginTestOutcome.Failed, "Signed out. Sign in again on the Accounts tab.");
+                    : new(LoginTestOutcome.Failed, "Signed out. Sign in again on the Accounts page.");
             case LoginKind.ServiceBusEntra:
                 return await ListQueuesAsync(BrokerConnection.WithEntra(ServiceBusId, login.Field("namespace"), account!.Credential), null, cancellationToken).ConfigureAwait(false);
             case LoginKind.ServiceBusConnectionString or LoginKind.EmulatorConnectionString:

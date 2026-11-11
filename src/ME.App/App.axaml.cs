@@ -21,7 +21,7 @@ public partial class App : Application
     public static Func<Credentials.ISecretStore>? PlatformSecretStore { get; set; }
 
     /// <summary>
-    /// Set by a desktop head before start-up: its microphone and speaker. Left null (Android, tests), the Voice tab
+    /// Set by a desktop head before start-up: its microphone and speaker. Left null (Android, tests), the Voice panel
     /// takes typed questions only.
     /// </summary>
     public static Func<Voice.IVoiceAudio>? PlatformVoiceAudio { get; set; }

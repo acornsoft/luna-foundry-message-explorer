@@ -7,7 +7,7 @@ using Acornsoft.MessageExplorer.Voice;
 
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
-/// <summary>What the Voice tab talks through: the platform's audio (or none) and how it gets a short-lived token.</summary>
+/// <summary>What the Voice panel talks through: the platform's audio (or none) and how it gets a short-lived token.</summary>
 public sealed record VoiceServices(IVoiceAudio Audio, IVoiceTokenMinter? Tokens)
 {
     /// <summary>Tests and windows without voice: typed questions, and the key is used directly (no network to mint).</summary>

@@ -14,6 +14,25 @@ using Azure.Identity;
 
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
+/// <summary>The pages of the namespace switcher sheet.</summary>
+public enum SwitcherPage
+{
+    Connect,
+    Accounts,
+    Logins,
+}
+
+/// <summary>Places <c>--tab</c> can open. There are no tabs any more: each maps to a sheet, a panel, or the Resources view.</summary>
+public enum AppSection
+{
+    Resources,
+    Accounts,
+    Logins,
+    Jobs,
+    Move,
+    Voice,
+}
+
 public sealed class MainViewModel : ViewModelBase
 {
     private IEntityInventory? _inventory;
@@ -36,8 +55,6 @@ public sealed class MainViewModel : ViewModelBase
         ArgumentNullException.ThrowIfNull(catalog);
         var services = accounts ?? AccountServices.None();
         Shell = ShellModel.Observe();
-        Queues = new QueuesViewModel();
-        Topics = new TopicsViewModel();
         QuickView = new QuickViewViewModel(scheduler, settings: uiSettings);
         Jobs = new JobsViewModel(scheduler ?? InlineUiScheduler.Instance, runnerFactory: runnerFactory, samplesFolder: samplesFolder);
         Connect = new ConnectViewModel(catalog, OnConnectedAsync, OnDisconnected, services.Vault);
@@ -51,9 +68,16 @@ public sealed class MainViewModel : ViewModelBase
         Connect.LoginSaved += _ => Sources.SelectedTab = ConnectSourcesViewModel.SavedTab;
         Connect.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(ConnectViewModel.IsConnected))
-                OnPropertyChanged(nameof(ShowConnectPanel));
+            if (e.PropertyName is nameof(ConnectViewModel.IsConnected) or nameof(ConnectViewModel.ConnectedTo))
+            {
+                OnPropertyChanged(nameof(NamespaceLabel));
+                OnPropertyChanged(nameof(NamespaceDetail));
+            }
         };
+        OpenSwitcherCommand = new RelayCommand(() => OpenSwitcher());
+        CloseSwitcherCommand = new RelayCommand(() => IsSwitcherOpen = false);
+        OpenJobsCommand = new RelayCommand(() => IsJobsOpen = true);
+        CloseJobsCommand = new RelayCommand(() => IsJobsOpen = false);
         var vault = services.Vault ?? new CredentialVault(
             new UnavailableSecretStore("secure store", "Saving logins is not available in this window."),
             new MemoryLoginMetadataStore());
@@ -62,8 +86,15 @@ public sealed class MainViewModel : ViewModelBase
         Move = new MoveViewModel(MoveMode, move ?? MoveServices.InMemory());
         var voiceServices = voice ?? VoiceServices.None();
         Voice = new VoiceViewModel(vault, () => _inventory, () => Connect.ConnectedTo is { Length: > 0 } to ? to : "the connected namespace", audio: voiceServices.Audio, scheduler: scheduler, tokens: voiceServices.Tokens);
-        Move.Moved += (_, _) => _ = RefreshGridsAsync();
-        MoveMode.Changed += (_, _) => OnPropertyChanged(nameof(MoveModeOn));
+        Move.Moved += (_, _) => _ = RefreshResourcesAsync();
+        MoveMode.Changed += (_, _) =>
+        {
+            OnPropertyChanged(nameof(MoveModeOn));
+            OnPropertyChanged(nameof(IsReadOnly));
+            OnPropertyChanged(nameof(ModeText));
+            OnPropertyChanged(nameof(ModeIcon));
+            OnPropertyChanged(nameof(ModeTip));
+        };
         Accounts.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AccountsViewModel.SignedInAccounts))
@@ -88,80 +119,181 @@ public sealed class MainViewModel : ViewModelBase
     /// <summary>Off on every launch. Nothing reads it from settings, files or arguments.</summary>
     public Operations.Move.MoveModeSwitch MoveMode { get; } = new();
 
-    /// <summary>The Move tab: drag-and-drop message moves while Move mode is on.</summary>
+    /// <summary>The Move workspace: drag-and-drop message moves while Move mode is on.</summary>
     public MoveViewModel Move { get; }
 
-    /// <summary>The toggle at the top of the window.</summary>
+    /// <summary>The mode chip in the top bar. Off ("Read-only") on every launch; on shows the Move workspace.</summary>
     public bool MoveModeOn
     {
         get => MoveMode.IsOn;
         set => Move.IsOn = value;
     }
 
-    /// <summary>The Voice tab: push-to-talk Grok Voice with the read-only tools.</summary>
+    public bool IsReadOnly => !MoveModeOn;
+
+    public string ModeText => MoveModeOn ? "Move" : "Read-only";
+
+    public string ModeIcon => MoveModeOn ? "fa-solid fa-right-left" : "fa-solid fa-lock";
+
+    /// <summary>The read-only explanation, shown once: here, as the chip's tooltip.</summary>
+    public string ModeTip => MoveModeOn
+        ? Move.Banner + " Click to go back to Read-only."
+        : Shell.ReadOnlyTip;
+
+    /// <summary>Push-to-talk Grok Voice with the read-only tools; a side panel opened by the mic in the top bar.</summary>
     public VoiceViewModel Voice { get; }
+
+    private bool _isVoiceOpen;
+
+    public bool IsVoiceOpen
+    {
+        get => _isVoiceOpen;
+        set => Set(ref _isVoiceOpen, value);
+    }
 
     public ConnectViewModel Connect { get; }
 
-    public QueuesViewModel Queues { get; }
-
-    public TopicsViewModel Topics { get; }
-
-    /// <summary>The Quick view tab: entity tree, lane cards, cascading peek sections and a detail drawer.</summary>
+    /// <summary>The Resources view: one list of queues and topics, lane cards, peek sections and a detail drawer.</summary>
     public QuickViewViewModel QuickView { get; }
+
+    private bool _isSwitcherOpen = true;
+    private SwitcherPage _switcherPage = SwitcherPage.Connect;
+
+    /// <summary>
+    /// The namespace switcher sheet (Connect, Accounts, Saved logins), in the style of Azure Data Studio's
+    /// connection dialog. Open at launch, closed by a successful connect, reopened from the top bar.
+    /// </summary>
+    public bool IsSwitcherOpen
+    {
+        get => _isSwitcherOpen;
+        set => Set(ref _isSwitcherOpen, value);
+    }
+
+    public SwitcherPage SwitcherPage
+    {
+        get => _switcherPage;
+        set
+        {
+            if (!Set(ref _switcherPage, value))
+                return;
+            OnPropertyChanged(nameof(IsConnectPage));
+            OnPropertyChanged(nameof(IsAccountsPage));
+            OnPropertyChanged(nameof(IsLoginsPage));
+        }
+    }
+
+    public bool IsConnectPage
+    {
+        get => _switcherPage == SwitcherPage.Connect;
+        set
+        {
+            if (value)
+                SwitcherPage = SwitcherPage.Connect;
+        }
+    }
+
+    public bool IsAccountsPage
+    {
+        get => _switcherPage == SwitcherPage.Accounts;
+        set
+        {
+            if (value)
+                SwitcherPage = SwitcherPage.Accounts;
+        }
+    }
+
+    public bool IsLoginsPage
+    {
+        get => _switcherPage == SwitcherPage.Logins;
+        set
+        {
+            if (value)
+                SwitcherPage = SwitcherPage.Logins;
+        }
+    }
+
+    public RelayCommand OpenSwitcherCommand { get; }
+
+    public RelayCommand CloseSwitcherCommand { get; }
+
+    /// <summary>The switcher button's text: the open namespace, or a prompt.</summary>
+    public string NamespaceLabel => Connect.IsConnected ? QuickView.NamespaceName : "Choose a namespace";
+
+    /// <summary>The switcher button's tooltip: how the namespace was opened (never a secret).</summary>
+    public string NamespaceDetail => Connect.ConnectedTo is { Length: > 0 } to ? to + ". Click to switch." : "Open the namespace switcher: connect, accounts and saved logins.";
+
+    private bool _isJobsOpen;
+
+    /// <summary>Test jobs, opened from Settings. Independent of the connection (in-memory broker only).</summary>
+    public bool IsJobsOpen
+    {
+        get => _isJobsOpen;
+        set => Set(ref _isJobsOpen, value);
+    }
+
+    public RelayCommand OpenJobsCommand { get; }
+
+    public RelayCommand CloseJobsCommand { get; }
+
+    public void OpenSwitcher(SwitcherPage? page = null)
+    {
+        if (page is { } p)
+            SwitcherPage = p;
+        IsSwitcherOpen = true;
+    }
+
+    /// <summary>Escape: closes the topmost sheet. The switcher stays open while nothing is connected.</summary>
+    public bool CloseTopmost()
+    {
+        if (IsJobsOpen)
+        {
+            IsJobsOpen = false;
+            return true;
+        }
+
+        if (IsSwitcherOpen && Connect.IsConnected)
+        {
+            IsSwitcherOpen = false;
+            return true;
+        }
+
+        if (IsVoiceOpen)
+        {
+            IsVoiceOpen = false;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Opens a place in the app (from <c>--tab</c>). Move mode is never turned on this way.</summary>
+    public void Navigate(AppSection section)
+    {
+        switch (section)
+        {
+            case AppSection.Accounts:
+                OpenSwitcher(SwitcherPage.Accounts);
+                break;
+            case AppSection.Logins:
+                OpenSwitcher(SwitcherPage.Logins);
+                break;
+            case AppSection.Jobs:
+                IsJobsOpen = true;
+                break;
+            case AppSection.Voice:
+                IsVoiceOpen = true;
+                break;
+            default:
+                if (Connect.IsConnected)
+                    IsSwitcherOpen = false;
+                break;
+        }
+    }
 
     /// <summary>Test jobs. Independent of the connection: jobs run against the in-memory broker only.</summary>
     public JobsViewModel Jobs { get; }
 
     public string Title => Shell.Title;
-
-    public const int AccountsTab = 0;
-    public const int LoginsTab = 1;
-
-    /// <summary>Queues and topics: the quick-view layout is the one entity view (tree, lane cards, sections, drawer).</summary>
-    public const int ExplorerTab = 2;
-
-    // The old Queues, Topics and Quick view tabs are one tab now; the names stay so --tab and callers still land there.
-    public const int QueuesTab = ExplorerTab;
-    public const int TopicsTab = ExplorerTab;
-    public const int QuickViewTab = ExplorerTab;
-    public const int JobsTab = 3;
-    public const int MoveTab = 4;
-    public const int VoiceTab = 5;
-
-    private int _selectedTab;
-
-    public int SelectedTab
-    {
-        get => _selectedTab;
-        set
-        {
-            if (!Set(ref _selectedTab, value))
-                return;
-            OnPropertyChanged(nameof(ShowConnectPanel));
-            if (value == QuickViewTab)
-                _ = QuickView.EnsureLoadedAsync();
-        }
-    }
-
-    private bool _connectPinned;
-
-    /// <summary>Keeps the Connect panel open on every tab (the plug button in the header).</summary>
-    public bool ConnectPinned
-    {
-        get => _connectPinned;
-        set
-        {
-            if (Set(ref _connectPinned, value))
-                OnPropertyChanged(nameof(ShowConnectPanel));
-        }
-    }
-
-    /// <summary>
-    /// The Connect panel shows on the setup tabs (Accounts, Saved logins), whenever nothing is connected, or when
-    /// pinned. Once connected, the other tabs get the full width.
-    /// </summary>
-    public bool ShowConnectPanel => _connectPinned || !Connect.IsConnected || _selectedTab is AccountsTab or LoginsTab;
 
     /// <summary>The production catalog: Service Bus enabled, Kafka and AWS SQS/SNS listed as planned.</summary>
     /// <param name="syntheticDemo">Adds a synthetic, in-memory demo provider (for screenshots and walkthroughs).</param>
@@ -185,27 +317,24 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private async Task OpenFromAccountsAsync(IEntityInventory inventory, string label)
-    {
-        SelectedTab = QueuesTab;
+    private async Task OpenFromAccountsAsync(IEntityInventory inventory, string label) =>
         await Connect.ConnectWithAsync(inventory, label).ConfigureAwait(true);
-    }
 
     private async Task OnConnectedAsync(IEntityInventory inventory)
     {
         await DisposeInventoryAsync().ConfigureAwait(true);
         _inventory = inventory;
-        await Queues.LoadAsync(inventory).ConfigureAwait(true);
-        await Topics.LoadAsync(inventory).ConfigureAwait(true);
         var connection = Connect.LastConnection;
         var actor = connection?.Credential is not null ? Connect.SelectedAccount?.Username : null;
         await Move.LoadAsync(inventory, MoveServicesFor(inventory, connection), actor ?? ActorFromLabel()).ConfigureAwait(true);
-        QuickView.Attach(inventory, NamespaceLabel(inventory, connection), _quickViewServices.Resolve(inventory, connection));
-        if (SelectedTab == QuickViewTab)
-            await QuickView.EnsureLoadedAsync().ConfigureAwait(true);
+        QuickView.Attach(inventory, NamespaceNameOf(inventory, connection), _quickViewServices.Resolve(inventory, connection));
+        OnPropertyChanged(nameof(NamespaceLabel));
+        IsSwitcherOpen = false;
+        // The Resources view is the main surface: read the resources once, now.
+        await QuickView.EnsureLoadedAsync().ConfigureAwait(true);
     }
 
-    private static string NamespaceLabel(IEntityInventory inventory, BrokerConnection? connection) => inventory switch
+    private static string NamespaceNameOf(IEntityInventory inventory, BrokerConnection? connection) => inventory switch
     {
         Adapters.ServiceBus.Arm.ArmEntityInventory arm => arm.Namespace.Name,
         _ when inventory.Provider.Id == SyntheticDemoProvider.Id => SyntheticDemoProvider.Namespace,
@@ -217,21 +346,16 @@ public sealed class MainViewModel : ViewModelBase
 
     private MoveAccess MoveServicesFor(IEntityInventory inventory, BrokerConnection? connection) => Move.Services.Resolve(inventory, connection);
 
-    private async Task RefreshGridsAsync()
+    private async Task RefreshResourcesAsync()
     {
-        if (_inventory is null)
-            return;
-        await Queues.RefreshCommand.ExecuteAsync().ConfigureAwait(true);
-        await Topics.RefreshCommand.ExecuteAsync().ConfigureAwait(true);
-        if (QuickView.IsConnected && SelectedTab == QuickViewTab)
+        if (_inventory is not null && QuickView.IsConnected)
             await QuickView.RefreshAsync().ConfigureAwait(true);
     }
 
     private void OnDisconnected()
     {
-        Queues.Clear();
-        Topics.Clear();
         _ = QuickView.ClearAsync();
+        OnPropertyChanged(nameof(NamespaceLabel));
         _ = Move.ClearAsync();
         _ = DisposeInventoryAsync();
     }

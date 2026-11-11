@@ -30,7 +30,7 @@ public class HeadlessWindowTests
     private static (MainWindow Window, MainViewModel Main) Open()
     {
         var catalog = new ProviderCatalog([new FakeBrokerProvider()], ProviderCatalog.PlannedProviders);
-        var main = new MainViewModel(catalog) { SelectedTab = MainViewModel.QueuesTab };
+        var main = new MainViewModel(catalog);
         var window = new MainWindow { DataContext = main };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -98,9 +98,9 @@ public class HeadlessWindowTests
         await main.Connect.ConnectCommand.ExecuteAsync();
         Settle(window);
 
-        Assert.Equal(MainViewModel.ExplorerTab, main.SelectedTab);
+        Assert.False(main.IsSwitcherOpen);
         Assert.False(Find<TextBlock>(window, "QuickNotConnectedText").IsVisible);
-        Assert.StartsWith("4 queues (2 with dead letters), ", Find<TextBlock>(window, "QuickSummaryText").Text, StringComparison.Ordinal);
+        Assert.StartsWith("4 resources: 4 queues (2 with dead letters)", Find<TextBlock>(window, "QuickSummaryText").Text, StringComparison.Ordinal);
         var tree = Find<TreeView>(window, "QuickTree");
         var queueTags = tree.GetVisualDescendants().OfType<Border>()
             .Where(b => b.Classes.Contains("kind") && b.Classes.Contains("queue") && b.IsEffectivelyVisible)
@@ -118,7 +118,7 @@ public class HeadlessWindowTests
     {
         var provider = new FakeBrokerProvider();
         provider.Inventory.FailWith = new BrokerException(BrokerErrorKind.Unreachable, BrokerException.Explain(BrokerErrorKind.Unreachable));
-        var main = new MainViewModel(new ProviderCatalog([provider], [])) { SelectedTab = MainViewModel.QueuesTab };
+        var main = new MainViewModel(new ProviderCatalog([provider], []));
         var window = new MainWindow { DataContext = main };
         window.Show();
         main.Connect.NamespaceText = "contoso-synthetic";
@@ -137,7 +137,7 @@ public class HeadlessWindowTests
     public async Task Empty_state_is_shown_for_a_namespace_with_no_queues_or_topics()
     {
         var provider = new FakeBrokerProvider([]);
-        var main = new MainViewModel(new ProviderCatalog([provider], [])) { SelectedTab = MainViewModel.QueuesTab };
+        var main = new MainViewModel(new ProviderCatalog([provider], []));
         var window = new MainWindow { DataContext = main };
         window.Show();
         main.Connect.NamespaceText = "contoso-synthetic";

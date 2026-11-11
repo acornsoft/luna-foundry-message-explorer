@@ -133,92 +133,54 @@
     <Style Selector="Border.kind.queue TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeQueueBrush}" /></Style>
     <Style Selector="Border.kind.topic"><Setter Property="Background" Value="{DynamicResource LfmeTopicSoftBrush}" /></Style>
     <Style Selector="Border.kind.topic TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeTopicBrush}" /></Style>
-    <!-- The Queues and Topics toggles: on shows the kind's soft colour, off is plain and muted. -->
-    <Style Selector="ToggleButton.kindtoggle">
-      <Setter Property="Padding" Value="10,4" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    <Style Selector="TextBlock.count">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="ToggleButton.kindtoggle TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" /></Style>
-    <Style Selector="ToggleButton.kindtoggle i|Icon"><Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" /></Style>
-    <Style Selector="ToggleButton.kindtoggle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource LfmeQvHoverBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
-    </Style>
-    <Style Selector="ToggleButton.kindtoggle.queue:checked /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource LfmeQueueSoftBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQueueBrush}" />
-    </Style>
-    <Style Selector="ToggleButton.kindtoggle.queue:checked TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeQueueBrush}" /></Style>
-    <Style Selector="ToggleButton.kindtoggle.queue:checked i|Icon"><Setter Property="Foreground" Value="{DynamicResource LfmeQueueBrush}" /></Style>
-    <Style Selector="ToggleButton.kindtoggle.topic:checked /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource LfmeTopicSoftBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource LfmeTopicBrush}" />
-    </Style>
-    <Style Selector="ToggleButton.kindtoggle.topic:checked TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeTopicBrush}" /></Style>
-    <Style Selector="ToggleButton.kindtoggle.topic:checked i|Icon"><Setter Property="Foreground" Value="{DynamicResource LfmeTopicBrush}" /></Style>
     <Style Selector="TreeView.entities TreeViewItem">
       <Setter Property="MinHeight" Value="26" />
     </Style>
   </UserControl.Styles>
 
     <Border Classes="qv-root" x:Name="QuickRoot">
-      <Grid RowDefinitions="Auto,*,Auto">
-        <!-- Top bar -->
-        <Border Grid.Row="0" Padding="12,8" BorderBrush="{DynamicResource LfmeQvLineBrush}" BorderThickness="0,0,0,1">
-          <Grid Classes="il" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-              <Border Classes="pill">
-                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
-                  <i:Icon Value="fa-solid fa-cloud" FontSize="11" />
-                  <TextBlock x:Name="QuickNamespaceText" Text="{Binding NamespaceName}" FontSize="12" />
-                </StackPanel>
-              </Border>
-              <Border Classes="pill ok">
-                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
-                  <i:Icon Value="fa-solid fa-lock" FontSize="11" Foreground="{DynamicResource LfmeSuccessBrush}" />
-                  <TextBlock x:Name="QuickPeekText" Text="{Binding PeekText}" FontSize="12" Foreground="{DynamicResource LfmeSuccessBrush}" />
-                </StackPanel>
-              </Border>
-            </StackPanel>
-            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,8,0">
-              <TextBlock Text="Top N" Classes="dim" VerticalAlignment="Center" FontSize="12" />
-              <NumericUpDown x:Name="QuickPageSizeBox" Value="{Binding PageSize}" Minimum="1" Maximum="100" Increment="5"
-                             FormatString="0" Width="120" ToolTip.Tip="How many messages each section peeks per page (1 to 100)." />
-            </StackPanel>
-            <Button Grid.Column="5" x:Name="QuickRefreshButton" Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Read counts again">
-              <i:Icon Value="fa-solid fa-rotate-right" />
-            </Button>
-
-          </Grid>
-        </Border>
-
+      <Grid RowDefinitions="*">
         <!-- Body: tree | sections | drawer -->
-        <Grid Grid.Row="1" ColumnDefinitions="290,*,Auto">
+        <Grid Grid.Row="0" ColumnDefinitions="300,*,Auto">
           <Border Grid.Column="0" BorderBrush="{DynamicResource LfmeQvLineBrush}" BorderThickness="0,0,1,0" Padding="8">
             <DockPanel>
-              <StackPanel DockPanel.Dock="Top" x:Name="QuickKindToggles" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
-                <ToggleButton x:Name="ShowQueuesToggle" Classes="kindtoggle queue" IsChecked="{Binding ShowQueues}"
-                              ToolTip.Tip="Show or hide queues (channels)" AutomationProperties.Name="Show queues">
-                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
-                    <i:Icon Value="fa-solid fa-inbox" FontSize="12" />
-                    <TextBlock Text="Queues" FontSize="12" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding QueueCount}" FontSize="12" />
+              <!-- One kind filter over the one Resources list; remembered between launches. -->
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <Border Classes="segmented" x:Name="KindFilter" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <RadioButton x:Name="KindAll" Classes="segment" IsChecked="{Binding IsAllKinds}" AutomationProperties.Name="Show all resources"
+                                 ToolTip.Tip="Every resource: queues and topics">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="5">
+                        <TextBlock Text="All" />
+                        <TextBlock Classes="count" Text="{Binding AllCount}" />
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="KindQueues" Classes="segment" IsChecked="{Binding IsQueuesOnly}" AutomationProperties.Name="Show queues only"
+                                 ToolTip.Tip="Queues: one receiver, the queue itself">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="5">
+                        <i:Icon Classes="queue" Value="fa-solid fa-inbox" FontSize="11" />
+                        <TextBlock Text="Queues" />
+                        <TextBlock Classes="count" Text="{Binding QueueCount}" />
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="KindTopics" Classes="segment" IsChecked="{Binding IsTopicsOnly}" AutomationProperties.Name="Show topics only"
+                                 ToolTip.Tip="Topics: many receivers (subscriptions)">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="5">
+                        <i:Icon Classes="topic" Value="fa-solid fa-tower-broadcast" FontSize="11" />
+                        <TextBlock Text="Topics" />
+                        <TextBlock Classes="count" Text="{Binding TopicCount}" />
+                      </StackPanel>
+                    </RadioButton>
                   </StackPanel>
-                </ToggleButton>
-                <ToggleButton x:Name="ShowTopicsToggle" Classes="kindtoggle topic" IsChecked="{Binding ShowTopics}"
-                              ToolTip.Tip="Show or hide topics and their subscriptions" AutomationProperties.Name="Show topics">
-                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
-                    <i:Icon Value="fa-solid fa-tower-broadcast" FontSize="12" />
-                    <TextBlock Text="Topics" FontSize="12" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding TopicCount}" FontSize="12" />
-                  </StackPanel>
-                </ToggleButton>
-              </StackPanel>
-              <TextBox DockPanel.Dock="Top" x:Name="QuickFindBox" Text="{Binding Filter}" Watermark="Find a queue, topic or subscription…" Margin="0,0,0,8" />
+                </Border>
+                <Button Grid.Column="1" x:Name="QuickRefreshButton" Classes="icon" Command="{Binding RefreshCommand}" ToolTip.Tip="Read counts again" VerticalAlignment="Center">
+                  <i:Icon Value="fa-solid fa-rotate-right" />
+                </Button>
+              </Grid>
               <TextBlock DockPanel.Dock="Top" x:Name="QuickNotConnectedText" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" TextWrapping="Wrap" Classes="dim" />
               <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
               <TextBlock DockPanel.Dock="Top" x:Name="QuickErrorText" Text="{Binding Error}" IsVisible="{Binding HasError}" TextWrapping="Wrap" Foreground="{DynamicResource LfmeErrorBrush}" />
@@ -237,10 +199,10 @@
                 <TreeView.ItemTemplate>
                   <TreeDataTemplate x:DataType="vm:QuickTreeNode" ItemsSource="{Binding Children}">
                     <Grid Classes="il" ColumnDefinitions="Auto,*,Auto">
-                      <i:Icon Value="{Binding Icon}" FontSize="12" Margin="0,0,6,0" IsVisible="{Binding !IsGroup}"
+                      <i:Icon Value="{Binding Icon}" FontSize="12" Margin="0,0,6,0" IsVisible="{Binding !IsPlaceholder}"
                               Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                 Classes.dim="{Binding IsGroup}" FontSize="13" />
+                                 Classes.dim="{Binding IsPlaceholder}" FontSize="13" />
                       <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
                         <Border Classes="kind" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" IsVisible="{Binding HasKindTag}"
                                 Margin="0,0,4,0"><TextBlock Text="{Binding KindTag}" /></Border>
@@ -453,13 +415,6 @@
           </Border>
         </Grid>
 
-        <!-- Footer -->
-        <Border Grid.Row="2" Padding="12,6" BorderBrush="{DynamicResource LfmeQvLineBrush}" BorderThickness="0,1,0,0">
-          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
-            <i:Icon Value="fa-solid fa-circle-info" FontSize="11" Foreground="{DynamicResource LfmeAccentTextBrush}" />
-            <TextBlock x:Name="QuickFooterText" Text="{Binding FooterText}" Classes="dim" FontSize="11" />
-          </StackPanel>
-        </Border>
       </Grid>
     </Border>
 </UserControl>

@@ -11,7 +11,7 @@ using Acornsoft.MessageExplorer.Operations.Move;
 namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
 /// <summary>
-/// The Move tab. Off on every launch. While on, you pick a source in the tree (a dead-letter queue, a queue or
+/// The Move workspace (shown while the mode chip reads Move). Off on every launch. While on, you pick a source in the tree (a dead-letter queue, a queue or
 /// a subscription), see its messages (IDs only), and drag them, or the source itself, onto a queue or topic in
 /// the tree. "Move to…" does the same from the keyboard. Every drop is checked, then confirmed in a dialog,
 /// then run oldest first, and every step is written to the audit log.
@@ -84,11 +84,11 @@ public sealed class MoveViewModel : ViewModelBase
 
     public string Banner => MoveModeSwitch.Banner;
 
-    public string OffText => "Move mode is off, so the app is read-only. Turn on Move mode at the top to move messages. It turns off again every time the app starts.";
+    public string OffText => "Move mode is off, so the app is read-only. Click the Read-only chip at the top right to switch to Move. It turns off again every time the app starts.";
 
     public bool HasNamespace => _inventory is not null;
 
-    public string NoNamespaceText => "Open a namespace first (Accounts tab or Connect), then pick a source here.";
+    public string NoNamespaceText => "Choose a namespace first (top left), then pick a source here.";
 
     public bool IsRefused => _refusal is not null && _inventory is not null;
 

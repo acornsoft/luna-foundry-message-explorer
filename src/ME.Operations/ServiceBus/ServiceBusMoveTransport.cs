@@ -56,7 +56,7 @@ public sealed class ServiceBusMoveTransport : IMoveTransport
         return new ServiceBusMoveTransport(fqdn, options => new ServiceBusClient(text, options), admin);
     }
 
-    /// <summary>Opens a transport for an Entra account (a namespace found on the Accounts tab).</summary>
+    /// <summary>Opens a transport for an Entra account (a namespace found on the Accounts page).</summary>
     public static ServiceBusMoveTransport Open(string fullyQualifiedNamespace, TokenCredential credential)
     {
         ArgumentNullException.ThrowIfNull(credential);

@@ -31,7 +31,7 @@ public sealed class MoveServices(IMoveAuditLog audit, string auditLocation, Func
 {
     public IMoveAuditLog Audit { get; } = audit ?? throw new ArgumentNullException(nameof(audit));
 
-    /// <summary>Where the audit log is, in words for the Move tab.</summary>
+    /// <summary>Where the audit log is, in words for Move mode.</summary>
     public string AuditLocation { get; } = auditLocation;
 
     public MoveAccess Resolve(IEntityInventory inventory, BrokerConnection? connection) => resolve(inventory, connection);

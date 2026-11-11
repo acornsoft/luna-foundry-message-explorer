@@ -28,7 +28,6 @@ public class HeadlessQuickViewTests
         window.Show();
         main.Connect.NamespaceText = "synthetic.example";
         await main.Connect.ConnectCommand.ExecuteAsync();
-        main.SelectedTab = MainViewModel.QuickViewTab;
         await main.QuickView.EnsureLoadedAsync();
         Pump(window);
         return (window, main, browser);

@@ -13,73 +13,101 @@ namespace Acornsoft.MessageExplorer.Shell.ViewModels;
 
 public enum QuickNodeKind
 {
-    Namespace,
-    Group,
-    Queue,
-    Topic,
-    Subscription,
+    /// <summary>A queue or a topic: what you send to.</summary>
+    Resource,
+
+    /// <summary>A topic's subscription: what you read from. (A queue's receiver is the queue row itself.)</summary>
+    Receiver,
+
     Placeholder,
 }
 
-/// <summary>A node of the entity tree. A topic's subscriptions are read the first time it is expanded.</summary>
+/// <summary>
+/// A row of the Resources list. A queue row is its own receiver and opens straight to its messages; a topic row
+/// expands to its receivers, read the first time it is expanded (or searched).
+/// </summary>
 public sealed class QuickTreeNode : ViewModelBase
 {
     private readonly Func<QuickTreeNode, Task>? _expand;
     private bool _isExpanded;
-    private bool _expandedOnce;
     private bool _isVisible = true;
 
-    public QuickTreeNode(QuickNodeKind kind, string name, EntitySnapshot? snapshot = null, Func<QuickTreeNode, Task>? expand = null)
+    public QuickTreeNode(Resource resource, Func<QuickTreeNode, Task>? expand = null)
+        : this(QuickNodeKind.Resource, resource?.Name ?? throw new ArgumentNullException(nameof(resource)))
+    {
+        Resource = resource;
+        Snapshot = resource.ToSnapshot();
+        if (!resource.HasImplicitReceiver && expand is not null)
+        {
+            _expand = expand;
+            Children.Add(Placeholder("Loading receivers…"));
+        }
+    }
+
+    public QuickTreeNode(Receiver receiver)
+        : this(QuickNodeKind.Receiver, receiver?.Name ?? throw new ArgumentNullException(nameof(receiver)))
+    {
+        Receiver = receiver;
+        Snapshot = receiver.ToSnapshot();
+    }
+
+    private QuickTreeNode(QuickNodeKind kind, string name)
     {
         Kind = kind;
         Name = name;
-        Snapshot = snapshot;
-        _expand = expand;
-        if (expand is not null)
-            Children.Add(new QuickTreeNode(QuickNodeKind.Placeholder, "Loading subscriptions…"));
     }
+
+    public static QuickTreeNode Placeholder(string text) => new(QuickNodeKind.Placeholder, text);
 
     public QuickNodeKind Kind { get; }
 
     public string Name { get; }
 
+    public Resource? Resource { get; }
+
+    public Receiver? Receiver { get; }
+
+    /// <summary>The inventory row the lanes read (a queue, a topic, or a subscription).</summary>
     public EntitySnapshot? Snapshot { get; }
 
     public ObservableCollection<QuickTreeNode> Children { get; } = [];
 
     public bool IsEntity => Snapshot is not null;
 
-    public bool IsGroup => Kind == QuickNodeKind.Group;
-
     public bool IsPlaceholder => Kind == QuickNodeKind.Placeholder;
+
+    /// <summary>Topics expand to their receivers; queues have nothing to expand.</summary>
+    public bool IsExpandable => _expand is not null;
 
     public string Icon => Kind switch
     {
-        QuickNodeKind.Namespace => "fa-solid fa-layer-group",
-        QuickNodeKind.Queue => EntityKindStyle.QueueIcon,
-        QuickNodeKind.Topic => EntityKindStyle.TopicIcon,
-        QuickNodeKind.Subscription => EntityKindStyle.SubscriptionIcon,
-        QuickNodeKind.Placeholder => "fa-solid fa-spinner",
-        _ => "fa-solid fa-folder",
+        QuickNodeKind.Resource => EntityKindStyle.Icon(Resource!.Kind),
+        QuickNodeKind.Receiver => EntityKindStyle.Icon(Receiver!.Kind),
+        _ => "fa-solid fa-spinner",
     };
 
-    /// <summary>QUEUE, TOPIC or SUB, next to the name; null for the namespace, groups and placeholders.</summary>
-    public string? KindTag => Snapshot is { } entity ? EntityKindStyle.Tag(entity.Kind) : null;
+    /// <summary>QUEUE, TOPIC or SUB next to the name; null for placeholders.</summary>
+    public string? KindTag => Kind switch
+    {
+        QuickNodeKind.Resource => EntityKindStyle.Tag(Resource!.Kind),
+        QuickNodeKind.Receiver => EntityKindStyle.Tag(Receiver!.Kind),
+        _ => null,
+    };
 
     public bool HasKindTag => KindTag is not null;
 
-    /// <summary>Queue colour (teal) for queues; topic colour (purple) for topics and their subscriptions.</summary>
-    public bool IsQueueFamily => Kind == QuickNodeKind.Queue;
+    /// <summary>Queue colour (teal) for queues; topic colour (purple) for topics and their receivers.</summary>
+    public bool IsQueueFamily => Resource is { HasImplicitReceiver: true };
 
-    public bool IsTopicFamily => Kind is QuickNodeKind.Topic or QuickNodeKind.Subscription;
+    public bool IsTopicFamily => Resource is { HasImplicitReceiver: false } || Receiver is not null;
 
-    /// <summary>The first badge: active count (or a topic's subscription count).</summary>
-    public string? PrimaryBadge => Snapshot switch
-    {
-        { Kind: EntityKind.Topic } topic => topic.SubscriptionCount?.ToString(CultureInfo.InvariantCulture),
-        { } entity => Short(entity.Counts.Active),
-        _ => null,
-    };
+    /// <summary>The resource a row belongs to: itself, or a receiver's topic.</summary>
+    public string? ResourceName => Resource?.Name ?? Receiver?.ResourceName;
+
+    /// <summary>The first badge: active count (or a topic's receiver count).</summary>
+    public string? PrimaryBadge => Resource is { HasImplicitReceiver: false } topic
+        ? topic.ReceiverCount?.ToString(CultureInfo.InvariantCulture)
+        : Snapshot is { } entity ? Short(entity.Counts.Active) : null;
 
     public bool HasPrimaryBadge => PrimaryBadge is not null;
 
@@ -100,17 +128,29 @@ public sealed class QuickTreeNode : ViewModelBase
         get => _isExpanded;
         set
         {
-            if (!Set(ref _isExpanded, value) || !value || _expandedOnce || _expand is null)
-                return;
-            _expandedOnce = true;
-            ExpandTask = _expand(this);
+            if (Set(ref _isExpanded, value) && value)
+                LoadChildren();
         }
     }
 
-    /// <summary>The subscription read started by the first expand (tests await it).</summary>
+    /// <summary>The receivers read, started by the first expand or search (tests await it).</summary>
     public Task ExpandTask { get; private set; } = Task.CompletedTask;
 
-    /// <summary>False when the find box hides this node.</summary>
+    /// <summary>Reads a topic's receivers once; later calls return the same read.</summary>
+    public Task LoadChildren()
+    {
+        if (_expand is not null && !_loadStarted)
+        {
+            _loadStarted = true;
+            ExpandTask = _expand(this);
+        }
+
+        return ExpandTask;
+    }
+
+    private bool _loadStarted;
+
+    /// <summary>False when the kind filter or the search hides this row.</summary>
     public bool IsVisible
     {
         get => _isVisible;
@@ -128,10 +168,10 @@ public sealed class QuickTreeNode : ViewModelBase
 }
 
 /// <summary>
-/// The Quick view tab: an entity tree, a lane cards strip, sections per message type that cascade open as
-/// rows, and a detail drawer. Counts come from runtime properties (the inventory). Rows come from a
-/// peek-only <see cref="IMessageBrowser"/>, top N at a time, redacted before they are kept. Nothing is read
-/// until the tab is first shown; a topic's subscriptions are read when it is expanded.
+/// The Resources view: one list of resources (queues and topics) with a kind badge on each row, one kind filter,
+/// a lane cards strip, sections per message type that cascade open as rows, and a detail drawer. Counts come
+/// from runtime properties (one list read per connect). Rows come from a peek-only <see cref="IMessageBrowser"/>,
+/// top N at a time, redacted before they are kept. A topic's receivers are read when it is expanded or searched.
 /// </summary>
 public sealed class QuickViewViewModel : ViewModelBase
 {
@@ -153,15 +193,14 @@ public sealed class QuickViewViewModel : ViewModelBase
     private string _namespaceName = "namespace";
     private readonly Dictionary<string, EntitySnapshot> _topics = new(StringComparer.OrdinalIgnoreCase);
     private readonly Settings.IUiSettingsStore? _settings;
-    private bool _showQueues = true;
-    private bool _showTopics = true;
+    private ResourceKindFilter _kindFilter = ResourceKindFilter.All;
     private int _queueCount;
     private int _topicCount;
     private int _deadLetterQueues;
     private bool _loaded;
     private string? _notice;
 
-    /// <param name="settings">Remembers the Queues and Topics toggles between launches; null keeps them for this session.</param>
+    /// <param name="settings">Remembers the kind filter between launches; null keeps it for this session.</param>
     public QuickViewViewModel(IUiScheduler? scheduler = null, RedactionPipeline? redaction = null, Settings.IUiSettingsStore? settings = null)
     {
         _settings = settings;
@@ -169,13 +208,11 @@ public sealed class QuickViewViewModel : ViewModelBase
         {
             try
             {
-                var saved = settings.Load();
-                _showQueues = saved.ShowQueues;
-                _showTopics = saved.ShowTopics;
+                _kindFilter = settings.Load().KindFilter;
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
-                // Both on: the defaults.
+                // All: the default.
             }
         }
 
@@ -184,27 +221,62 @@ public sealed class QuickViewViewModel : ViewModelBase
         RefreshCommand = new AsyncCommand(RefreshAsync, () => _inventory is not null);
     }
 
+    /// <summary>The Resources list: one row per queue or topic, sorted by name.</summary>
     public ObservableCollection<QuickTreeNode> Tree { get; } = [];
 
-    /// <summary>The Queues toggle above the tree. Off hides every queue; a hidden selection is cleared.</summary>
-    public bool ShowQueues
+    /// <summary>All, Queues or Topics. A selection the filter hides is cleared. Remembered between launches.</summary>
+    public ResourceKindFilter KindFilter
     {
-        get => _showQueues;
+        get => _kindFilter;
         set
         {
-            if (Set(ref _showQueues, value))
-                KindsChanged();
+            if (!Set(ref _kindFilter, value))
+                return;
+            OnPropertyChanged(nameof(IsAllKinds));
+            OnPropertyChanged(nameof(IsQueuesOnly));
+            OnPropertyChanged(nameof(IsTopicsOnly));
+            ApplyFilter();
+            if (_selectedNode is not null && !Shows(_selectedNode))
+                SelectedNode = null;
+            try
+            {
+                _settings?.Save(_settings.Load() with { KindFilter = value });
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // The filter still works this session.
+            }
         }
     }
 
-    /// <summary>The Topics toggle above the tree. Off hides every topic and its subscriptions; a hidden selection is cleared.</summary>
-    public bool ShowTopics
+    // The segmented control's three buttons. Only a true picks; a button clearing itself never does.
+    public bool IsAllKinds
     {
-        get => _showTopics;
+        get => _kindFilter == ResourceKindFilter.All;
         set
         {
-            if (Set(ref _showTopics, value))
-                KindsChanged();
+            if (value)
+                KindFilter = ResourceKindFilter.All;
+        }
+    }
+
+    public bool IsQueuesOnly
+    {
+        get => _kindFilter == ResourceKindFilter.Queues;
+        set
+        {
+            if (value)
+                KindFilter = ResourceKindFilter.Queues;
+        }
+    }
+
+    public bool IsTopicsOnly
+    {
+        get => _kindFilter == ResourceKindFilter.Topics;
+        set
+        {
+            if (value)
+                KindFilter = ResourceKindFilter.Topics;
         }
     }
 
@@ -221,55 +293,49 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public bool HasNotice => !string.IsNullOrEmpty(_notice);
 
-    /// <summary>The namespace was read and holds no queues or topics this connection can see.</summary>
+    /// <summary>The namespace was read and holds no resources this connection can see.</summary>
     public bool IsEmpty => _loaded && _queueCount == 0 && _topicCount == 0 && _error is null;
 
-    public string EmptyText => HasNotice ? "No queues or topics to show with this connection." : "This namespace has no queues or topics.";
+    public string EmptyText => HasNotice ? "No resources to show with this connection." : "This namespace has no queues or topics.";
 
-    /// <summary>One line over the tree, e.g. "4 queues (2 with dead letters), 2 topics. Read-only."</summary>
+    /// <summary>One line over the list, e.g. "6 resources: 4 queues (2 with dead letters), 2 topics".</summary>
     public string Summary => !_loaded || _error is not null
         ? string.Empty
         : string.Create(CultureInfo.InvariantCulture,
-            $"{Plural(_queueCount, "queue")}{(_deadLetterQueues > 0 ? $" ({_deadLetterQueues} with dead letters)" : string.Empty)}, {Plural(_topicCount, "topic")}. Read-only.");
+            $"{Plural(AllCount, "resource")}: {Plural(_queueCount, "queue")}{(_deadLetterQueues > 0 ? $" ({_deadLetterQueues} with dead letters)" : string.Empty)}, {Plural(_topicCount, "topic")}");
 
     public bool HasSummary => Summary.Length > 0;
 
     private static string Plural(int count, string noun) =>
         string.Create(CultureInfo.InvariantCulture, $"{count} {noun}{(count == 1 ? string.Empty : "s")}");
 
+    public int AllCount => _queueCount + _topicCount;
+
     public int QueueCount
     {
         get => _queueCount;
-        private set => Set(ref _queueCount, value);
+        private set
+        {
+            if (Set(ref _queueCount, value))
+                OnPropertyChanged(nameof(AllCount));
+        }
     }
 
     public int TopicCount
     {
         get => _topicCount;
-        private set => Set(ref _topicCount, value);
+        private set
+        {
+            if (Set(ref _topicCount, value))
+                OnPropertyChanged(nameof(AllCount));
+        }
     }
 
-    /// <summary>Both toggles off: say why the tree is empty.</summary>
-    public bool NothingShown => !_showQueues && !_showTopics;
-
-    private void KindsChanged()
+    private bool Shows(QuickTreeNode node)
     {
-        OnPropertyChanged(nameof(NothingShown));
-        OnPropertyChanged(nameof(NoEntityText));
-        ApplyFilter();
-        if (_selectedNode is { Snapshot: { } selected } && !Shows(selected.Kind))
-            SelectedNode = null;
-        try
-        {
-            _settings?.Save(_settings.Load() with { ShowQueues = _showQueues, ShowTopics = _showTopics });
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // The toggles still work this session.
-        }
+        var resource = node.Resource ?? (node.ResourceName is { } name ? Tree.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase))?.Resource : null);
+        return resource is null || resource.Matches(_kindFilter);
     }
-
-    private bool Shows(EntityKind kind) => kind == EntityKind.Queue ? _showQueues : _showTopics;
 
     /// <summary>The clipboard. The view sets the real one; tests capture the text.</summary>
     public Func<string, Task> CopyText { get; set; } = _ => Task.CompletedTask;
@@ -278,7 +344,7 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public bool IsNotConnected => _inventory is null;
 
-    public string NotConnectedText => "Connect to a namespace to see its queues and topics.";
+    public string NotConnectedText => "Choose a namespace (top left) to see its resources.";
 
     public bool IsLoading
     {
@@ -298,7 +364,7 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public bool HasError => _error is not null;
 
-    /// <summary>Top N: how many messages each section peeks per page (1 to 100).</summary>
+    /// <summary>Top N: how many messages each section peeks per page (1 to 100). Set in Settings.</summary>
     public int PageSize
     {
         get => _pageSize;
@@ -311,16 +377,22 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public string PageSizeText => $"Top {_pageSize.ToString(CultureInfo.InvariantCulture)}";
 
-    /// <summary>The find box: hides entities whose names don't contain the text.</summary>
+    /// <summary>The search box in the top bar: finds resources and receivers by name.</summary>
     public string Filter
     {
         get => _filter;
         set
         {
-            if (Set(ref _filter, value ?? string.Empty))
-                ApplyFilter();
+            if (!Set(ref _filter, value ?? string.Empty))
+                return;
+            ApplyFilter();
+            if (_filter.Trim().Length > 0)
+                SearchLoad = LoadReceiversForSearchAsync();
         }
     }
+
+    /// <summary>Reading topics' receivers so the search can find them (tests await it).</summary>
+    public Task SearchLoad { get; private set; } = Task.CompletedTask;
 
     public string NamespaceName
     {
@@ -333,8 +405,6 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public string PeekText => CanPeek ? "Read-only · peek" : "Read-only · counts only";
 
-    public string FooterText => "Counts: runtime properties. Each section peeks only when opened. Peek only: nothing is locked, settled or changed. Bodies masked.";
-
     public QuickTreeNode? SelectedNode
     {
         get => _selectedNode;
@@ -346,7 +416,7 @@ public sealed class QuickViewViewModel : ViewModelBase
         }
     }
 
-    /// <summary>The selected entity's cards, sections and drawer.</summary>
+    /// <summary>The selected resource or receiver: its cards, sections and drawer.</summary>
     public QuickEntityViewModel? Entity
     {
         get => _entity;
@@ -359,13 +429,11 @@ public sealed class QuickViewViewModel : ViewModelBase
 
     public bool HasEntity => _entity is not null;
 
-    public string NoEntityText => NothingShown
-        ? "Queues and Topics are both hidden. Turn one on above the tree."
-        : "Pick a queue, topic or subscription on the left.";
+    public string NoEntityText => "Pick a resource on the left. A queue opens its messages; a topic opens to its receivers.";
 
     public AsyncCommand RefreshCommand { get; }
 
-    /// <summary>A new connection. Nothing is read until <see cref="EnsureLoadedAsync"/> (the tab is shown).</summary>
+    /// <summary>A new connection. Nothing is read until <see cref="EnsureLoadedAsync"/>.</summary>
     /// <param name="openBrowser">Opens the peek-only browser on first use; null or a null result means counts only.</param>
     public void Attach(IEntityInventory inventory, string namespaceName, Func<IMessageBrowser?>? openBrowser)
     {
@@ -377,7 +445,7 @@ public sealed class QuickViewViewModel : ViewModelBase
         Changed();
     }
 
-    /// <summary>Reads queues and topics the first time the tab is shown after a connect.</summary>
+    /// <summary>Reads the resources once after a connect.</summary>
     public Task EnsureLoadedAsync() => _inventory is null ? Task.CompletedTask : _load ??= LoadTreeAsync();
 
     public async Task RefreshAsync()
@@ -414,11 +482,12 @@ public sealed class QuickViewViewModel : ViewModelBase
             await browser.DisposeAsync().ConfigureAwait(true);
     }
 
-    /// <summary>Finds the tree node for an entity (after a refresh, or from a test).</summary>
+    /// <summary>Finds the row for an entity (after a refresh, or from a test).</summary>
     public QuickTreeNode? Find(EntitySnapshot entity) => Walk(Tree).FirstOrDefault(n =>
         n.Snapshot is { } s && s.Kind == entity.Kind && string.Equals(s.Name, entity.Name, StringComparison.OrdinalIgnoreCase)
         && string.Equals(s.Parent, entity.Parent, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>A resource by name, or a receiver by name and its topic.</summary>
     public QuickTreeNode? Find(string name, string? topic = null) => Walk(Tree).FirstOrDefault(n =>
         n.Snapshot is { } s && string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase)
         && string.Equals(s.Parent, topic, StringComparison.OrdinalIgnoreCase));
@@ -430,34 +499,24 @@ public sealed class QuickViewViewModel : ViewModelBase
         Error = null;
         try
         {
-            var queues = await inventory.ListQueuesAsync().ConfigureAwait(true);
-            var topics = await inventory.ListTopicsAsync().ConfigureAwait(true);
+            var list = await ResourceReader.ReadAsync(inventory).ConfigureAwait(true);
             _scheduler.Post(() =>
             {
                 Tree.Clear();
                 _topics.Clear();
-                var root = new QuickTreeNode(QuickNodeKind.Namespace, NamespaceName) { IsExpanded = true };
-                var queueGroup = new QuickTreeNode(QuickNodeKind.Group, "Queues") { IsExpanded = true };
-                foreach (var queue in queues.Entities)
-                    queueGroup.Children.Add(new QuickTreeNode(QuickNodeKind.Queue, queue.Name, queue));
-                var topicGroup = new QuickTreeNode(QuickNodeKind.Group, "Topics") { IsExpanded = true };
-                foreach (var topic in topics.Entities)
+                foreach (var resource in list.Resources)
                 {
-                    _topics[topic.Name] = topic;
-                    topicGroup.Children.Add(new QuickTreeNode(QuickNodeKind.Topic, topic.Name, topic, LoadSubscriptionsAsync));
+                    if (resource.Kind == ResourceKind.Topic)
+                        _topics[resource.Name] = resource.ToSnapshot();
+                    Tree.Add(new QuickTreeNode(resource, LoadReceiversAsync));
                 }
 
-                QueueCount = queueGroup.Children.Count;
-                TopicCount = topicGroup.Children.Count;
-                _deadLetterQueues = queues.Entities.Count(q => q.Counts.DeadLetter > 0 || q.Counts.TransferDeadLetter > 0);
-                Notice = queues.Notice ?? topics.Notice;
+                QueueCount = list.Count(ResourceKind.Queue);
+                TopicCount = list.Resources.Count - QueueCount;
+                _deadLetterQueues = list.Resources.Count(r => r.HasImplicitReceiver && r.Counts.HasDeadLetters);
+                Notice = list.Notice;
                 _loaded = true;
                 Loaded();
-                if (queueGroup.Children.Count > 0)
-                    root.Children.Add(queueGroup);
-                if (topicGroup.Children.Count > 0)
-                    root.Children.Add(topicGroup);
-                Tree.Add(root);
                 ApplyFilter();
             });
         }
@@ -483,21 +542,21 @@ public sealed class QuickViewViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasSummary));
     }
 
-    private async Task LoadSubscriptionsAsync(QuickTreeNode topic)
+    private async Task LoadReceiversAsync(QuickTreeNode topic)
     {
         var inventory = _inventory;
-        if (inventory is null)
+        if (inventory is null || topic.Resource is not { } resource)
             return;
         try
         {
-            var result = await inventory.ListSubscriptionsAsync(topic.Name).ConfigureAwait(true);
+            var receivers = await ResourceReader.ReceiversAsync(inventory, resource).ConfigureAwait(true);
             _scheduler.Post(() =>
             {
                 topic.Children.Clear();
-                foreach (var subscription in result.Entities)
-                    topic.Children.Add(new QuickTreeNode(QuickNodeKind.Subscription, subscription.Name, subscription));
+                foreach (var receiver in receivers)
+                    topic.Children.Add(new QuickTreeNode(receiver));
                 if (topic.Children.Count == 0)
-                    topic.Children.Add(new QuickTreeNode(QuickNodeKind.Placeholder, "No subscriptions"));
+                    topic.Children.Add(QuickTreeNode.Placeholder("No receivers"));
                 ApplyFilter();
             });
         }
@@ -506,9 +565,16 @@ public sealed class QuickViewViewModel : ViewModelBase
             _scheduler.Post(() =>
             {
                 topic.Children.Clear();
-                topic.Children.Add(new QuickTreeNode(QuickNodeKind.Placeholder, "Couldn't read subscriptions: " + exception.Message));
+                topic.Children.Add(QuickTreeNode.Placeholder("Couldn't read receivers: " + exception.Message));
             });
         }
+    }
+
+    private async Task LoadReceiversForSearchAsync()
+    {
+        var reads = Tree.Where(n => n.IsExpandable).Select(n => n.LoadChildren()).ToList();
+        await Task.WhenAll(reads).ConfigureAwait(true);
+        _scheduler.Post(ApplyFilter);
     }
 
     private QuickEntityViewModel Build(EntitySnapshot snapshot)
@@ -534,40 +600,28 @@ public sealed class QuickViewViewModel : ViewModelBase
         return _browser;
     }
 
+    /// <summary>The kind filter and the search together. A topic stays visible when one of its receivers matches, and opens.</summary>
     private void ApplyFilter()
     {
         var text = _filter.Trim();
-        foreach (var root in Tree)
-            Visible(root, text, null);
-    }
+        foreach (var resource in Tree)
+        {
+            var kindShown = resource.Resource is not { } r || r.Matches(_kindFilter);
+            var selfMatch = text.Length == 0 || resource.Name.Contains(text, StringComparison.OrdinalIgnoreCase);
+            var anyReceiver = false;
+            foreach (var child in resource.Children)
+            {
+                var childMatch = text.Length == 0
+                    ? true
+                    : child.IsEntity && (child.Name.Contains(text, StringComparison.OrdinalIgnoreCase) || selfMatch);
+                child.IsVisible = kindShown && childMatch;
+                anyReceiver |= child.IsEntity && kindShown && text.Length > 0 && child.Name.Contains(text, StringComparison.OrdinalIgnoreCase);
+            }
 
-    /// <summary>The find box and the kind toggles together. <paramref name="kind"/> is the queue or topic branch the node is in.</summary>
-    private bool Visible(QuickTreeNode node, string text, EntityKind? kind)
-    {
-        kind ??= node.Kind switch
-        {
-            QuickNodeKind.Queue => EntityKind.Queue,
-            QuickNodeKind.Topic or QuickNodeKind.Subscription => EntityKind.Topic,
-            QuickNodeKind.Group when node.Name == "Queues" => EntityKind.Queue,
-            QuickNodeKind.Group when node.Name == "Topics" => EntityKind.Topic,
-            _ => null,
-        };
-        if (kind is { } k && !Shows(k))
-        {
-            node.IsVisible = false;
-            foreach (var child in node.Children)
-                Visible(child, text, k);
-            return false;
+            resource.IsVisible = kindShown && (selfMatch || anyReceiver);
+            if (anyReceiver && !resource.IsExpanded)
+                resource.IsExpanded = true;
         }
-
-        var any = false;
-        foreach (var child in node.Children)
-            any |= Visible(child, text, kind);
-        var self = node.Kind == QuickNodeKind.Namespace
-            ? text.Length == 0 && !NothingShown
-            : text.Length == 0 || (node.IsEntity && node.Name.Contains(text, StringComparison.OrdinalIgnoreCase));
-        node.IsVisible = self || any || node.IsPlaceholder && text.Length == 0;
-        return node.IsVisible;
     }
 
     private static IEnumerable<QuickTreeNode> Walk(IEnumerable<QuickTreeNode> nodes)

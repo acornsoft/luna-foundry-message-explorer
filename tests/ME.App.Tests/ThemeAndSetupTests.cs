@@ -70,15 +70,15 @@ public sealed class ThemeAndSetupTests
             var store = new FileUiSettingsStore(dir);
             Assert.Equal(new UiSettingsData().Theme, store.Load().Theme);
 
-            store.Save(new UiSettingsData { Theme = ThemeChoice.Light, ShowQueues = false, Recent = [new RecentConnection("sbns-demo-001", DateTimeOffset.UnixEpoch, LoginId: "login-1")] });
+            store.Save(new UiSettingsData { Theme = ThemeChoice.Light, KindFilter = ResourceKindFilter.Topics, Recent = [new RecentConnection("sbns-demo-001", DateTimeOffset.UnixEpoch, LoginId: "login-1")] });
             var loaded = new FileUiSettingsStore(dir).Load();
-            Assert.Equal((ThemeChoice.Light, false, true), (loaded.Theme, loaded.ShowQueues, loaded.ShowTopics));
+            Assert.Equal((ThemeChoice.Light, ResourceKindFilter.Topics), (loaded.Theme, loaded.KindFilter));
             Assert.Equal("login-1", Assert.Single(loaded.Recent).LoginId);
             Assert.Contains("\"theme\": \"light\"", File.ReadAllText(Path.Combine(dir, FileUiSettingsStore.FileName)), StringComparison.Ordinal);
 
             File.WriteAllText(Path.Combine(dir, FileUiSettingsStore.FileName), "{ not json");
             var fallback = new FileUiSettingsStore(dir).Load();
-            Assert.Equal((ThemeChoice.System, true, true), (fallback.Theme, fallback.ShowQueues, fallback.ShowTopics));
+            Assert.Equal((ThemeChoice.System, ResourceKindFilter.All), (fallback.Theme, fallback.KindFilter));
         }
         finally
         {
@@ -100,12 +100,16 @@ public sealed class ThemeAndSetupTests
         ("DeadText", "DeadSoft"), ("ScheduledText", "ScheduledSoft"), ("TransferText", "TransferSoft"),
         ("Queue", "QueueSoft"), ("Topic", "TopicSoft"), ("Queue", "QvPanel"), ("Topic", "QvPanel"),
         ("Queue", "QvRoot"), ("Topic", "QvRoot"), ("Active", "QvPanel"), ("Active", "ActiveSoft"),
+        // The slim bar, the switcher sheet and the kind filter.
+        ("MutedText", "Code"), ("Text", "Code"), ("AccentText", "Code"),
     ];
 
     private static readonly (string Foreground, string Background)[] IconPairs =
     [
         ("Accent", "Surface"), ("Accent", "Card"), ("Dead", "QvPanel"), ("Scheduled", "QvPanel"),
         ("Transfer", "QvPanel"), ("Warning", "WarningBackground"), ("CardBorder", "Surface"),
+        ("MutedText", "Card"), ("AccentText", "AccentSoft"), ("Queue", "Card"), ("Topic", "Card"), ("Queue", "AccentSoft"), ("Topic", "AccentSoft"),
+        ("Success", "SuccessBackground"), ("WarningText", "WarningBackground"),
     ];
 
     private static Color ColorOf(string key, ThemeVariant variant)
@@ -220,25 +224,28 @@ public sealed class ThemeAndSetupTests
                 Assert.Equal(variant, Application.Current!.RequestedThemeVariant);
                 Assert.Equal(variant, window.ActualThemeVariant);
 
+                foreach (var name in new[] { "SwitcherThemePicker", "SwitcherRail", "ConnectButton", "ConnectSources", "NamespaceSwitcherButton", "ModeChip" })
+                    Assert.True(Find<Control>(window, name).IsEffectivelyVisible, $"{name} in {variant}");
+
                 auth.WillSignIn("alice@contoso.example");
                 await main.Accounts.AddAccountAsync();
+                main.OpenSwitcher(SwitcherPage.Accounts);
                 Settle(window);
 
-                foreach (var name in new[] { "AccountsThemePicker", "AddAccountButton", "SignInWithCodeButton", "AccountList", "BrowseTree", "BrowseSubscriptionBox", "ConnectThemePicker", "ConnectButton", "ConnectSources" })
+                foreach (var name in new[] { "SwitcherThemePicker", "AddAccountButton", "SignInWithCodeButton", "AccountList", "BrowseTree", "BrowseSubscriptionBox" })
                     Assert.True(Find<Control>(window, name).IsEffectivelyVisible, $"{name} in {variant}");
                 var primary = Find<Button>(window, "AddAccountButton");
                 Assert.Equal(ColorOf("Accent", variant), Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color);
                 Assert.Equal(ColorOf("Surface", variant), Assert.IsAssignableFrom<ISolidColorBrush>(window.Background).Color);
 
-                main.SelectedTab = MainViewModel.LoginsTab;
+                main.OpenSwitcher(SwitcherPage.Logins);
                 Settle(window);
                 Assert.True(Find<Control>(window, "AddLoginButton").IsEffectivelyVisible);
 
                 main.Connect.NamespaceText = "contoso-synthetic";
                 await main.Connect.ConnectCommand.ExecuteAsync();
-                main.SelectedTab = MainViewModel.ExplorerTab;
                 Settle(window);
-                foreach (var name in new[] { "ShowQueuesToggle", "ShowTopicsToggle", "QuickTree", "QuickSummaryText" })
+                foreach (var name in new[] { "KindFilter", "QuickTree", "QuickSummaryText", "ResourceSearchBox" })
                     Assert.True(Find<Control>(window, name).IsEffectivelyVisible, $"{name} in {variant}");
                 var queueIcon = Find<TreeView>(window, "QuickTree").GetVisualDescendants().OfType<Projektanker.Icons.Avalonia.Icon>()
                     .First(i => i.Classes.Contains("queue") && i.IsEffectivelyVisible);
@@ -261,12 +268,15 @@ public sealed class ThemeAndSetupTests
             var (window, main, _, _) = OpenWindow(store);
             Assert.Equal(ThemeVariant.Default, Application.Current!.RequestedThemeVariant);
 
-            var dark = Find<ThemePicker>(window, "AccountsThemePicker").GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark");
+            var dark = Find<ThemePicker>(window, "SwitcherThemePicker").GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark");
             dark.IsChecked = true;
             Settle(window);
             Assert.Equal((ThemeChoice.Dark, ThemeVariant.Dark, ThemeVariant.Dark), (store.Current.Theme, Application.Current.RequestedThemeVariant, window.ActualThemeVariant));
-            // The Connect panel's picker shows the same choice.
-            Assert.True(Find<ThemePicker>(window, "ConnectThemePicker").GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark").IsChecked);
+            // The same picker stays with the sheet on every page (one picker per surface: the switcher and Settings).
+            main.IsAccountsPage = true;
+            Settle(window);
+            Assert.True(Find<ThemePicker>(window, "SwitcherThemePicker").GetVisualDescendants().OfType<RadioButton>().First(r => r.Name == "ThemeDark").IsChecked);
+            Assert.Single(window.GetVisualDescendants().OfType<ThemePicker>(), p => p.IsEffectivelyVisible);
 
             main.Theme.IsSystem = true;
             Settle(window);
@@ -359,6 +369,7 @@ public sealed class ThemeAndSetupTests
         var (window, main, auth, vault) = OpenWindow();
         auth.WillSignIn("alice@contoso.example");
         await main.Accounts.AddAccountAsync();
+        main.OpenSwitcher(SwitcherPage.Accounts);
         Settle(window);
         var browse = main.Sources;
 
@@ -410,7 +421,7 @@ public sealed class ThemeAndSetupTests
         await browse.OpenCommand.ExecuteAsync();
         Settle(window);
 
-        Assert.Equal(MainViewModel.ExplorerTab, main.SelectedTab);
+        Assert.False(main.IsSwitcherOpen);
         Assert.True(main.QuickView.IsConnected);
         var recent = Assert.Single(browse.Recent);
         Assert.Equal("sbns-demo-001 as alice@contoso.example", recent.Title);

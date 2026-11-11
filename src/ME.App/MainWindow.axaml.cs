@@ -5,6 +5,8 @@
 
 using Acornsoft.MessageExplorer.Shell.ViewModels;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 
 namespace Acornsoft.MessageExplorer.Shell;
 
@@ -21,6 +23,44 @@ public partial class MainWindow : Window
             if (DataContext is MainViewModel withMove && withMove.Move.Confirmer is null)
                 withMove.Move.Confirmer = new Views.WindowMoveConfirmer(this);
         };
+        AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>Ctrl+F (Cmd+F on a Mac) jumps to the search box; Esc closes the topmost sheet or panel.</summary>
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainViewModel main)
+            return;
+        if (e.Key == Key.F && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+        {
+            main.CloseTopmost();
+            ResourceSearchBox.Focus();
+            ResourceSearchBox.SelectAll();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            if (ResourceSearchBox.IsFocused && !string.IsNullOrEmpty(ResourceSearchBox.Text))
+            {
+                ResourceSearchBox.Text = string.Empty;
+                e.Handled = true;
+                return;
+            }
+
+            e.Handled = main.CloseTopmost();
+        }
+    }
+
+    private void OnScrimPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is MainViewModel main)
+            main.CloseTopmost();
+    }
+
+    private void OnCloseVoice(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel main)
+            main.IsVoiceOpen = false;
     }
 
     private void OnRecentDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
@@ -33,11 +73,5 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainViewModel main && main.Connect.ConnectSavedCommand.CanExecute(null))
             main.Connect.ConnectSavedCommand.Execute(null);
-    }
-
-    private void OnBrowseDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
-    {
-        if (DataContext is MainViewModel main && main.Sources.OpenCommand.CanExecute(null))
-            main.Sources.OpenCommand.Execute(null);
     }
 }

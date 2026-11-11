@@ -10,13 +10,13 @@ namespace Acornsoft.MessageExplorer.Shell;
 
 /// <summary>
 /// Command-line options for the desktop app:
-/// <c>--collection &lt;folder&gt;</c> opens a test-job collection, <c>--tab accounts|logins|queues|topics|quick|jobs|move|voice</c> picks the tab (Move mode itself stays off; no option turns it on),
+/// <c>--collection &lt;folder&gt;</c> opens a test-job collection, <c>--tab accounts|logins|resources|queues|topics|quick|jobs|move|voice</c> opens that place (a switcher page, the Resources view, Test jobs or the Voice panel; Move mode itself stays off and no option turns it on),
 /// <c>--synthetic-demo</c> (or <c>LFME_SYNTHETIC_DEMO=1</c>) adds and connects the synthetic demo provider,
 /// <c>--pace &lt;simulated seconds per second&gt;</c> picks a pace, <c>--run</c> starts the selected job, and
 /// <c>--exit-after-run &lt;file&gt;</c> writes the finished report to the file and quits (a smoke check), and
 /// <c>--phone-view</c> shows the phone and tablet shell (the Android head's screen) in a phone-sized window.
 /// </summary>
-public sealed record StartupOptions(string? Collection, int? Tab, bool SyntheticDemo, double? Pace = null, bool Run = false, string? ExitAfterRunReport = null, bool PhoneView = false)
+public sealed record StartupOptions(string? Collection, AppSection? Section, bool SyntheticDemo, double? Pace = null, bool Run = false, string? ExitAfterRunReport = null, bool PhoneView = false)
 {
     /// <summary>Open the default bundled sample when no collection was given. The tab is left alone.</summary>
     public StartupOptions WithDefaultCollection(string? samplesFolder)
@@ -32,7 +32,7 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(environment);
         string? collection = null;
-        int? tab = null;
+        AppSection? tab = null;
         var demo = environment("LFME_SYNTHETIC_DEMO") is "1" or "true";
         double? pace = null;
         var run = false;
@@ -48,14 +48,12 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
                 case "--tab" when i + 1 < args.Count:
                     tab = args[++i].ToLowerInvariant() switch
                     {
-                        "accounts" => MainViewModel.AccountsTab,
-                        "logins" => MainViewModel.LoginsTab,
-                        "queues" => MainViewModel.QueuesTab,
-                        "topics" => MainViewModel.TopicsTab,
-                        "quick" or "quickview" or "quick-view" => MainViewModel.QuickViewTab,
-                        "jobs" => MainViewModel.JobsTab,
-                        "move" => MainViewModel.MoveTab,
-                        "voice" => MainViewModel.VoiceTab,
+                        "accounts" => AppSection.Accounts,
+                        "logins" => AppSection.Logins,
+                        "resources" or "queues" or "topics" or "quick" or "quickview" or "quick-view" => AppSection.Resources,
+                        "jobs" => AppSection.Jobs,
+                        "move" => AppSection.Move,
+                        "voice" => AppSection.Voice,
                         _ => null,
                     };
                     break;
@@ -77,7 +75,7 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
             }
         }
 
-        return new StartupOptions(collection, tab ?? (collection is null ? null : MainViewModel.JobsTab), demo, pace, run, report, phone);
+        return new StartupOptions(collection, tab ?? (collection is null ? null : AppSection.Jobs), demo, pace, run, report, phone);
     }
 
     public void Apply(MainViewModel main)
@@ -85,8 +83,8 @@ public sealed record StartupOptions(string? Collection, int? Tab, bool Synthetic
         ArgumentNullException.ThrowIfNull(main);
         if (Collection is not null)
             main.Jobs.OpenCollection(Collection);
-        if (Tab is { } tab)
-            main.SelectedTab = tab;
+        if (Section is { } section)
+            main.Navigate(section);
         if (Pace is { } pace)
             main.Jobs.SelectedPace = main.Jobs.Paces.FirstOrDefault(p => p.SimulatedSecondsPerSecond == pace) ?? main.Jobs.SelectedPace;
         if (SyntheticDemo)

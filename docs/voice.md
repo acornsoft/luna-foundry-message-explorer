@@ -1,6 +1,6 @@
-# Grok Voice (Voice tab)
+# Grok Voice (Voice panel)
 
-The Voice tab lets you ask about the connected namespace out loud, push-to-talk, and hear the answer from
+The Voice panel (the mic at the top right) lets you ask about the connected namespace out loud, push-to-talk, and hear the answer from
 Grok Voice. It is read-only: the voice model's only tools are the same four read-only tools the
 [MCP server](mcp-server.md) offers (`list_entities`, `get_entity`, `check_limits`, `summarize_dead_letters`).
 It can list and check counts. It cannot read message bodies, and it cannot send, receive, settle, move,
@@ -11,7 +11,7 @@ resubmit, purge or delete anything.
 1. **Saved logins > Add > xAI (Grok Voice) > xAI API key.** Paste the key. It is stored only in the platform
    secure store (Keychain, Windows Credential Manager, Secret Service, Android Keystore), never in the config
    JSON, never shown again, and never logged. The app reads it from the vault only when a session starts.
-2. **Voice tab > Settings.** Pick a voice. The picker offers xAI's built-in voices only (custom, cloned voices
+2. **Voice panel > Settings.** Pick a voice. The picker offers xAI's built-in voices only (custom, cloned voices
    are not offered). The choice is saved on the xAI login as a non-secret field. "Redact message bodies" is on
    by default.
 3. Connect a namespace (Accounts or Saved logins), then **Start session**.

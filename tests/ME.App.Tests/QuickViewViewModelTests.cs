@@ -46,7 +46,7 @@ public class QuickViewViewModelTests
     }
 
     [Fact]
-    public async Task Nothing_is_read_until_the_tab_is_shown_then_the_tree_lists_queues_and_topics()
+    public async Task Nothing_is_read_until_asked_then_one_resources_list_holds_queues_and_topics()
     {
         var (quick, inventory, browser, _) = Open();
         Assert.Equal(0, inventory.ListCalls);
@@ -56,10 +56,11 @@ public class QuickViewViewModelTests
         await quick.EnsureLoadedAsync();
 
         Assert.Equal(1, inventory.ListCalls);
-        var root = Assert.Single(quick.Tree);
-        Assert.Equal("sbns-synthetic-001", root.Name);
-        Assert.Equal(["Queues", "Topics"], root.Children.Select(c => c.Name));
-        Assert.Equal(["orders", "payments"], root.Children[0].Children.Select(c => c.Name));
+        Assert.Equal(1, inventory.TopicCalls);
+        Assert.Equal("sbns-synthetic-001", quick.NamespaceName);
+        Assert.All(quick.Tree, n => Assert.Equal(QuickNodeKind.Resource, n.Kind));
+        Assert.Equal(["orders", "payments"], quick.Tree.Where(n => n.IsQueueFamily).Select(c => c.Name));
+        Assert.Contains(quick.Tree, n => n.IsTopicFamily && n.IsExpandable);
         Assert.Empty(inventory.SubscriptionCalls);
         Assert.Empty(browser.Calls);
     }
@@ -314,22 +315,19 @@ public class QuickViewViewModelTests
     }
 
     [Fact]
-    public async Task The_main_window_loads_the_quick_view_only_when_its_tab_is_picked()
+    public async Task Connecting_reads_the_resources_once_and_fills_the_list()
     {
         var provider = new FakeBrokerProvider(Entities());
         var browser = Browser();
         var main = new MainViewModel(new ProviderCatalog([provider], []), quickView: new QuickViewServices((_, _) => () => browser));
         main.Connect.NamespaceText = "synthetic.example";
         await main.Connect.ConnectCommand.ExecuteAsync();
-        Assert.Equal(1, provider.Inventory.ListCalls);
-        Assert.Empty(main.QuickView.Tree);
-
-        main.SelectedTab = MainViewModel.QuickViewTab;
         await main.QuickView.EnsureLoadedAsync();
 
-        Assert.Equal(2, provider.Inventory.ListCalls);
-        Assert.Equal("synthetic", main.QuickView.Tree[0].Name);
-        Assert.Equal(MainViewModel.QuickViewTab, StartupOptions.Parse(["--tab", "quick"], _ => null).Tab);
+        Assert.Equal(1, provider.Inventory.ListCalls);
+        Assert.Equal(1, provider.Inventory.TopicCalls);
+        Assert.NotEmpty(main.QuickView.Tree);
+        Assert.Equal(AppSection.Resources, StartupOptions.Parse(["--tab", "quick"], _ => null).Section);
     }
 
     [Fact]

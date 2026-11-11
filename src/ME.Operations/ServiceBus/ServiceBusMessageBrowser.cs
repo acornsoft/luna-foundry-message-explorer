@@ -46,7 +46,7 @@ public sealed class ServiceBusMessageBrowser : IMessageBrowser
         return new ServiceBusMessageBrowser(() => new ServiceBusClient(text));
     }
 
-    /// <summary>For an Entra account (a namespace found on the Accounts tab).</summary>
+    /// <summary>For an Entra account (a namespace found on the Accounts page).</summary>
     public static ServiceBusMessageBrowser Open(string fullyQualifiedNamespace, TokenCredential credential)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fullyQualifiedNamespace);

@@ -19,7 +19,7 @@ using Avalonia.VisualTree;
 
 namespace Acornsoft.MessageExplorer.Shell.Tests;
 
-/// <summary>The Voice tab: the xAI key only in the vault, built-in voices only, redaction on, read-only tools. Fake socket, synthetic data.</summary>
+/// <summary>The Voice panel: the xAI key only in the vault, built-in voices only, redaction on, read-only tools. Fake socket, synthetic data.</summary>
 public sealed class VoiceTests
 {
     private static readonly string FakeKey = "xai-" + Guid.NewGuid().ToString("N") + "-not-real";
@@ -290,9 +290,9 @@ public sealed class VoiceTests
     }
 
     [AvaloniaFact]
-    public void The_voice_tab_shows_the_picker_redaction_and_the_read_only_note()
+    public void The_voice_panel_shows_the_picker_redaction_and_the_read_only_note()
     {
-        var main = new MainViewModel(MainViewModel.DefaultCatalog(false)) { SelectedTab = MainViewModel.VoiceTab };
+        var main = new MainViewModel(MainViewModel.DefaultCatalog(false)) { IsVoiceOpen = true };
         var window = new MainWindow { DataContext = main };
         window.Show();
         Dispatcher.UIThread.RunJobs();

@@ -19,7 +19,7 @@ public static class Program
         // The packaged app has no separate dotnet; plugin processes are this executable with --run-plugin.
         if (args.Length >= 2 && args[0] == DotnetPluginCommand.RunPluginSwitch)
             return PluginSelfHost.Run(args[1], args[2..]);
-        // Microphone and speaker for the Voice tab. Devices open on first push-to-talk, not here.
+        // Microphone and speaker for the Voice panel. Devices open on first push-to-talk, not here.
         App.PlatformVoiceAudio = () => new PcmVoiceAudio(new PortAudioBackend());
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

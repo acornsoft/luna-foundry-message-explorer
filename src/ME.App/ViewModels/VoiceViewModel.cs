@@ -28,7 +28,7 @@ public sealed class VoiceLine(VoiceSpeaker speaker, string text) : ViewModelBase
 }
 
 /// <summary>
-/// The Voice tab: push-to-talk Grok Voice over the connected namespace. The model's tools are the same four
+/// The Voice panel: push-to-talk Grok Voice over the connected namespace. The model's tools are the same four
 /// read-only tools as the MCP server, so it can list and check counts and can never move anything. The xAI key
 /// is read from the credential vault only when a session starts, and never shown or logged. Message bodies are
 /// redacted by default. The voice picker offers xAI's built-in voices only.
@@ -195,7 +195,7 @@ public sealed class VoiceViewModel : ViewModelBase
     private Task<IReadOnlyList<EntitySnapshot>> ReadInventoryAsync(CancellationToken cancellationToken) =>
         _inventory() is { } inventory
             ? InventorySources.ReadAllAsync(inventory, cancellationToken)
-            : throw new BrokerException(BrokerErrorKind.NotFound, "No namespace is connected. Connect one in the Accounts or Saved logins tab first.");
+            : throw new BrokerException(BrokerErrorKind.NotFound, "No namespace is connected. Choose one with the namespace switcher (top left) first.");
 
     private async Task StopAsync()
     {

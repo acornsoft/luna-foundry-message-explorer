@@ -24,7 +24,7 @@ Admin actions are a separate module, off by default. They file a request. Observ
 
 ## Move mode
 
-**Move mode** is the only way the app changes a broker, and it is off every time the app starts. Turn it on at the top of the window; a banner stays up while it is on. On the **Move** tab, drag messages (or a whole source, for the oldest N) from a dead-letter queue, queue or subscription onto a queue or topic, or use **Move to…** (Ctrl+M). Each drop checks send and receive rights, asks you to confirm, moves oldest first (session by session when the source uses sessions) keeping IDs, session, correlation and properties, and writes an audit line per message with no bodies or secrets. Within one namespace each message moves in one transaction; across namespaces it is at-least-once with a duplicate-detection warning. Only `Acornsoft.MessageExplorer.Operations` can mutate; the guard checks every other assembly. See [docs/design/move-mode.md](docs/design/move-mode.md).
+**Move mode** is the only way the app changes a broker, and it is off every time the app starts. Switch it on with the mode chip at the top right (it reads **Read-only** until you do); the chip turns amber and a banner stays up while it is on. In the Move workspace, drag messages (or a whole source, for the oldest N) from a dead-letter queue, queue or subscription onto a queue or topic, or use **Move to…** (Ctrl+M). Each drop checks send and receive rights, asks you to confirm, moves oldest first (session by session when the source uses sessions) keeping IDs, session, correlation and properties, and writes an audit line per message with no bodies or secrets. Within one namespace each message moves in one transaction; across namespaces it is at-least-once with a duplicate-detection warning. Only `Acornsoft.MessageExplorer.Operations` can mutate; the guard checks every other assembly. See [docs/design/move-mode.md](docs/design/move-mode.md).
 
 ## Layout
 
@@ -45,12 +45,12 @@ Admin actions are a separate module, off by default. They file a request. Observ
 | `src/ME.Headless` | `lfme`: headless, read-only inventory and checks for containers and pipelines |
 | `src/ME.McpServer` | `lfme-mcp`: read-only MCP server over stdio |
 | `src/ME.Voice` | Grok Voice session (xAI realtime WebSocket) over the read-only tools, built-in voices, redaction, short-lived tokens, the push-to-talk audio pipeline |
-| `src/ME.Voice.PortAudio` | Desktop microphone and speaker for the Voice tab (PortAudio) |
+| `src/ME.Voice.PortAudio` | Desktop microphone and speaker for the Voice panel (PortAudio) |
 | `plugins/cursor/lfme-readonly` | A Cursor plugin scaffold for `lfme-mcp` (not published) |
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
 | `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
 | `samples/plugins`, `samples/jobs` | Sample plugins (C# and Python) and sample jobs. Synthetic data only |
-| `src/ME.App` | Avalonia shell: Accounts tab (one or more Entra accounts, namespace discovery), Connect panel (typed namespace or any connection string flavor), sortable Queues and Topics grids, and the Test jobs panel with a live run view |
+| `src/ME.App` | Avalonia shell: one slim top bar (namespace switcher, search, mode chip, voice, settings), the namespace switcher sheet (Connect, Accounts with namespace discovery, Saved logins), the Resources view, and Test jobs with a live run view |
 | `src/ME.App.Desktop` | Desktop entry point |
 | `src/Scenarios`, `tests/Scenarios` | Reserved for the GSL Reg E dispute library and runner (separate PR) |
 | `tests/*` | One test project per core library, plus the shell (view models and headless UI) |
@@ -59,7 +59,7 @@ Borrowed ideas are credited in [docs/ideas-log.md](docs/ideas-log.md). No code i
 
 ## Accounts and namespace discovery
 
-The **Accounts** tab opens first. Choose **Add account** and sign in with Microsoft Entra ID in your browser. Add as many accounts as you like. For each account, the app lists every tenant the account belongs to, every subscription in those tenants, and every Service Bus namespace in those subscriptions, through Azure Resource Manager GETs (`Azure.ResourceManager.ServiceBus`). A namespace shows up only when the account can read it in ARM (the Reader role is enough). The tree is Account > Subscription > Namespace. Double-click a namespace to open its queue and topic grids with that account.
+The **namespace switcher** opens first (the namespace name at the top left opens it again). On its **Accounts** page, choose **Add account** and sign in with Microsoft Entra ID in your browser. Add as many accounts as you like. For each account, the app lists every tenant the account belongs to, every subscription in those tenants, and every Service Bus namespace in those subscriptions, through Azure Resource Manager GETs (`Azure.ResourceManager.ServiceBus`). A namespace shows up only when the account can read it in ARM (the Reader role is enough). The tree is Account > Subscription > Namespace. Double-click a namespace to open its resources with that account.
 
 - One account, tenant, or subscription that fails (an expired sign-in, a tenant that needs MFA, no access) shows its own error row. The others still load.
 - **Sign out** keeps the account in the list, signed out. **Remove** forgets it.
@@ -84,15 +84,15 @@ The string is shown masked and cleared after connecting. Tick **Save** to keep i
 
 ## Saved logins
 
-The **Saved logins** tab keeps logins for every system in one list: Entra accounts, Service Bus and Event Hubs strings and namespaces, Kafka (SASL or mutual TLS), RabbitMQ, AWS SQS and SNS (access key or profile), and the emulator. Each row shows the system, name, kind and when it was last used. Add, Edit, Rename, Delete (with a confirm) and a read-only Test connection. Secrets are masked, can't be copied, and are never shown again. Logins that use Entra record which signed-in account they use. Version 0.6.0's saved strings and account files move in on first launch. How each platform stores secrets, and what has been proven on each, is in [docs/design/credential-vault.md](docs/design/credential-vault.md).
+The switcher's **Saved logins** page keeps logins for every system in one list: Entra accounts, Service Bus and Event Hubs strings and namespaces, Kafka (SASL or mutual TLS), RabbitMQ, AWS SQS and SNS (access key or profile), and the emulator. Each row shows the system, name, kind and when it was last used. Add, Edit, Rename, Delete (with a confirm) and a read-only Test connection. Secrets are masked, can't be copied, and are never shown again. Logins that use Entra record which signed-in account they use. Version 0.6.0's saved strings and account files move in on first launch. How each platform stores secrets, and what has been proven on each, is in [docs/design/credential-vault.md](docs/design/credential-vault.md).
 
 ## Service Bus queue list
 
-A typed namespace connects with Microsoft Entra ID: the signed-in account you pick, or `DefaultAzureCredential` when no account is signed in. Typed namespaces and connection strings read the data-plane management API (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged), which needs a management read permission on the namespace. A namespace picked on the Accounts tab reads the same counts through ARM instead, so the Reader role is enough.
+A typed namespace connects with Microsoft Entra ID: the signed-in account you pick, or `DefaultAzureCredential` when no account is signed in. Typed namespaces and connection strings read the data-plane management API (`GetQueuesRuntimePropertiesAsync` and `GetQueuesAsync`, paged), which needs a management read permission on the namespace. A namespace picked on the Accounts page reads the same counts through ARM instead, so the Reader role is enough.
 
 The no-mutation guard reads the compiled adapter IL. Service Bus send, receive, settle, create, update, and delete calls fail the build. ARM calls must be property reads or an allow-listed list or get; create, update, delete, key listing, and key regeneration fail the build.
 
-The **Topics** tab lists topics with subscription counts. Pick a topic to list its subscriptions with active, dead-letter, and transfer dead-letter counts; non-zero dead-letter cells are highlighted.
+Topics are listed with the queues in **Resources**, with their receiver (subscription) counts. Open a topic to list its subscriptions with active, dead-letter, and transfer dead-letter counts; non-zero dead-letter counts are highlighted.
 
 Opt-in integration test: set `ME_SB_NAMESPACE` to a namespace you can read, then run `dotnet test`. CI does not set it, so the test is skipped there.
 
@@ -109,7 +109,7 @@ Test jobs never send to a real broker. Only `provider: in-memory` is accepted.
 
 ### In the app
 
-The **Test jobs** tab picks a collection folder, a job, an environment, and a pace, shows the pinned plugins and the seed, and has Run and Cancel. The live view lists expected versus actual per correlation ID with a status (pending, passed, failed, dead-lettered, late), the hop timeline, latency, plugin event counters, a status filter, a final summary, and Export JUnit.
+**Test jobs** (under **Settings** in the top bar) picks a collection folder, a job, an environment, and a pace, shows the pinned plugins and the seed, and has Run and Cancel. The live view lists expected versus actual per correlation ID with a status (pending, passed, failed, dead-lettered, late), the hop timeline, latency, plugin event counters, a status filter, a final summary, and Export JUnit.
 
 Startup options (all optional):
 
@@ -118,9 +118,9 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
   --collection samples/jobs/crew-stock --pace 600 --run --synthetic-demo
 ```
 
-- `--collection <folder>` opens a collection on the Test jobs tab. `--run` starts the default job.
+- `--collection <folder>` opens a collection in Test jobs. `--run` starts the default job.
 - `--pace <n>` sets simulated seconds per real second (0 runs as fast as possible).
-- `--tab queues|topics|jobs` picks the tab.
+- `--tab resources|accounts|logins|jobs|voice` opens that place (`queues`, `topics` and `quick` still open Resources; `move` opens Resources too, because Move mode is off at every launch).
 - `--exit-after-run <file>` writes the finished run report to the file and quits (used by the macOS smoke check).
 - `--synthetic-demo` (or `LFME_SYNTHETIC_DEMO=1`) adds an in-memory provider with made-up queues, topics, and subscriptions, and connects to it. It is off by default.
 
@@ -132,13 +132,13 @@ dotnet src/ME.App.Desktop/bin/Release/net8.0/Acornsoft.MessageExplorer.Desktop.d
 
 `lfme-mcp` is a read-only MCP server over stdio with four tools: `list_entities`, `get_entity`, `check_limits` and `summarize_dead_letters`. It speaks MCP 2026-07-28 and the older `initialize` handshake. It reads counts only. A Cursor plugin scaffold, never published, is in `plugins/cursor/lfme-readonly`. See [MCP server](docs/mcp-server.md).
 
-## Queues & topics
+## Resources
 
-The Queues & topics tab is the one entity view for queues, topics and subscriptions, told apart by icon, tag and colour, with Queues and Topics show/hide toggles that are remembered. It is a split view: the entity tree on the left, a strip of lane cards (Active, Dead-letter, Scheduled, Transfer dead-letter) whose counts you click to jump to that section, sections that cascade open as rows, and a message detail drawer. Counts come from runtime properties. Each section peeks the top N messages (25 by default, 1 to 100) only when it is opened, with one sequence cursor per sub-queue and "load more". It is peek only, bodies are masked, and any provider can plug in a browser. Icons are Font Awesome Free (see [third-party notices](THIRD-PARTY-NOTICES.md)). See [Queues & topics](docs/quick-view.md) and [Setup and themes](docs/setup-and-themes.md).
+The Resources view is the one entity view: one list of resources (queues and topics) with their receivers (a queue is its own receiver; a topic has subscriptions), told apart by icon, tag and colour, with one All / Queues / Topics kind filter that is remembered. One slim top bar holds the namespace switcher, one search box for resources and receivers (Ctrl+F), the Read-only / Move mode chip, the Voice mic and Settings; the read-only rules are explained once, in the mode chip's tooltip. It is a split view: the entity tree on the left, a strip of lane cards (Active, Dead-letter, Scheduled, Transfer dead-letter) whose counts you click to jump to that section, sections that cascade open as rows, and a message detail drawer. Counts come from runtime properties. Each section peeks the top N messages (25 by default, 1 to 100) only when it is opened, with one sequence cursor per sub-queue and "load more". It is peek only, bodies are masked, and any provider can plug in a browser. Icons are Font Awesome Free (see [third-party notices](THIRD-PARTY-NOTICES.md)). See [Resources](docs/quick-view.md), [Resources and receivers](docs/resource-model.md) and [Setup and themes](docs/setup-and-themes.md).
 
 ## Grok Voice
 
-The Voice tab answers questions about the connected namespace out loud, push-to-talk, using the same four read-only tools as `lfme-mcp`. It can never move anything. The xAI key lives only in the vault (Saved logins > xAI). Message bodies are redacted by default, and the voice picker offers xAI's built-in voices only. On Windows (x64), macOS and Linux the microphone and speaker work through PortAudio; the voice connection uses a short-lived xAI token instead of the key. Typed questions always work. See [Grok Voice](docs/voice.md).
+The Voice panel (the mic in the top bar) answers questions about the connected namespace out loud, push-to-talk, using the same four read-only tools as `lfme-mcp`. It can never move anything. The xAI key lives only in the vault (Saved logins > xAI). Message bodies are redacted by default, and the voice picker offers xAI's built-in voices only. On Windows (x64), macOS and Linux the microphone and speaker work through PortAudio; the voice connection uses a short-lived xAI token instead of the key. Typed questions always work. See [Grok Voice](docs/voice.md).
 
 ## Environments
 

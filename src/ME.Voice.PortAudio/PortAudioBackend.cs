@@ -12,7 +12,7 @@ namespace Acornsoft.MessageExplorer.Voice.PortAudio;
 /// <summary>
 /// The default microphone and speaker through PortAudio: mono, 16-bit, 24 kHz when the device allows it and the
 /// device's own rate otherwise (<see cref="PcmVoiceAudio"/> resamples). Nothing opens until first use. If the
-/// native library or a device is missing, <see cref="Probe"/> says so and the Voice tab takes typed questions.
+/// native library or a device is missing, <see cref="Probe"/> says so and the Voice panel takes typed questions.
 /// </summary>
 public sealed class PortAudioBackend : IAudioBackend
 {

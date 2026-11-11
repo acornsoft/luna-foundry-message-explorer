@@ -129,7 +129,7 @@
         <StackPanel Spacing="2" IsVisible="{Binding UsesAccount}">
           <TextBlock Text="{Binding AccountLabel}" />
           <ComboBox x:Name="LoginAccountBox" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" HorizontalAlignment="Stretch" PlaceholderText="Choose a signed-in account" />
-          <TextBlock Classes="muted" Text="Sign in on the Accounts tab to pick an account." IsVisible="{Binding HasNoAccounts}" FontSize="12" />
+          <TextBlock Classes="muted" Text="Sign in on the Accounts page to pick an account." IsVisible="{Binding HasNoAccounts}" FontSize="12" />
         </StackPanel>
         <StackPanel Spacing="2" IsVisible="{Binding HasSecret}">
           <TextBlock Text="{Binding SecretLabel}" />

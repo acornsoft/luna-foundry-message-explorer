@@ -65,7 +65,7 @@ public sealed class PackagedAppTests
         var samples = Repo.Path("samples", "jobs");
         var none = StartupOptions.Parse([], _ => null).WithDefaultCollection(samples);
         Assert.Equal(Path.Combine(samples, BundledSamples.DefaultSample), none.Collection);
-        Assert.Null(none.Tab);
+        Assert.Null(none.Section);
 
         var given = StartupOptions.Parse(["--collection", "/x"], _ => null).WithDefaultCollection(samples);
         Assert.Equal("/x", given.Collection);

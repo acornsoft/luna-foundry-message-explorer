@@ -71,7 +71,6 @@ public class MoveModeTests
         Assert.False(main.MoveModeOn);
         Assert.False(main.Move.IsOn);
         Assert.False(main.Move.CanWork);
-        Assert.Equal(MainViewModel.MoveTab, main.SelectedTab);
         Assert.Empty(main.Move.Tree);
         Assert.False(main.Move.MoveToCommand.CanExecute(null));
         Assert.Contains("turns off again every time the app starts", main.Move.OffText, StringComparison.Ordinal);
@@ -133,10 +132,15 @@ public class MoveModeTests
         Assert.Equal(["move-started", "message-moved", "message-moved", "move-finished"], audit.Entries.Select(e => e.Event));
 
         var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (main.Queues.Rows.FirstOrDefault(r => r.Name == "orders")?.DeadLetter != 2 && DateTime.UtcNow < deadline)
+        while (OrdersDeadLetters(main) != 2 && DateTime.UtcNow < deadline)
             await Task.Delay(10);
-        Assert.Equal(2, main.Queues.Rows.Single(r => r.Name == "orders").DeadLetter);
+        Assert.Equal(2, OrdersDeadLetters(main));
     }
+
+
+    /// <summary>The resources list re-reads after a move; dead letters live on the queue's own (implicit) receiver.</summary>
+    private static long? OrdersDeadLetters(MainViewModel main) =>
+        main.QuickView.Tree.FirstOrDefault(n => n.Name == "orders")?.Snapshot?.Counts.DeadLetter;
 
     [Fact]
     public async Task After_a_move_the_tree_keeps_its_nodes_and_selection_and_shows_new_counts()

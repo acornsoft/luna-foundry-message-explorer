@@ -120,7 +120,7 @@ public sealed class ConnectViewModel : ViewModelBase
 
     public string EntraHint => SelectedAccount is { } account
         ? $"Uses {account.Username}. No secret is stored."
-        : "Uses your Azure sign-in. Add an account on the Accounts tab to choose which one.";
+        : "Uses your Azure sign-in. Add an account on the Accounts page to choose which one.";
 
     public IReadOnlyList<ProviderOption> Providers { get; }
 
@@ -296,7 +296,7 @@ public sealed class ConnectViewModel : ViewModelBase
             : BrokerConnection.WithEntra(provider.Id, NamespaceText, credential);
     }
 
-    /// <summary>Shows an inventory opened elsewhere (a namespace picked on the Accounts tab).</summary>
+    /// <summary>Shows an inventory opened elsewhere (a namespace picked on the Accounts page).</summary>
     public async Task ConnectWithAsync(IEntityInventory inventory, string label)
     {
         ArgumentNullException.ThrowIfNull(inventory);
@@ -377,7 +377,7 @@ public sealed class ConnectViewModel : ViewModelBase
         {
             if (account is null)
             {
-                ValidationMessage = "Connected. To save this namespace, sign in on the Accounts tab so the login can name its account.";
+                ValidationMessage = "Connected. To save this namespace, sign in on the Accounts page so the login can name its account.";
                 return;
             }
 
@@ -424,7 +424,7 @@ public sealed class ConnectViewModel : ViewModelBase
             if (account is null)
             {
                 var who = login.Field("accountName") is { Length: > 0 } name ? name : "its Entra account";
-                ValidationMessage = $"'{login.DisplayName}' uses {who}. Sign in as that account on the Accounts tab first.";
+                ValidationMessage = $"'{login.DisplayName}' uses {who}. Sign in as that account on the Accounts page first.";
                 return;
             }
         }
@@ -450,7 +450,7 @@ public sealed class ConnectViewModel : ViewModelBase
 
             if (value is null)
             {
-                ValidationMessage = $"The secret for '{login.DisplayName}' is missing from your {SecureStoreName}. Edit it on the Saved logins tab.";
+                ValidationMessage = $"The secret for '{login.DisplayName}' is missing from your {SecureStoreName}. Edit it on the Saved logins page.";
                 return;
             }
 

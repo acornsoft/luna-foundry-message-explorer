@@ -36,13 +36,10 @@
     <!-- Linked accounts -->
     <DockPanel>
       <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,10">
-        <Grid ColumnDefinitions="*,Auto">
-          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
-            <i:Icon Classes="accent" Value="fa-solid fa-user-group" FontSize="16" />
-            <TextBlock Classes="title" Text="Linked accounts" />
-          </StackPanel>
-          <views:ThemePicker Grid.Column="1" x:Name="AccountsThemePicker" DataContext="{Binding Theme}" VerticalAlignment="Center" />
-        </Grid>
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+          <i:Icon Classes="accent" Value="fa-solid fa-user-group" FontSize="16" />
+          <TextBlock Classes="title" Text="Linked accounts" />
+        </StackPanel>
         <TextBlock x:Name="AccountsSummaryText" Classes="muted" Text="{Binding Summary}" />
 
         <Border Classes="card" x:Name="AddAccountCard">
