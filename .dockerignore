@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+artifacts/
+.tools/
+.git/
+tests/
+docs/
+samples/
+**/node_modules/

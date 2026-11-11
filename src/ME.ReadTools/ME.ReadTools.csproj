@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.ReadTools</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.ReadTools</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
+    <ProjectReference Include="..\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
+  </ItemGroup>
+</Project>
