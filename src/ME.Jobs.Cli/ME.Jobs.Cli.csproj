@@ -6,5 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ME.Jobs\ME.Jobs.csproj" />
+    <!-- The live Service Bus sink (send only). Operations is the one assembly that may send. -->
+    <ProjectReference Include="..\ME.Operations\ME.Operations.csproj" />
   </ItemGroup>
 </Project>

@@ -6,11 +6,13 @@
 using System.Globalization;
 using System.Text;
 using Acornsoft.MessageExplorer.Jobs.Hosting;
+using Acornsoft.MessageExplorer.Jobs.Live;
 using Acornsoft.MessageExplorer.Jobs.Loading;
 using Acornsoft.MessageExplorer.Jobs.Model;
 using Acornsoft.MessageExplorer.Jobs.Protocol;
 using Acornsoft.MessageExplorer.Jobs.Reporting;
 using Acornsoft.MessageExplorer.Jobs.Running;
+using Acornsoft.MessageExplorer.Operations.ServiceBus;
 
 namespace Acornsoft.MessageExplorer.Jobs.Cli;
 
@@ -25,9 +27,28 @@ public static class JobsCli
     public const int SetupError = 2;
     public const int Usage = 64;
 
-    public static Task<int> Main(string[] args) => RunAsync(args, Console.Out, Console.Error, Environment.GetEnvironmentVariable);
+    public static async Task<int> Main(string[] args)
+    {
+        using var stop = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true; // finish the message in flight, then stop
+            stop.Cancel();
+        };
+        return await RunAsync(args, Console.Out, Console.Error, Environment.GetEnvironmentVariable, ServiceBusLiveSink.Open, stop.Token).ConfigureAwait(false);
+    }
 
-    public static async Task<int> RunAsync(string[] args, TextWriter stdout, TextWriter stderr, Func<string, string?> environment)
+    public static Task<int> RunAsync(string[] args, TextWriter stdout, TextWriter stderr, Func<string, string?> environment) =>
+        RunAsync(args, stdout, stderr, environment, ServiceBusLiveSink.Open, CancellationToken.None);
+
+    /// <summary>The same, with the live sink factory and the stop token supplied (tests pass a fake sink).</summary>
+    public static async Task<int> RunAsync(
+        string[] args,
+        TextWriter stdout,
+        TextWriter stderr,
+        Func<string, string?> environment,
+        Func<string, NamespaceAllowList, IMessageSink> openSink,
+        CancellationToken stop)
     {
         if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
         {
@@ -38,15 +59,21 @@ public static class JobsCli
         return args[0] switch
         {
             "run" => await RunJobAsync(args[1..], stdout, stderr, environment).ConfigureAwait(false),
+            "send" => await SendJobAsync(args[1..], stdout, stderr, environment, openSink, stop).ConfigureAwait(false),
             "plugin-check" => await PluginCheckAsync(args[1..], stdout, stderr).ConfigureAwait(false),
             _ => await UsageError(stderr, $"Unknown command '{args[0]}'.").ConfigureAwait(false),
         };
     }
 
     public const string HelpText = """
-        me-jobs: run synthetic test jobs against the in-memory broker.
+        me-jobs: run synthetic test jobs against the in-memory broker, or send them live (dry run by default).
 
           me-jobs run <job-file> [--env <name>] [--junit <path>] [--verbose]
+          me-jobs send <job-file> [--env <name>] [--send] [--allow-list <file>] [--stop-file <path>]
+              Live send to Azure Service Bus (provider azure-servicebus, Entra sign-in only). A dry run unless
+              --send is given. The namespace must be on the allow-list file (default: <config>/lfme/live-namespaces.txt).
+              Limits come from the job: rate.perMinute, maxMessages (hard cap 500), ttl (default PT1H).
+              Stop with Ctrl+C or by creating the stop file.
           me-jobs plugin-check --name <name> --version <x.y.z> [--role <role>] -- <command> [args...]
 
         Exit codes: 0 passed, 1 an assertion failed, 2 setup or plugin error, 64 bad arguments.
@@ -125,6 +152,111 @@ public static class JobsCli
         if (junitPath is not null)
             await stdout.WriteLineAsync($"JUnit: {junitPath}").ConfigureAwait(false);
         return result.Succeeded ? Ok : AssertionFailed;
+    }
+
+    private static async Task<int> SendJobAsync(
+        string[] args,
+        TextWriter stdout,
+        TextWriter stderr,
+        Func<string, string?> environment,
+        Func<string, NamespaceAllowList, IMessageSink> openSink,
+        CancellationToken stop)
+    {
+        string? jobPath = null, envName = null, allowPath = null, stopFile = null;
+        var send = false;
+        for (var i = 0; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--env" when i + 1 < args.Length:
+                    envName = args[++i];
+                    break;
+                case "--allow-list" when i + 1 < args.Length:
+                    allowPath = args[++i];
+                    break;
+                case "--stop-file" when i + 1 < args.Length:
+                    stopFile = args[++i];
+                    break;
+                case "--send":
+                    send = true;
+                    break;
+                default:
+                    if (args[i].StartsWith('-') || jobPath is not null)
+                        return await UsageError(stderr, $"Unexpected argument '{args[i]}'.").ConfigureAwait(false);
+                    jobPath = args[i];
+                    break;
+            }
+        }
+
+        if (jobPath is null)
+            return await UsageError(stderr, "Give the job file to send.").ConfigureAwait(false);
+
+        JobDefinition job;
+        try
+        {
+            job = JobLoader.Load(jobPath, envName, environment);
+        }
+        catch (JobValidationException exception)
+        {
+            await stderr.WriteLineAsync(exception.Message).ConfigureAwait(false);
+            return SetupError;
+        }
+
+        if (job.Provider != JobLoader.AzureServiceBusProvider || job.Namespace is null || job.Live is null)
+        {
+            await stderr.WriteLineAsync($"Environment {job.EnvironmentName} uses provider {job.Provider}. me-jobs send needs provider {JobLoader.AzureServiceBusProvider}; use me-jobs run for test jobs.").ConfigureAwait(false);
+            return SetupError;
+        }
+
+        stopFile ??= Path.Combine(Path.GetTempPath(), "lfme-live.stop");
+        if (File.Exists(stopFile))
+        {
+            await stderr.WriteLineAsync($"The stop file {stopFile} already exists. Delete it to start a run.").ConfigureAwait(false);
+            return SetupError;
+        }
+
+        var allowList = NamespaceAllowList.Load(allowPath ?? NamespaceAllowList.DefaultPath);
+        if (!allowList.IsAllowed(job.Namespace))
+        {
+            var refusal = $"Namespace '{job.Namespace}' is not on the live allow-list ({allowPath ?? NamespaceAllowList.DefaultPath}).";
+            if (send)
+            {
+                await stderr.WriteLineAsync(refusal + " Nothing was sent.").ConfigureAwait(false);
+                return SetupError;
+            }
+
+            await stdout.WriteLineAsync(refusal + " A real send would be refused.").ConfigureAwait(false);
+        }
+
+        var options = job.Live with { DryRun = !send, StopFile = stopFile };
+        try
+        {
+            var messages = await LiveBatch.GenerateAsync(job, cancellationToken: stop).ConfigureAwait(false);
+            await stdout.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"Run {job.RunId} ({job.EnvironmentName}): {messages.Count} generated for {job.Namespace}; cap {options.MaxMessages}, {options.PerMinute}/min, ttl {System.Xml.XmlConvert.ToString(options.TimeToLive)}.")).ConfigureAwait(false);
+            if (send)
+                await stdout.WriteLineAsync($"Sending. Stop with Ctrl+C or: touch {stopFile}").ConfigureAwait(false);
+
+            await using var sink = send ? openSink(job.Namespace, allowList) : new DryRunSink(job.Namespace);
+            await new LiveSender().SendAsync(messages, sink, options, stdout, stop).ConfigureAwait(false);
+            return Ok;
+        }
+        catch (Exception exception) when (exception is LiveSendException or PluginException)
+        {
+            await stderr.WriteLineAsync($"Run {job.RunId} stopped: {exception.Message}").ConfigureAwait(false);
+            return SetupError;
+        }
+    }
+
+    /// <summary>Stands in for the live sink in a dry run. The sender never calls it.</summary>
+    private sealed class DryRunSink(string name) : IMessageSink
+    {
+        public string Name => name + " (dry run)";
+
+        public Task SendAsync(LiveMessage message, TimeSpan timeToLive, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("A dry run sends nothing.");
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private static async Task<int> PluginCheckAsync(string[] args, TextWriter stdout, TextWriter stderr)

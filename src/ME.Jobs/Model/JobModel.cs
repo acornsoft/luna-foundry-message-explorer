@@ -40,6 +40,9 @@ public sealed class EnvironmentFile
 {
     public required string Provider { get; init; }
 
+    /// <summary>For provider azure-servicebus: the namespace to send to. It must also be on the local live allow-list.</summary>
+    public string? Namespace { get; init; }
+
     public Dictionary<string, string>? Variables { get; init; }
 }
 
@@ -58,6 +61,20 @@ public sealed class JobFile
     public Dictionary<string, string>? Variables { get; init; }
 
     public required List<JobPluginRef> Plugins { get; init; }
+
+    /// <summary>Live sends only: wall-clock pace.</summary>
+    public RateSpec? Rate { get; init; }
+
+    /// <summary>Live sends only: the most messages one run may send (1 to 500).</summary>
+    public int? MaxMessages { get; init; }
+
+    /// <summary>Live sends only: time-to-live on every message, ISO 8601 (default PT1H).</summary>
+    public string? Ttl { get; init; }
+}
+
+public sealed class RateSpec
+{
+    public int? PerMinute { get; init; }
 }
 
 public sealed class ClockSpec
@@ -85,6 +102,9 @@ public sealed class JobPluginRef
     public List<string>? Roles { get; init; }
 
     public JsonObject? Config { get; init; }
+
+    /// <summary>A generator's own target entity; defaults to target.send.</summary>
+    public string? Send { get; init; }
 }
 
 // Resolved shapes. Everything is checked, typed, and variable-free.
@@ -104,7 +124,8 @@ public sealed record PluginBinding(
     IReadOnlyList<string> Command,
     bool Builtin,
     string WorkingDirectory,
-    JsonObject Config);
+    JsonObject Config,
+    string? Send = null);
 
 public sealed record JobDefinition(
     string CollectionName,
@@ -120,7 +141,9 @@ public sealed record JobDefinition(
     TimeSpan Drain,
     string TargetEntity,
     IReadOnlyList<PluginBinding> Plugins,
-    IReadOnlyDictionary<string, string> Variables)
+    IReadOnlyDictionary<string, string> Variables,
+    string? Namespace = null,
+    global::Acornsoft.MessageExplorer.Jobs.Live.LiveSendOptions? Live = null)
 {
     public string SuiteName => $"{CollectionName}.{JobName}";
 

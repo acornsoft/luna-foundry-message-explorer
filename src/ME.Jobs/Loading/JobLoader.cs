@@ -19,6 +19,11 @@ namespace Acornsoft.MessageExplorer.Jobs.Loading;
 public static partial class JobLoader
 {
     public const string InMemoryProvider = "in-memory";
+
+    /// <summary>A real Azure Service Bus namespace, Entra sign-in only. Runs only through <c>me-jobs send</c>.</summary>
+    public const string AzureServiceBusProvider = "azure-servicebus";
+
+    public static IReadOnlyList<string> Providers { get; } = [InMemoryProvider, AzureServiceBusProvider];
     public static readonly TimeSpan DefaultStep = TimeSpan.FromMinutes(1);
     public static readonly TimeSpan DefaultDuration = TimeSpan.FromHours(1);
     public static readonly TimeSpan DefaultDrain = TimeSpan.FromHours(24);
@@ -114,11 +119,30 @@ public static partial class JobLoader
 
             var config = (JsonObject)SubstituteNode(reference.Config?.DeepClone() ?? new JsonObject(), $"{where}.config", Resolve)!;
             var command = declaration.Builtin ? [] : declaration.Command!.Select((part, n) => Resolve(part, $"plugins.{name}.command[{n}]")).ToList();
-            bindings.Add(new PluginBinding(name, version, roles, command, declaration.Builtin, collectionDir, config));
+            var send = reference.Send is null ? null : Resolve(reference.Send, $"{where}.send");
+            if (send is not null && !roles.Contains(PluginRole.Generator))
+                errors.Add($"{where}.send: only a generator sends");
+            bindings.Add(new PluginBinding(name, version, roles, command, declaration.Builtin, collectionDir, config, send));
         }
 
         if (bindings.Count > 0 && !bindings.Any(binding => binding.Roles.Contains(PluginRole.Generator)))
             errors.Add("plugins: at least one plugin must have the generator role");
+
+        string? ns = null;
+        Live.LiveSendOptions? live = null;
+        if (environment.Provider == AzureServiceBusProvider)
+        {
+            ns = environment.Namespace is null ? null : Resolve(environment.Namespace, "namespace");
+            if (string.IsNullOrWhiteSpace(ns))
+                errors.Add($"namespace: provider {AzureServiceBusProvider} needs the namespace to send to (environment {envName})");
+            live = new Live.LiveSendOptions
+            {
+                PerMinute = job.Rate?.PerMinute ?? new Live.LiveSendOptions().PerMinute,
+                MaxMessages = job.MaxMessages ?? Live.LiveSendOptions.HardCap,
+                TimeToLive = ParseDuration(job.Ttl, "ttl", Live.LiveSendOptions.DefaultTimeToLive, errors),
+            };
+            errors.AddRange(live.Problems());
+        }
 
         if (errors.Count > 0)
             throw new JobValidationException(jobPath, errors);
@@ -137,7 +161,9 @@ public static partial class JobLoader
             drain,
             target,
             bindings,
-            variables);
+            variables,
+            ns,
+            live);
     }
 
     private static T ReadFile<T>(string path)
@@ -202,13 +228,16 @@ public static partial class JobLoader
 
     private static void CheckEnvironment(EnvironmentFile environment, string path)
     {
-        if (!string.Equals(environment.Provider, InMemoryProvider, StringComparison.Ordinal))
+        if (!Providers.Contains(environment.Provider, StringComparer.Ordinal))
         {
             throw new JobValidationException(Path.GetFileName(path),
             [
-                $"provider: '{environment.Provider}' cannot run test jobs yet. Only '{InMemoryProvider}' is supported. Sending to a real broker is not built, and the Service Bus adapter is read-only.",
+                $"provider: '{environment.Provider}' is not supported. Use '{InMemoryProvider}' (test jobs) or '{AzureServiceBusProvider}' (live sends through me-jobs send). The Service Bus adapter stays read-only.",
             ]);
         }
+
+        if (environment.Provider == InMemoryProvider && environment.Namespace is not null)
+            throw new JobValidationException(Path.GetFileName(path), [$"namespace: only provider {AzureServiceBusProvider} takes a namespace"]);
     }
 
     private static DateTimeOffset ParseStart(string? value, List<string> errors)

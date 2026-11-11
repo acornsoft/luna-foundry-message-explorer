@@ -108,7 +108,7 @@ public sealed class JobRunner
     {
         ArgumentNullException.ThrowIfNull(job);
         if (job.Provider != Loading.JobLoader.InMemoryProvider)
-            throw new JobRunException($"Provider '{job.Provider}' cannot run test jobs. Only the in-memory broker is supported.");
+            throw new JobRunException($"Provider '{job.Provider}' cannot run simulated test jobs. Only the in-memory broker is supported; use me-jobs send for a live send.");
 
         var bus = new InMemoryBus();
         var hosts = new List<(PluginBinding Binding, IPluginHost Host)>();
@@ -134,6 +134,7 @@ public sealed class JobRunner
         IRunObserver? observer,
         CancellationToken cancellationToken)
     {
+        string? SendOf(IPluginHost host) => hosts.First(h => ReferenceEquals(h.Host, host)).Binding.Send;
         IPluginHost[] With(PluginRole role) => hosts.Where(h => h.Binding.Roles.Contains(role)).Select(h => h.Host).ToArray();
         var generators = With(PluginRole.Generator);
         var simulators = With(PluginRole.Simulator);
@@ -176,7 +177,7 @@ public sealed class JobRunner
             {
                 foreach (var outbound in await Call(generator, () => generator.TickAsync(now, cancellationToken)).ConfigureAwait(false))
                 {
-                    var message = bus.Enqueue(outbound.To ?? job.TargetEntity, outbound.CorrelationId, outbound.Body, now.AddMilliseconds(outbound.DelayMs));
+                    var message = bus.Enqueue(outbound.To ?? SendOf(generator) ?? job.TargetEntity, outbound.CorrelationId, outbound.Body, now.AddMilliseconds(outbound.DelayMs));
                     sentCount++;
                     if (!sentAt.ContainsKey(message.CorrelationId))
                     {

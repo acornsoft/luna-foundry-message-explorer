@@ -146,12 +146,22 @@ public sealed class SampleJobTests
         Assert.Equal("1", (string)suite.Attribute("errors")!);
     }
 
+    [Fact]
+    public void The_cli_reaches_a_real_broker_only_through_the_operations_live_sink()
+    {
+        // me-jobs send hands messages to Operations' ServiceBusLiveSink (send only, allow-listed, Entra only).
+        // The CLI itself references no broker SDK or adapter.
+        var references = typeof(JobsCli).Assembly.GetReferencedAssemblies().Select(a => a.Name ?? string.Empty).ToList();
+        Assert.Contains("Acornsoft.MessageExplorer.Operations", references);
+        Assert.DoesNotContain(references, name => name.StartsWith("Azure.", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name.StartsWith("Acornsoft.MessageExplorer.Adapters", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(typeof(JobRunner))]
-    [InlineData(typeof(JobsCli))]
     public void Test_jobs_cannot_reach_a_real_broker(Type type)
     {
-        // The runner has no Service Bus (or any other broker SDK) to send with. Sending to real brokers is not built.
+        // The runner and the live sender have no Service Bus (or any other broker SDK). A live send goes through an IMessageSink.
         var references = type.Assembly.GetReferencedAssemblies().Select(a => a.Name ?? string.Empty).ToList();
         Assert.DoesNotContain(references, name => name.StartsWith("Azure.", StringComparison.Ordinal));
         Assert.DoesNotContain(references, name => name.Contains("ServiceBus", StringComparison.Ordinal));

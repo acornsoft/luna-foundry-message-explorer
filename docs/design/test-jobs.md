@@ -409,7 +409,7 @@ Built:
 
 The packaged desktop app is self-contained, so a Mac may have no `dotnet`. It runs `dotnet plugin.dll` commands itself (`<app> --run-plugin plugin.dll`, the plugin in its own load context); the wire is the same stdio JSON-RPC.
 
-Safety: the loader and the runner accept only `provider: in-memory`. `ME.Jobs` and the CLI do not reference any broker SDK or the Service Bus adapter (a test checks this). The Service Bus adapter stays read-only and its no-mutation guard still passes.
+Safety: the simulated runner accepts only `provider: in-memory`. `ME.Jobs` references no broker SDK or the Service Bus adapter (a test checks this). The live send (`me-jobs send`, `provider: azure-servicebus`) reaches a broker only through `ME.Operations`' send-only `ServiceBusLiveSink`; see [live-send.md](../live-send.md). The Service Bus adapter stays read-only and its no-mutation guard still passes.
 
 Stubs and later work:
 
@@ -417,6 +417,6 @@ Stubs and later work:
 - A drawn hop graph in the live view (the hop timeline is text today); saved runs.
 - gRPC transport; in-process .NET plugins beyond the two built-ins.
 - Replay (`IReplayStore`), `replay` and `record-to-job`.
-- Sending to real brokers (sandbox allow-list and approvals).
+- Sending to real brokers beyond the Service Bus live send (see [live-send.md](../live-send.md)); fan-out to several sinks in one run.
 - Redaction of saved run records (no run records are saved yet).
 - Ordering gates (hold a child message until its parent is processed) and timer-driven reprocessing in `hop-relay`.

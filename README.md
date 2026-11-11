@@ -48,7 +48,7 @@ Admin actions are a separate module, off by default. They file a request. Observ
 | `src/ME.Voice.PortAudio` | Desktop microphone and speaker for the Voice panel (PortAudio) |
 | `plugins/cursor/lfme-readonly` | A Cursor plugin scaffold for `lfme-mcp` (not published) |
 | `src/ME.Jobs` | Test jobs: job files, stdio JSON-RPC plugin host, in-memory broker, runner, JUnit |
-| `src/ME.Jobs.Cli` | `me-jobs run <job>` and `me-jobs plugin-check` |
+| `src/ME.Jobs.Cli` | `me-jobs run <job>`, `me-jobs send <job>` (live, dry run by default) and `me-jobs plugin-check` |
 | `samples/plugins`, `samples/jobs` | Sample plugins (C# and Python) and sample jobs. Synthetic data only |
 | `src/ME.App` | Avalonia shell: one slim top bar (namespace switcher, search, mode chip, voice, settings), the namespace switcher sheet (Connect, Accounts with namespace discovery, Saved logins), the Resources view, and Test jobs with a live run view |
 | `src/ME.App.Desktop` | Desktop entry point |
@@ -105,7 +105,7 @@ dotnet build MessageExplorer.sln -c Release
 dotnet src/ME.Jobs.Cli/bin/Release/net8.0/me-jobs.dll run samples/jobs/erp-standin/jobs/erp-day.job.yaml --junit out/erp-day.xml
 ```
 
-Test jobs never send to a real broker. Only `provider: in-memory` is accepted.
+Test jobs (`me-jobs run`) never send to a real broker; they accept only `provider: in-memory`. A separate live send (`me-jobs send`, `provider: azure-servicebus`) sends synthetic traffic to an allow-listed Service Bus namespace: dry run by default, Entra only, a hard cap of 500 messages, rate-limited, one-hour TTL, with a stop switch. Sends live only in `ME.Operations`. See [docs/live-send.md](docs/live-send.md).
 
 ### In the app
 
@@ -165,7 +165,7 @@ The desktop head builds with the solution. CI does not launch the window.
 - Azure SDK clients outside the Quick view and Move mode. Inventory adapters talk to interfaces.
 - The Event Grid template is not deployed.
 - Machine-learning PII detection. The local net is schema rules, a pattern scrubber, and an echo scrub of values those rules already removed.
-- Scenario execution. The scenario runner returns a plan and sends nothing. (Test jobs run against the in-memory broker only.)
+- Scenario execution. The scenario runner returns a plan and sends nothing. (Test jobs run against the in-memory broker only; live sends go through `me-jobs send`.)
 - MCP Streamable HTTP. The dispatcher enforces policy in process.
 - Natural language beyond an allow-listed entity name and a minute window.
 - Topology and trace screens.
