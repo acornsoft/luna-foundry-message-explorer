@@ -40,10 +40,14 @@ internal sealed class RecordingSink(FakeLiveClock? clock = null) : IMessageSink
 
     public Action<int>? AfterSend { get; set; }
 
+    public int? FailOn { get; set; }
+
     public string Name => "recording";
 
     public Task SendAsync(LiveMessage message, TimeSpan timeToLive, CancellationToken cancellationToken)
     {
+        if (FailOn == Sent.Count + 1)
+            throw new InvalidOperationException("The broker said no.\nSecond line with detail.");
         Sent.Add((message, timeToLive, clock?.UtcNow ?? default));
         AfterSend?.Invoke(Sent.Count);
         return Task.CompletedTask;
@@ -161,6 +165,24 @@ public sealed class LiveSendTests
         Assert.Equal((0, 5), (report.Sent, report.Planned));
         Assert.Equal(4, report.Count("sbq-lfme-synth-dev-001", MessageKind.Good));
         Assert.Equal(1, report.Count("sbq-lfme-synth-dev-001", MessageKind.Poison));
+    }
+
+    // ---- Broker failure ----
+
+    [Fact]
+    public async Task A_send_failure_stops_the_run_and_reports_what_was_sent()
+    {
+        var sink = new RecordingSink { FailOn = 3 };
+        var log = new StringWriter();
+        var report = await new LiveSender(new FakeLiveClock()).SendAsync(Orders(5), sink, Live(), log);
+
+        Assert.Equal(2, sink.Sent.Count);
+        Assert.Equal(LiveStopReason.Failed, report.StopReason);
+        Assert.Equal(2, report.Counts.Values.Sum());
+        var text = log.ToString();
+        Assert.Contains("Send failed after 2: InvalidOperationException: The broker said no.", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Second line", text, StringComparison.Ordinal);
+        Assert.Contains("sent 2 of 5", text, StringComparison.Ordinal);
     }
 
     // ---- Stop switch ----
@@ -443,6 +465,22 @@ public sealed class LiveSendCliTests
         Assert.Contains("DRY RUN: would send 70 of 70", text, StringComparison.Ordinal);
         Assert.Matches(@"sbq-lfme-synth-dev-001: \d+ good, [1-9]\d* poison", text);
         Assert.Matches(@"sbt-lfme-synth-dev-001: \d+ good, [1-9]\d* poison", text);
+        File.Delete(allow);
+    }
+
+    [PythonFact]
+    public async Task A_broker_failure_during_send_exits_with_a_setup_error()
+    {
+        var allow = AllowList("sbns-demo-001");
+        var sink = new RecordingSink { FailOn = 1 };
+        var stdout = new StringWriter();
+        var code = await Cli.JobsCli.RunAsync(
+            ["send", LiveJob, "--send", "--allow-list", allow, "--stop-file", Path.Combine(Path.GetTempPath(), $"stop-{Guid.NewGuid():N}")],
+            stdout, new StringWriter(), Env("sbns-demo-001.servicebus.windows.net"), (_, _) => sink, CancellationToken.None);
+
+        Assert.Equal(Cli.JobsCli.SetupError, code);
+        Assert.Empty(sink.Sent);
+        Assert.Contains("(Failed)", stdout.ToString(), StringComparison.Ordinal);
         File.Delete(allow);
     }
 

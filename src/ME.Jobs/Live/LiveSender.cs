@@ -77,6 +77,15 @@ public sealed class LiveSender(ILiveClock? clock = null)
         {
             reason = LiveStopReason.Stopped;
         }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Stop at the first broker or network failure and still report what went. Only the first line of the
+            // message is logged: SDK messages can run long, and nothing here holds a secret to leak.
+            reason = LiveStopReason.Failed;
+            var first = exception.Message.Split('\n', 2)[0].TrimEnd('\r');
+            if (log is not null)
+                await log.WriteLineAsync(string.Create(CultureInfo.InvariantCulture, $"Send failed after {sent}: {exception.GetType().Name}: {first}")).ConfigureAwait(false);
+        }
 
         var report = new LiveSendReport(messages.Count, sent, false, reason, counts);
         await WriteAsync(log, report, sink.Name).ConfigureAwait(false);

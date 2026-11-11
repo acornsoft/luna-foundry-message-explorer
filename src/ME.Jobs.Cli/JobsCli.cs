@@ -238,8 +238,8 @@ public static class JobsCli
                 await stdout.WriteLineAsync($"Sending. Stop with Ctrl+C or: touch {stopFile}").ConfigureAwait(false);
 
             await using var sink = send ? openSink(job.Namespace, allowList) : new DryRunSink(job.Namespace);
-            await new LiveSender().SendAsync(messages, sink, options, stdout, stop).ConfigureAwait(false);
-            return Ok;
+            var report = await new LiveSender().SendAsync(messages, sink, options, stdout, stop).ConfigureAwait(false);
+            return report.StopReason == LiveStopReason.Failed ? SetupError : Ok;
         }
         catch (Exception exception) when (exception is LiveSendException or PluginException)
         {

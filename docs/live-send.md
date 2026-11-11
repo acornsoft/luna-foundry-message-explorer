@@ -20,6 +20,8 @@ read real traffic. The explorer itself stays read-only. Sends live only in `ME.O
 - **Stop switch.** Ctrl+C, or create the stop file (default `<temp>/lfme-live.stop`, or `--stop-file`). The
   message in flight finishes; nothing after it goes.
 - **Send only.** Nothing in this path receives, peeks, completes or settles.
+- **Port 443.** The client uses AMQP over WebSockets, so it works where outbound port 5671 is blocked.
+- **Failure.** The first send error stops the run; it reports what was sent and exits 2.
 
 ## Run the sample
 

@@ -85,6 +85,12 @@ public sealed class ServiceBusLiveSinkTests
     }
 
     [Fact]
+    public void The_client_uses_amqp_over_websockets_so_it_works_where_port_5671_is_blocked()
+    {
+        Assert.Equal(ServiceBusTransportType.AmqpWebSockets, ServiceBusLiveSink.ClientOptions().TransportType);
+    }
+
+    [Fact]
     public void The_live_sink_only_sends_it_never_receives_or_settles()
     {
         var violations = MutationScanner.Scan(typeof(ServiceBusLiveSink).Assembly.Location, type => type.FullName.Contains(nameof(ServiceBusLiveSink), StringComparison.Ordinal));

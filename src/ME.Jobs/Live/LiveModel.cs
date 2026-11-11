@@ -94,6 +94,9 @@ public enum LiveStopReason
     CapReached,
     Stopped,
     StopFile,
+
+    /// <summary>The sink threw (for example the broker refused or the network failed); later messages were not sent.</summary>
+    Failed,
 }
 
 /// <summary>What a live send did: planned, sent (zero in a dry run), why it stopped, and counts by entity and kind.</summary>

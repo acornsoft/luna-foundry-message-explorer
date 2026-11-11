@@ -34,11 +34,14 @@ public sealed class ServiceBusLiveSink : IMessageSink
         ArgumentNullException.ThrowIfNull(allowList);
         allowList.Check(fullyQualifiedOrName);
         var host = NamespaceAllowList.FullyQualified(fullyQualifiedOrName);
-        return new ServiceBusLiveSink(new ServiceBusClient(host, new DefaultAzureCredential(CredentialOptions())), host);
+        return new ServiceBusLiveSink(new ServiceBusClient(host, new DefaultAzureCredential(CredentialOptions()), ClientOptions()), host);
     }
 
     /// <summary>Entra only, never an interactive browser prompt.</summary>
     public static DefaultAzureCredentialOptions CredentialOptions() => new() { ExcludeInteractiveBrowserCredential = true };
+
+    /// <summary>AMQP over WebSockets (port 443), so a send works where outbound port 5671 is blocked.</summary>
+    public static ServiceBusClientOptions ClientOptions() => new() { TransportType = ServiceBusTransportType.AmqpWebSockets };
 
     public async Task SendAsync(LiveMessage message, TimeSpan timeToLive, CancellationToken cancellationToken)
     {
