@@ -4,12 +4,27 @@
      file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              x:Class="Acornsoft.MessageExplorer.Shell.App"
              Name="Luna Foundry Message Explorer"
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <!-- Icon + label pairs, app-wide. Put the icon and its TextBlock in a panel with class "il": both are centered
+         on the row, so the glyph's middle lines up with the text line's middle. No baseline nudges or top margins;
+         HeadlessIconAlignmentTests holds every pair to within 1px. -->
+    <Style Selector="i|Icon">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector=":is(Panel).il > i|Icon">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector=":is(Panel).il > TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
     <Style Selector="TextBlock.deadletter">
       <Setter Property="Foreground" Value="#C62828" />
       <Setter Property="FontWeight" Value="Bold" />

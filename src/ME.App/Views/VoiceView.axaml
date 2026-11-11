@@ -6,6 +6,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
              xmlns:voice="using:Acornsoft.MessageExplorer.Voice"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              x:Class="Acornsoft.MessageExplorer.Shell.Views.VoiceView"
              x:DataType="vm:VoiceViewModel">
   <DockPanel>
@@ -36,7 +37,12 @@
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
       <Button x:Name="VoiceStart" Content="Start session" Command="{Binding StartCommand}" />
       <Button x:Name="VoiceStop" Content="Stop" Command="{Binding StopCommand}" />
-      <Button x:Name="VoiceTalk" Content="Hold to talk" IsEnabled="{Binding CanTalk}" MinWidth="140" Classes.talking="{Binding IsTalking}" />
+      <Button x:Name="VoiceTalk" IsEnabled="{Binding CanTalk}" MinWidth="140" Classes.talking="{Binding IsTalking}" VerticalAlignment="Center">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+          <i:Icon Value="fa-solid fa-microphone" FontSize="14" />
+          <TextBlock Text="Hold to talk" />
+        </StackPanel>
+      </Button>
       <TextBlock x:Name="VoiceStatus" Text="{Binding Status}" VerticalAlignment="Center" TextWrapping="Wrap" Opacity="0.8" />
     </StackPanel>
     <TextBlock DockPanel.Dock="Top" x:Name="VoiceAudioNote" Text="{Binding AudioNote}" IsVisible="{Binding AudioNote, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />

@@ -125,18 +125,18 @@
       <Grid RowDefinitions="Auto,*,Auto">
         <!-- Top bar -->
         <Border Grid.Row="0" Padding="12,8" BorderBrush="#2A2F37" BorderThickness="0,0,0,1">
-          <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
+          <Grid Classes="il" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
             <i:Icon Value="fa-solid fa-moon" Foreground="#F5A524" Margin="0,0,8,0" />
             <TextBlock Grid.Column="1" Text="Quick view" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
               <Border Classes="pill">
-                <StackPanel Orientation="Horizontal" Spacing="6">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                   <i:Icon Value="fa-solid fa-cloud" FontSize="11" />
                   <TextBlock x:Name="QuickNamespaceText" Text="{Binding NamespaceName}" FontSize="12" />
                 </StackPanel>
               </Border>
               <Border Classes="pill ok">
-                <StackPanel Orientation="Horizontal" Spacing="6">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                   <i:Icon Value="fa-solid fa-lock" FontSize="11" Foreground="#7BD88F" />
                   <TextBlock x:Name="QuickPeekText" Text="{Binding PeekText}" FontSize="12" Foreground="#9BE5A8" />
                 </StackPanel>
@@ -151,7 +151,7 @@
               <i:Icon Value="fa-solid fa-rotate-right" />
             </Button>
             <Border Grid.Column="6" Classes="pill" Margin="6,0,0,0" BorderBrush="#F5A524">
-              <StackPanel Orientation="Horizontal" Spacing="6">
+              <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                 <i:Icon Value="fa-solid fa-bolt" FontSize="11" Foreground="#F5A524" />
                 <TextBlock Text="{Binding PageSizeText}" FontSize="12" Foreground="#F5C46B" />
               </StackPanel>
@@ -176,11 +176,11 @@
                 </TreeView.Styles>
                 <TreeView.ItemTemplate>
                   <TreeDataTemplate x:DataType="vm:QuickTreeNode" ItemsSource="{Binding Children}">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Grid Classes="il" ColumnDefinitions="Auto,*,Auto">
                       <i:Icon Value="{Binding Icon}" FontSize="12" Margin="0,0,6,0" Foreground="#F5A524" IsVisible="{Binding !IsGroup}" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                  Classes.dim="{Binding IsGroup}" FontSize="13" />
-                      <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0">
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
                         <Border Classes="badge" IsVisible="{Binding HasPrimaryBadge}"><TextBlock Text="{Binding PrimaryBadge}" /></Border>
                         <Border Classes="badge dead" IsVisible="{Binding HasDeadLetterBadge}"><TextBlock Text="{Binding DeadLetterBadge}" /></Border>
                         <Border Classes="badge scheduled" IsVisible="{Binding HasScheduledBadge}"><TextBlock Text="{Binding ScheduledBadge}" /></Border>
@@ -198,11 +198,11 @@
             <Panel IsVisible="{Binding HasEntity}">
             <DockPanel x:Name="QuickEntityPanel" DataContext="{Binding Entity}" x:DataType="vm:QuickEntityViewModel" Margin="14,12,14,0">
               <!-- Header -->
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+              <StackPanel DockPanel.Dock="Top" Classes="il" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
                 <i:Icon Value="{Binding Icon}" FontSize="18" Foreground="#F5A524" />
                 <TextBlock x:Name="QuickEntityTitle" Text="{Binding Name}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Breadcrumb}" Classes="dim mono" VerticalAlignment="Center" />
-                <Border Classes="pill" IsVisible="{Binding HasStatus}"><TextBlock Text="{Binding Status}" FontSize="11" /></Border>
+                <Border Classes="pill" IsVisible="{Binding HasStatus}" VerticalAlignment="Center"><TextBlock Text="{Binding Status}" FontSize="11" /></Border>
               </StackPanel>
 
               <!-- Lane cards strip (counts are clickable: open and jump to the section) -->
@@ -215,15 +215,13 @@
                     <Button Classes="card" Classes.alarm="{Binding Alarm}" Classes.open="{Binding IsExpanded}" Command="{Binding JumpCommand}"
                             ToolTip.Tip="{Binding Path}">
                       <StackPanel Spacing="4">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Grid Classes="il" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                           <i:Icon Value="{Binding Icon}" FontSize="16" Margin="0,0,8,0"
                                   Classes.active="{Binding IsActiveLane}" Classes.dead="{Binding IsDeadLane}"
                                   Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
-                          <StackPanel Grid.Column="1">
-                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="{Binding Path}" Classes="dim mono" FontSize="10" TextTrimming="CharacterEllipsis" />
-                          </StackPanel>
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
                           <i:Icon Grid.Column="2" Value="fa-solid fa-chevron-down" FontSize="10" Foreground="#8A919C" />
+                          <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path}" Classes="dim mono" FontSize="10" TextTrimming="CharacterEllipsis" />
                         </Grid>
                         <TextBlock Text="{Binding CountText}" FontSize="28" FontWeight="Bold" Classes.reason="{Binding Alarm}" />
                         <TextBlock Text="{Binding CardFooter}" Classes="dim" FontSize="11" />
@@ -243,8 +241,8 @@
                           <Border DockPanel.Dock="Left" Classes="accent" Classes.active="{Binding IsActiveLane}" Classes.dead="{Binding IsDeadLane}"
                                   Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
                           <StackPanel>
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="8,6">
-                              <Button Classes="icon" Command="{Binding ToggleCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Open or close">
+                            <Grid Classes="il" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="8,6">
+                              <Button Classes="icon" Command="{Binding ToggleCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Open or close" VerticalAlignment="Center">
                                 <Panel>
                                   <i:Icon Value="fa-solid fa-chevron-right" FontSize="11" IsVisible="{Binding !IsExpanded}" />
                                   <i:Icon Value="fa-solid fa-chevron-down" FontSize="11" IsVisible="{Binding IsExpanded}" />
@@ -262,10 +260,10 @@
                                 <TextBlock Text="{Binding Note}" Classes="dim" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
                               </StackPanel>
                               <TextBlock Grid.Column="5" Text="{Binding Status}" Classes="dim" FontSize="12" VerticalAlignment="Center" Margin="8,0" />
-                              <Button Grid.Column="6" Classes="icon" Command="{Binding RefreshCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Peek again from the first message">
+                              <Button Grid.Column="6" Classes="icon" VerticalAlignment="Center" Command="{Binding RefreshCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Peek again from the first message">
                                 <i:Icon Value="fa-solid fa-rotate-right" FontSize="12" />
                               </Button>
-                              <Button Grid.Column="7" Classes="icon" Command="{Binding JumpCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Open this section">
+                              <Button Grid.Column="7" Classes="icon" VerticalAlignment="Center" Command="{Binding JumpCommand}" IsVisible="{Binding IsPeekable}" ToolTip.Tip="Open this section">
                                 <i:Icon Value="fa-solid fa-up-right-and-down-left-from-center" FontSize="12" />
                               </Button>
                             </Grid>
@@ -294,11 +292,11 @@
                                         <TextBlock Text="{Binding Message.BodyPreview}" Classes="mono dim" FontSize="11" TextTrimming="CharacterEllipsis" />
                                       </StackPanel>
                                       <TextBlock Grid.Column="4" Text="{Binding Message.SizeText}" Classes="dim" VerticalAlignment="Center" />
-                                      <Grid Grid.Column="5" ColumnDefinitions="Auto,*" VerticalAlignment="Center" ClipToBounds="True" Margin="0,0,6,0">
+                                      <Grid Grid.Column="5" Classes="il" ColumnDefinitions="Auto,*" VerticalAlignment="Center" ClipToBounds="True" Margin="0,0,6,0">
                                         <i:Icon Value="fa-solid fa-triangle-exclamation" FontSize="11" Foreground="#FF5A5F" Margin="0,0,6,0" IsVisible="{Binding Message.HasReason}" />
                                         <TextBlock Grid.Column="1" Text="{Binding Message.Reason}" Classes.reason="{Binding Message.HasReason}" Classes.dim="{Binding !Message.HasReason}" TextTrimming="CharacterEllipsis" />
                                       </Grid>
-                                      <StackPanel Grid.Column="6" Orientation="Horizontal">
+                                      <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Classes="icon" Command="{Binding OpenCommand}" ToolTip.Tip="Open in the detail drawer"><i:Icon Value="fa-solid fa-eye" FontSize="12" /></Button>
                                         <Button Classes="icon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
                                       </StackPanel>
@@ -310,7 +308,7 @@
                               <Grid ColumnDefinitions="*,Auto" Margin="18,4,10,8">
                                 <TextBlock Text="Virtualized list · peek only, no locks" Classes="dim" FontSize="11" VerticalAlignment="Center" />
                                 <Button Grid.Column="1" Classes="icon" Command="{Binding LoadMoreCommand}" IsVisible="{Binding HasMore}">
-                                  <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                                     <i:Icon Value="fa-solid fa-angles-down" FontSize="11" Foreground="#F5A524" />
                                     <TextBlock Text="{Binding LoadMoreText}" Foreground="#F5C46B" FontSize="12" />
                                   </StackPanel>
@@ -333,25 +331,25 @@
                   IsVisible="{Binding Entity.HasSelection, FallbackValue=False}">
             <ScrollViewer DataContext="{Binding Entity.Selected}" x:DataType="vm:QuickMessageRow">
               <StackPanel Margin="14,12" Spacing="10">
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                  <i:Icon Value="fa-solid fa-envelope-open-text" Foreground="#F5A524" Margin="0,0,8,0" />
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                    <i:Icon Value="fa-solid fa-envelope-open-text" Foreground="#F5A524" />
                     <TextBlock x:Name="QuickDrawerTitle" Text="{Binding Message.SequenceText, StringFormat='#{0}'}" FontWeight="Bold" />
                     <TextBlock Text="{Binding Message.MessageId}" Classes="mono dim" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                  <Button Grid.Column="2" Classes="icon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
-                  <Button Grid.Column="3" Classes="icon" x:Name="QuickDrawerClose" Click="OnCloseDrawer" ToolTip.Tip="Close"><i:Icon Value="fa-solid fa-xmark" FontSize="13" /></Button>
+                  <Button Grid.Column="1" Classes="icon" VerticalAlignment="Center" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
+                  <Button Grid.Column="2" Classes="icon" VerticalAlignment="Center" x:Name="QuickDrawerClose" Click="OnCloseDrawer" ToolTip.Tip="Close"><i:Icon Value="fa-solid fa-xmark" FontSize="13" /></Button>
                 </Grid>
                 <Border Background="#2A1416" BorderBrush="#8A2D31" BorderThickness="1" CornerRadius="6" Padding="10,8" IsVisible="{Binding Message.HasReason}">
                   <StackPanel Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                       <i:Icon Value="fa-solid fa-skull-crossbones" Foreground="#FF5A5F" FontSize="12" />
                       <TextBlock Text="{Binding Message.Reason}" Classes="reason" FontWeight="SemiBold" />
                     </StackPanel>
                     <TextBlock Text="{Binding Message.Description}" TextWrapping="Wrap" FontSize="12" />
                   </StackPanel>
                 </Border>
-                <StackPanel Orientation="Horizontal" Spacing="6">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                   <i:Icon Value="fa-solid fa-gear" FontSize="11" Foreground="#F5A524" />
                   <TextBlock Text="SYSTEM PROPERTIES" FontSize="11" FontWeight="SemiBold" Foreground="#F5A524" />
                 </StackPanel>
@@ -365,7 +363,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Message.HasApplicationProperties}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Message.HasApplicationProperties}">
                   <i:Icon Value="fa-solid fa-tags" FontSize="11" Foreground="#F5A524" />
                   <TextBlock Text="APPLICATION PROPERTIES · MASKED" FontSize="11" FontWeight="SemiBold" Foreground="#F5A524" />
                 </StackPanel>
@@ -379,7 +377,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <StackPanel Orientation="Horizontal" Spacing="6">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
                   <i:Icon Value="fa-solid fa-file-code" FontSize="11" Foreground="#F5A524" />
                   <TextBlock Text="BODY · MASKED" FontSize="11" FontWeight="SemiBold" Foreground="#F5A524" />
                 </StackPanel>
@@ -393,7 +391,7 @@
 
         <!-- Footer -->
         <Border Grid.Row="2" Padding="12,6" BorderBrush="#2A2F37" BorderThickness="0,1,0,0">
-          <StackPanel Orientation="Horizontal" Spacing="8">
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
             <i:Icon Value="fa-solid fa-circle-info" FontSize="11" Foreground="#F5A524" />
             <TextBlock x:Name="QuickFooterText" Text="{Binding FooterText}" Classes="dim" FontSize="11" />
           </StackPanel>

@@ -16,6 +16,13 @@ changing anything.
 - **Detail drawer** (right): system properties, application property names with masked values, and the body
   with every value masked.
 
+### Icons and labels
+
+Font Awesome icons sit on the vertical middle of their labels: the lane cards, section headers, message rows,
+tree nodes, the drawer, load more and the Voice tab's push-to-talk button. One app-wide style does it: put
+the icon and its TextBlock in a panel with class `il` and both are centered on the row, with no baseline nudges.
+`HeadlessIconAlignmentTests` checks that every icon's center is within 1px of its text's center.
+
 ## What it reads
 
 | What | From |
