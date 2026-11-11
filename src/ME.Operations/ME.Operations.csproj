@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The only assembly allowed to change broker state. Every mutating call (receive with a lock, send,
+    complete, abandon) lives here, behind Move mode. The no-mutation guard scans every other assembly.
+  -->
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Operations</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Operations</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
+    <ProjectReference Include="..\ME.Brokers.Abstractions\ME.Brokers.Abstractions.csproj" />
+    <ProjectReference Include="..\ME.Adapters.ServiceBus\ME.Adapters.ServiceBus.csproj" />
+    <ProjectReference Include="..\ME.Jobs\ME.Jobs.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ME.Operations.Tests" />
+  </ItemGroup>
+</Project>

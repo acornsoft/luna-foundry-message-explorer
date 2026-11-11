@@ -1,0 +1,31 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- The Android head (APK). Not in MessageExplorer.sln: it needs the .NET "android" workload and an Android SDK,
+     which the desktop build does not. CI builds it in its own job. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Acornsoft.MessageExplorer.Android</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Android</AssemblyName>
+    <ApplicationId>com.acornsoft.messageexplorer</ApplicationId>
+    <ApplicationTitle>Luna Foundry Message Explorer</ApplicationTitle>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.7.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- Phones and emulators only. Release turns on trimming, and the SDK would then also restore the build
+         machine's RID (linux-x64), whose Mono runtime pack is not shipped for .NET 10. -->
+    <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+    <UseDefaultPublishRuntimeIdentifier>false</UseDefaultPublishRuntimeIdentifier>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <!-- Android tooling emits platform warnings the desktop build never sees; keep them visible, not fatal. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.App\ME.App.csproj" />
+  </ItemGroup>
+</Project>

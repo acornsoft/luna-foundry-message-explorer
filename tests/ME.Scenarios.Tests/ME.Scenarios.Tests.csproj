@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ME.Scenarios\ME.Scenarios.csproj" />
+  </ItemGroup>
+</Project>

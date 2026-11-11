@@ -1,0 +1,38 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<!-- System, Light or Dark. Every copy binds the one ThemeViewModel, so they always agree. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.ThemePicker"
+             x:DataType="vm:ThemeViewModel"
+             ToolTip.Tip="{Binding Description}">
+  <Border Classes="segmented" HorizontalAlignment="Left">
+    <StackPanel Orientation="Horizontal" Spacing="2">
+      <RadioButton x:Name="ThemeSystem" Classes="segment" IsChecked="{Binding IsSystem}"
+                   AutomationProperties.Name="Theme: follow the system">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+          <i:Icon Value="fa-solid fa-desktop" FontSize="12" />
+          <TextBlock Text="System" />
+        </StackPanel>
+      </RadioButton>
+      <RadioButton x:Name="ThemeLight" Classes="segment" IsChecked="{Binding IsLight}"
+                   AutomationProperties.Name="Theme: light">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+          <i:Icon Value="fa-solid fa-sun" FontSize="12" />
+          <TextBlock Text="Light" />
+        </StackPanel>
+      </RadioButton>
+      <RadioButton x:Name="ThemeDark" Classes="segment" IsChecked="{Binding IsDark}"
+                   AutomationProperties.Name="Theme: dark">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+          <i:Icon Value="fa-solid fa-moon" FontSize="12" />
+          <TextBlock Text="Dark" />
+        </StackPanel>
+      </RadioButton>
+    </StackPanel>
+  </Border>
+</UserControl>

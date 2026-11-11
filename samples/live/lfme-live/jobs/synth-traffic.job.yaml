@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MPL-2.0
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# About 70 messages: 40 orders (about 10% poison: no lines) to the queue and 30 crew tickets (about 10%
+# poison: no item code) to the topic, which fans out to subscription sbs-lfme-synth-all. Paced at 10 a
+# minute (about 7 minutes), every message lives one hour. Dry run unless me-jobs send gets --send.
+job: synth-traffic
+description: Synthetic orders to the LFME queue and crew tickets to the LFME topic.
+seed: 20261111
+clock:
+  start: "2026-03-02T09:00:00Z"
+  step: PT5M
+  duration: PT6H
+target:
+  send: "{{ queue }}"
+rate: { perMinute: 10 }
+maxMessages: 500
+ttl: PT1H
+plugins:
+  - use: order-generator@0.2.0
+    role: generator
+    config:
+      count: 40
+      window: PT6H
+      malformedRate: 0.1
+  - use: crew-ticket-feed@0.1.0
+    role: generator
+    send: "{{ topic }}"
+    config:
+      trickle: 30
+      window: PT4H
+      malformedRate: 0.1
+      duplicateRate: 0

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MPL-2.0
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+job: hello
+seed: 7
+clock:
+  start: "2026-03-02T09:00:00Z"
+  step: PT1M
+  duration: PT10M
+target:
+  send: "{{ greetings }}"
+plugins:
+  - use: hello-generator@0.1.0
+    role: generator
+    config: { count: 5, everySeconds: 60 }
+  - use: observed-assertion@1.0.0
+    role: assertion
+  - use: bus-observer@1.0.0
+    role: observer
+    config: { sinks: ["{{ greetings }}"] }

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <!-- Test-only WebAssembly page: drives BrowserSecretStore through [JSImport] into the real lfme-vault.js. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Acornsoft.MessageExplorer.Credentials.Browser.InteropApp</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\ME.Credentials.Browser\ME.Credentials.Browser.csproj" />
+  </ItemGroup>
+</Project>

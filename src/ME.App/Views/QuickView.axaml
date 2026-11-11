@@ -1,0 +1,482 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<!-- Icons: Font Awesome Free by Fonticons, Inc. (CC BY 4.0), through Projektanker.Icons.Avalonia (MIT). See THIRD-PARTY-NOTICES.md. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             xmlns:qv="using:Acornsoft.MessageExplorer.Shell.QuickView"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.QuickView"
+             x:DataType="vm:QuickViewViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.qv-root">
+      <Setter Property="Background" Value="{DynamicResource LfmeQvRootBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Border.qv-root TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.dim">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontFamily" Value="Menlo, Consolas, DejaVu Sans Mono, monospace" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="Border.pill">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="8,2" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
+      <Setter Property="Background" Value="{DynamicResource LfmeQvRaisedBrush}" />
+    </Style>
+    <Style Selector="Border.pill.ok">
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="Background" Value="{DynamicResource LfmeSuccessBackgroundBrush}" />
+    </Style>
+    <Style Selector="Border.badge">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="Margin" Value="2,0" />
+      <Setter Property="MinWidth" Value="22" />
+      <Setter Property="Background" Value="{DynamicResource LfmeActiveSoftBrush}" />
+    </Style>
+    <Style Selector="Border.badge TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeActiveTextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.badge.dead"><Setter Property="Background" Value="{DynamicResource LfmeDeadSoftBrush}" /></Style>
+    <Style Selector="Border.badge.dead TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeDeadTextBrush}" /></Style>
+    <Style Selector="Border.badge.dead TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeDeadTextBrush}" /></Style>
+    <Style Selector="Border.badge.scheduled"><Setter Property="Background" Value="{DynamicResource LfmeScheduledSoftBrush}" /></Style>
+    <Style Selector="Border.badge.scheduled TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeScheduledTextBrush}" /></Style>
+    <Style Selector="Border.badge.transfer"><Setter Property="Background" Value="{DynamicResource LfmeTransferSoftBrush}" /></Style>
+    <Style Selector="Border.badge.transfer TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeTransferTextBrush}" /></Style>
+
+    <Style Selector="i|Icon.active"><Setter Property="Foreground" Value="{DynamicResource LfmeActiveBrush}" /></Style>
+    <Style Selector="i|Icon.dead"><Setter Property="Foreground" Value="{DynamicResource LfmeDeadBrush}" /></Style>
+    <Style Selector="i|Icon.scheduled"><Setter Property="Foreground" Value="{DynamicResource LfmeScheduledBrush}" /></Style>
+    <Style Selector="i|Icon.transfer"><Setter Property="Foreground" Value="{DynamicResource LfmeTransferBrush}" /></Style>
+    <Style Selector="i|Icon"><Setter Property="FontSize" Value="14" /></Style>
+
+    <Style Selector="Button.card">
+      <Setter Property="Background" Value="{DynamicResource LfmeQvRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Margin" Value="0,0,10,8" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.card:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeQvHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeActiveBrush}" />
+    </Style>
+    <Style Selector="Button.card.alarm">
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeDeadLineBrush}" />
+    </Style>
+    <Style Selector="Button.card.open">
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.icon">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="MinWidth" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeQvLineBrush}" />
+    </Style>
+    <Style Selector="Border.section">
+      <Setter Property="Background" Value="{DynamicResource LfmeQvPanelBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="Border.accent"><Setter Property="Width" Value="3" /><Setter Property="CornerRadius" Value="2" /><Setter Property="Margin" Value="0,6" /></Style>
+    <Style Selector="Border.accent.active"><Setter Property="Background" Value="{DynamicResource LfmeActiveBrush}" /></Style>
+    <Style Selector="Border.accent.dead"><Setter Property="Background" Value="{DynamicResource LfmeDeadBrush}" /></Style>
+    <Style Selector="Border.accent.scheduled"><Setter Property="Background" Value="{DynamicResource LfmeScheduledBrush}" /></Style>
+    <Style Selector="Border.accent.transfer"><Setter Property="Background" Value="{DynamicResource LfmeTransferBrush}" /></Style>
+    <Style Selector="ListBox.rows">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem">
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="30" />
+    </Style>
+    <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="TextBlock.reason">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeErrorBrush}" />
+    </Style>
+    <!-- Queue or topic, told apart by icon, tag and colour (queue teal, topic purple; subscriptions share the topic's). -->
+    <Style Selector="i|Icon.queue"><Setter Property="Foreground" Value="{DynamicResource LfmeQueueBrush}" /></Style>
+    <Style Selector="i|Icon.topic"><Setter Property="Foreground" Value="{DynamicResource LfmeTopicBrush}" /></Style>
+    <Style Selector="Border.kind">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Margin" Value="6,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.kind TextBlock">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="0.5" />
+    </Style>
+    <Style Selector="Border.kind.queue"><Setter Property="Background" Value="{DynamicResource LfmeQueueSoftBrush}" /></Style>
+    <Style Selector="Border.kind.queue TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeQueueBrush}" /></Style>
+    <Style Selector="Border.kind.topic"><Setter Property="Background" Value="{DynamicResource LfmeTopicSoftBrush}" /></Style>
+    <Style Selector="Border.kind.topic TextBlock"><Setter Property="Foreground" Value="{DynamicResource LfmeTopicBrush}" /></Style>
+    <Style Selector="TextBlock.count">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TreeView.entities TreeViewItem">
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+    <!-- The selected row kept in view while the search or a filter would hide it: dimmed text, never lower contrast. -->
+    <Style Selector="Grid.pinned TextBlock.name">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+      <Setter Property="FontStyle" Value="Italic" />
+    </Style>
+    <Style Selector="Button.link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="6,2" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="Button.link TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+      <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+    <Style Selector="ToggleButton.filterchip">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeQvLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+    <Style Selector="ToggleButton.filterchip:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeDeadSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeDeadLineBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.filterchip:checked TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeDeadTextBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+    <Border Classes="qv-root" x:Name="QuickRoot">
+      <Grid RowDefinitions="*">
+        <!-- Body: tree | sections | drawer -->
+        <Grid Grid.Row="0" ColumnDefinitions="300,*,Auto">
+          <Border Grid.Column="0" BorderBrush="{DynamicResource LfmeQvLineBrush}" BorderThickness="0,0,1,0" Padding="8">
+            <DockPanel>
+              <!-- One kind filter over the one Resources list; remembered between launches. -->
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <Border Classes="segmented" x:Name="KindFilter" HorizontalAlignment="Left">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <RadioButton x:Name="KindAll" Classes="segment" IsChecked="{Binding IsAllKinds}" AutomationProperties.Name="Show all resources"
+                                 ToolTip.Tip="Every resource: queues and topics">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="5">
+                        <TextBlock Text="All" />
+                        <TextBlock Classes="count" Text="{Binding AllCount}" />
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="KindQueues" Classes="segment" IsChecked="{Binding IsQueuesOnly}" AutomationProperties.Name="Show queues only"
+                                 ToolTip.Tip="Queues: one receiver, the queue itself">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="5">
+                        <i:Icon Classes="queue" Value="fa-solid fa-inbox" FontSize="11" />
+                        <TextBlock Text="Queues" />
+                        <TextBlock Classes="count" Text="{Binding QueueCount}" />
+                      </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="KindTopics" Classes="segment" IsChecked="{Binding IsTopicsOnly}" AutomationProperties.Name="Show topics only"
+                                 ToolTip.Tip="Topics: many receivers (subscriptions)">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="5">
+                        <i:Icon Classes="topic" Value="fa-solid fa-tower-broadcast" FontSize="11" />
+                        <TextBlock Text="Topics" />
+                        <TextBlock Classes="count" Text="{Binding TopicCount}" />
+                      </StackPanel>
+                    </RadioButton>
+                  </StackPanel>
+                </Border>
+                <Button Grid.Column="1" x:Name="QuickRefreshButton" Classes="icon" Command="{Binding RefreshCommand}" VerticalAlignment="Center"
+                        ToolTip.Tip="Refresh the resources list: read every count and receiver again"
+                        AutomationProperties.Name="Refresh the resources list">
+                  <i:Icon Value="fa-solid fa-rotate-right" />
+                </Button>
+              </Grid>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
+                <ToggleButton x:Name="QuickDeadLettersFilter" Classes="filterchip" IsChecked="{Binding OnlyDeadLetters}"
+                              AutomationProperties.Name="Has dead letters" ToolTip.Tip="Show only resources and receivers with dead-lettered messages">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                    <i:Icon Classes="dead" Value="fa-solid fa-skull-crossbones" FontSize="11" />
+                    <TextBlock Text="Has dead letters" FontSize="12" />
+                  </StackPanel>
+                </ToggleButton>
+              </StackPanel>
+              <TextBlock DockPanel.Dock="Top" x:Name="QuickNotConnectedText" Text="{Binding NotConnectedText}" IsVisible="{Binding IsNotConnected}" TextWrapping="Wrap" Classes="dim" />
+              <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
+              <TextBlock DockPanel.Dock="Top" x:Name="QuickErrorText" Text="{Binding Error}" IsVisible="{Binding HasError}" TextWrapping="Wrap" Foreground="{DynamicResource LfmeErrorBrush}" />
+              <!-- No summary line in the normal state: "N of M match ..." only while a filter or the search narrows the list. -->
+              <Grid DockPanel.Dock="Top" x:Name="QuickMatchPanel" ColumnDefinitions="*,Auto" IsVisible="{Binding IsNarrowed}" Margin="0,0,0,6">
+                <TextBlock x:Name="QuickMatchText" Text="{Binding MatchText}" TextWrapping="Wrap" Classes="dim" FontSize="12" VerticalAlignment="Center" />
+                <Button Grid.Column="1" x:Name="QuickClearFilters" Classes="link" Command="{Binding ClearFiltersCommand}"
+                        AutomationProperties.Name="Clear the search and filters" ToolTip.Tip="Clear the search and filters" VerticalAlignment="Center">
+                  <TextBlock Text="Clear" FontSize="12" />
+                </Button>
+              </Grid>
+              <Border DockPanel.Dock="Top" x:Name="QuickNoticePanel" Classes="callout warn" IsVisible="{Binding HasNotice}" Margin="0,0,0,6">
+                <TextBlock x:Name="QuickNoticeText" Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12" />
+              </Border>
+              <TextBlock DockPanel.Dock="Top" x:Name="QuickEmptyText" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" TextWrapping="Wrap" Classes="dim" />
+              <TreeView x:Name="QuickTree" Classes="entities" ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedNode}"
+                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <TreeView.Styles>
+                  <Style Selector="TreeViewItem" x:DataType="vm:QuickTreeNode">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="IsVisible" Value="{Binding IsVisible}" />
+                  </Style>
+                </TreeView.Styles>
+                <TreeView.ItemTemplate>
+                  <TreeDataTemplate x:DataType="vm:QuickTreeNode" ItemsSource="{Binding Children}">
+                    <Grid Classes="il row" ColumnDefinitions="Auto,*,Auto,Auto" Classes.pinned="{Binding IsPinned}">
+                      <i:Icon Value="{Binding Icon}" FontSize="12" Margin="0,0,6,0" IsVisible="{Binding !IsPlaceholder}"
+                              Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}"
+                              ToolTip.Tip="{Binding KindName}" AutomationProperties.Name="{Binding KindName}" />
+                      <TextBlock Grid.Column="1" Classes="name" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                 Classes.dim="{Binding IsPlaceholder}" FontSize="13" />
+                      <!-- The selection a search hides stays in its place, dimmed, with a pin that says why. -->
+                      <i:Icon Grid.Column="2" x:Name="QuickPinIcon" Value="fa-solid fa-thumbtack" FontSize="10" Margin="4,0,0,0" Classes="muted"
+                              IsVisible="{Binding IsPinnedSelection}" Foreground="{DynamicResource LfmeMutedTextBrush}"
+                              ToolTip.Tip="{x:Static vm:QuickTreeNode.PinTip}" AutomationProperties.Name="{x:Static vm:QuickTreeNode.PinTip}" />
+                      <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
+                        <Border Classes="kind" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" IsVisible="{Binding ShowKindTag}"
+                                Margin="0,0,4,0" AutomationProperties.Name="{Binding KindName}"><TextBlock Text="{Binding KindTag}" /></Border>
+                        <Border Classes="badge" IsVisible="{Binding HasPrimaryBadge}" AutomationProperties.Name="{Binding PrimaryBadgeName}" ToolTip.Tip="{Binding PrimaryBadgeName}"><TextBlock Text="{Binding PrimaryBadge}" /></Border>
+                        <Border Classes="badge dead" IsVisible="{Binding HasDeadLetterBadge}" AutomationProperties.Name="{Binding DeadLetterName}" ToolTip.Tip="{Binding DeadLetterName}"><TextBlock Text="{Binding DeadLetterBadge}" /></Border>
+                        <!-- At most two badges: active and (above 0) dead-lettered. Scheduled and transfer counts live on the cards. -->
+                      </StackPanel>
+                    </Grid>
+                  </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+              </TreeView>
+            </DockPanel>
+          </Border>
+
+          <Panel Grid.Column="1">
+            <TextBlock x:Name="QuickNoEntityText" Text="{Binding NoEntityText}" IsVisible="{Binding !HasEntity}" Classes="dim" Margin="16" />
+            <Panel IsVisible="{Binding HasEntity}">
+            <DockPanel x:Name="QuickEntityPanel" DataContext="{Binding Entity}" x:DataType="vm:QuickEntityViewModel" Margin="14,12,14,0">
+              <!-- Header -->
+              <StackPanel DockPanel.Dock="Top" Classes="il" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+                <i:Icon x:Name="QuickEntityIcon" Value="{Binding Icon}" FontSize="18" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" />
+                <TextBlock x:Name="QuickEntityTitle" Text="{Binding Name}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Border x:Name="QuickEntityKind" Classes="kind" Classes.queue="{Binding IsQueueFamily}" Classes.topic="{Binding IsTopicFamily}" Margin="0"><TextBlock Text="{Binding KindTag}" /></Border>
+                <TextBlock Text="{Binding Breadcrumb}" Classes="dim mono" VerticalAlignment="Center" />
+                <Border Classes="pill" IsVisible="{Binding HasStatus}" VerticalAlignment="Center"><TextBlock Text="{Binding Status}" FontSize="11" /></Border>
+              </StackPanel>
+
+              <!-- Lane cards strip (counts are clickable: open and jump to the section) -->
+              <ItemsControl DockPanel.Dock="Top" x:Name="QuickLaneCards" ItemsSource="{Binding Lanes}" Margin="0,0,0,4">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:QuickLaneViewModel">
+                    <Button Classes="card" Classes.alarm="{Binding Alarm}" Classes.open="{Binding IsExpanded}" Command="{Binding JumpCommand}"
+                            ToolTip.Tip="{Binding Path}">
+                      <StackPanel Spacing="4">
+                        <Grid Classes="il" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                          <i:Icon Value="{Binding Icon}" FontSize="16" Margin="0,0,8,0"
+                                  Classes.active="{Binding IsActiveLane}" Classes.dead="{Binding IsDeadLane}"
+                                  Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                          <i:Icon Grid.Column="2" Value="fa-solid fa-chevron-down" FontSize="10" Foreground="{DynamicResource LfmeMutedTextBrush}" />
+                          <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Path}" Classes="dim mono" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <TextBlock Text="{Binding CountText}" FontSize="28" FontWeight="Bold" Classes.reason="{Binding Alarm}" AutomationProperties.Name="{Binding CountName}" />
+                        <TextBlock Text="{Binding CardFooter}" Classes="dim" FontSize="11" />
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- Sections that cascade open as rows -->
+              <ScrollViewer x:Name="QuickSectionsScroll" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="QuickSections" ItemsSource="{Binding Lanes}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:QuickLaneViewModel">
+                      <Border Classes="section">
+                        <DockPanel>
+                          <Border DockPanel.Dock="Left" Classes="accent" Classes.active="{Binding IsActiveLane}" Classes.dead="{Binding IsDeadLane}"
+                                  Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
+                          <StackPanel>
+                            <Grid Classes="il" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="8,6">
+                              <Button Classes="icon" Command="{Binding ToggleCommand}" IsVisible="{Binding IsPeekable}" VerticalAlignment="Center"
+                                      ToolTip.Tip="{Binding Title, StringFormat='Open or close {0}'}" AutomationProperties.Name="{Binding Title, StringFormat='Open or close {0}'}">
+                                <Panel>
+                                  <i:Icon Value="fa-solid fa-chevron-right" FontSize="11" IsVisible="{Binding !IsExpanded}" />
+                                  <i:Icon Value="fa-solid fa-chevron-down" FontSize="11" IsVisible="{Binding IsExpanded}" />
+                                </Panel>
+                              </Button>
+                              <i:Icon Grid.Column="1" Value="{Binding Icon}" Margin="4,0,8,0"
+                                      Classes.active="{Binding IsActiveLane}" Classes.dead="{Binding IsDeadLane}"
+                                      Classes.scheduled="{Binding IsScheduledLane}" Classes.transfer="{Binding IsTransferLane}" />
+                              <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                              <!-- No count chip here: the card above already shows the count (one number, once). -->
+                              <StackPanel Grid.Column="4" VerticalAlignment="Center" Margin="10,0,0,0">
+                                <TextBlock Text="{Binding Path}" Classes="dim mono" TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasNote}" />
+                                <TextBlock Text="{Binding Note}" Classes="dim" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="5" Text="{Binding Status}" Classes="dim" FontSize="12" VerticalAlignment="Center" Margin="8,0" />
+                              <Button Grid.Column="6" Classes="icon" VerticalAlignment="Center" Command="{Binding RefreshCommand}" IsVisible="{Binding IsPeekable}"
+                                      ToolTip.Tip="{Binding Title, StringFormat='Peek {0} again from the first message'}" AutomationProperties.Name="{Binding Title, StringFormat='Refresh {0}'}">
+                                <i:Icon Value="fa-solid fa-rotate-right" FontSize="12" />
+                              </Button>
+                              <Button Grid.Column="7" Classes="icon" VerticalAlignment="Center" Command="{Binding JumpCommand}" IsVisible="{Binding IsPeekable}"
+                                      ToolTip.Tip="{Binding Title, StringFormat='Expand {0} and jump to it'}" AutomationProperties.Name="{Binding Title, StringFormat='Expand {0}'}">
+                                <i:Icon Value="fa-solid fa-up-right-and-down-left-from-center" FontSize="12" />
+                              </Button>
+                            </Grid>
+                            <StackPanel IsVisible="{Binding IsExpanded}">
+                              <Grid ColumnDefinitions="56,124,70,3*,62,2*,58" Margin="18,2,10,2">
+                                <TextBlock Grid.Column="0" Text="SEQ #" Classes="dim" FontSize="11" />
+                                <TextBlock Grid.Column="1" Text="MESSAGE ID" Classes="dim" FontSize="11" />
+                                <TextBlock Grid.Column="2" Text="UTC" Classes="dim" FontSize="11" />
+                                <TextBlock Grid.Column="3" Text="SUBJECT · BODY (MASKED)" Classes="dim" FontSize="11" />
+                                <TextBlock Grid.Column="4" Text="SIZE" Classes="dim" FontSize="11" />
+                                <TextBlock Grid.Column="5" Text="REASON" Classes="dim" FontSize="11" />
+                              </Grid>
+                              <ListBox Classes="rows" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" MaxHeight="340"
+                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemsPanel>
+                                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:QuickMessageRow">
+                                    <Grid ColumnDefinitions="56,124,70,3*,62,2*,58">
+                                      <TextBlock Grid.Column="0" Text="{Binding Message.SequenceText}" Classes="mono" VerticalAlignment="Center" />
+                                      <TextBlock Grid.Column="1" Text="{Binding Message.MessageId}" Classes="mono" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                      <TextBlock Grid.Column="2" Text="{Binding Message.EnqueuedText}" Classes="mono dim" VerticalAlignment="Center" />
+                                      <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Message.Subject}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Message.BodyPreview}" Classes="mono dim" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                      </StackPanel>
+                                      <TextBlock Grid.Column="4" Text="{Binding Message.SizeText}" Classes="dim" VerticalAlignment="Center" />
+                                      <Grid Grid.Column="5" Classes="il" ColumnDefinitions="Auto,*" VerticalAlignment="Center" ClipToBounds="True" Margin="0,0,6,0">
+                                        <i:Icon Value="fa-solid fa-triangle-exclamation" FontSize="11" Foreground="{DynamicResource LfmeDeadBrush}" Margin="0,0,6,0" IsVisible="{Binding Message.HasReason}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Message.Reason}" Classes.reason="{Binding Message.HasReason}" Classes.dim="{Binding !Message.HasReason}" TextTrimming="CharacterEllipsis" />
+                                      </Grid>
+                                      <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Classes="icon" Command="{Binding OpenCommand}" ToolTip.Tip="Open in the detail drawer" AutomationProperties.Name="Open in the detail drawer"><i:Icon Value="fa-solid fa-eye" FontSize="12" /></Button>
+                                        <Button Classes="icon" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text" AutomationProperties.Name="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
+                                      </StackPanel>
+                                    </Grid>
+                                  </DataTemplate>
+                                </ListBox.ItemTemplate>
+                              </ListBox>
+                              <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Foreground="{DynamicResource LfmeErrorBrush}" Margin="18,4" TextWrapping="Wrap" />
+                              <Grid ColumnDefinitions="*,Auto" Margin="18,4,10,8">
+                                <TextBlock Text="Virtualized list · peek only, no locks" Classes="dim" FontSize="11" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="icon" Command="{Binding LoadMoreCommand}" IsVisible="{Binding HasMore}">
+                                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                                    <i:Icon Value="fa-solid fa-angles-down" FontSize="11" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                                    <TextBlock Text="{Binding LoadMoreText}" Foreground="{DynamicResource LfmeAccentTextBrush}" FontSize="12" />
+                                  </StackPanel>
+                                </Button>
+                              </Grid>
+                            </StackPanel>
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </DockPanel>
+            </Panel>
+          </Panel>
+
+          <!-- Detail drawer -->
+          <Border Grid.Column="2" x:Name="QuickDrawer" Width="360" Background="{DynamicResource LfmeQvPanelBrush}" BorderBrush="{DynamicResource LfmeQvLineBrush}" BorderThickness="1,0,0,0"
+                  IsVisible="{Binding Entity.HasSelection, FallbackValue=False}">
+            <ScrollViewer DataContext="{Binding Entity.Selected}" x:DataType="vm:QuickMessageRow">
+              <StackPanel Margin="14,12" Spacing="10">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                    <i:Icon Value="fa-solid fa-envelope-open-text" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                    <TextBlock x:Name="QuickDrawerTitle" Text="{Binding Message.SequenceText, StringFormat='#{0}'}" FontWeight="Bold" />
+                    <TextBlock Text="{Binding Message.MessageId}" Classes="mono dim" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="icon" VerticalAlignment="Center" Command="{Binding CopyCommand}" ToolTip.Tip="Copy the redacted text" AutomationProperties.Name="Copy the redacted text"><i:Icon Value="fa-regular fa-copy" FontSize="12" /></Button>
+                  <Button Grid.Column="2" Classes="icon" VerticalAlignment="Center" x:Name="QuickDrawerClose" Click="OnCloseDrawer" ToolTip.Tip="Close the detail drawer" AutomationProperties.Name="Close the detail drawer"><i:Icon Value="fa-solid fa-xmark" FontSize="13" /></Button>
+                </Grid>
+                <Border Background="{DynamicResource LfmeDeadSoftBrush}" BorderBrush="{DynamicResource LfmeDeadLineBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" IsVisible="{Binding Message.HasReason}">
+                  <StackPanel Spacing="4">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                      <i:Icon Value="fa-solid fa-skull-crossbones" Foreground="{DynamicResource LfmeDeadBrush}" FontSize="12" />
+                      <TextBlock Text="{Binding Message.Reason}" Classes="reason" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Message.Description}" TextWrapping="Wrap" FontSize="12" />
+                  </StackPanel>
+                </Border>
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                  <i:Icon Value="fa-solid fa-gear" FontSize="11" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                  <TextBlock Text="SYSTEM PROPERTIES" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                </StackPanel>
+                <ItemsControl x:Name="QuickSystemProperties" ItemsSource="{Binding Message.SystemProperties}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="qv:QuickField">
+                      <Grid ColumnDefinitions="140,*" Margin="0,2">
+                        <TextBlock Text="{Binding Name}" Classes="dim" FontSize="12" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="mono" TextWrapping="Wrap" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6" IsVisible="{Binding Message.HasApplicationProperties}">
+                  <i:Icon Value="fa-solid fa-tags" FontSize="11" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                  <TextBlock Text="APPLICATION PROPERTIES · MASKED" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Message.ApplicationProperties}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="qv:QuickField">
+                      <Grid ColumnDefinitions="140,*" Margin="0,2">
+                        <TextBlock Text="{Binding Name}" Classes="dim" FontSize="12" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="mono" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                  <i:Icon Value="fa-solid fa-file-code" FontSize="11" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                  <TextBlock Text="BODY · MASKED" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource LfmeAccentTextBrush}" />
+                </StackPanel>
+                <Border Background="{DynamicResource LfmeCodeBrush}" BorderBrush="{DynamicResource LfmeQvLineBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                  <SelectableTextBlock x:Name="QuickBodyText" Text="{Binding Message.BodyText}" FontFamily="Menlo, Consolas, DejaVu Sans Mono, monospace" FontSize="12" Foreground="{DynamicResource LfmeTextBrush}" TextWrapping="Wrap" />
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+
+      </Grid>
+    </Border>
+</UserControl>

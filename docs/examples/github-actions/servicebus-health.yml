@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MPL-2.0
+# Example only: copy into your own repository's .github/workflows/ and fill in the variables.
+#
+# Every hour, read the message counts of a Service Bus namespace and fail the run (and so notify the
+# team) when any queue or subscription has more dead-lettered messages than the limit.
+#
+# Read-only, end to end:
+#   - The job's GitHub token can only read this repository (contents: read). id-token: write lets it ask
+#     GitHub for a short-lived OpenID Connect token; nothing is stored.
+#   - lfme reads counts only. It never reads message bodies, and it cannot send, receive, settle, move,
+#     create or delete anything.
+#   - With --resource-id, the Entra app needs only the Reader role on the namespace.
+#   - The container runs as a non-root user on a read-only file system.
+#
+# Set these repository variables (Settings > Secrets and variables > Actions > Variables):
+#   AZURE_CLIENT_ID     the Entra app registration (or user-assigned identity) with a federated
+#                       credential for this repository and branch
+#   AZURE_TENANT_ID     its tenant
+#   SB_NAMESPACE_ID     /subscriptions/<id>/resourceGroups/<group>/providers/Microsoft.ServiceBus/namespaces/<name>
+#   LFME_MAX_DEAD_LETTER  optional, default 0
+
+name: servicebus-health
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  dead-letter-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Get Message Explorer
+        uses: actions/checkout@v4
+        with:
+          repository: acornsoft/luna-foundry-message-explorer
+          ref: develop
+          path: lfme
+
+      - name: Build the lfme container
+        run: docker build -f lfme/eng/container/Dockerfile -t lfme:local lfme
+
+      - name: Get a short-lived GitHub OIDC token for Entra workload identity
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = `${process.env.RUNNER_TEMP}/lfme-oidc/token`;
+            fs.mkdirSync(`${process.env.RUNNER_TEMP}/lfme-oidc`, { recursive: true, mode: 0o755 });
+            const token = await core.getIDToken('api://AzureADTokenExchange');
+            core.setSecret(token);
+            fs.writeFileSync(path, token, { mode: 0o644 });
+
+      - name: Check dead letters (read-only)
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/lfme-out" && chmod 777 "$RUNNER_TEMP/lfme-out"
+          set +e
+          docker run --rm --read-only \
+            -e AZURE_CLIENT_ID -e AZURE_TENANT_ID \
+            -e AZURE_FEDERATED_TOKEN_FILE=/var/run/lfme-oidc/token \
+            -v "$RUNNER_TEMP/lfme-oidc:/var/run/lfme-oidc:ro" \
+            -v "$RUNNER_TEMP/lfme-out:/out" \
+            lfme:local check \
+              --resource-id "${{ vars.SB_NAMESPACE_ID }}" \
+              --max-dead-letter "${{ vars.LFME_MAX_DEAD_LETTER || '0' }}" \
+              --out /out/report.json --summary /out/summary.md
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/lfme-out/summary.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          rm -rf "$RUNNER_TEMP/lfme-oidc"
+          exit $code
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: servicebus-health
+          path: ${{ runner.temp }}/lfme-out/report.json
+          if-no-files-found: ignore
+
+  # Alternative without Entra: a Listen-only shared access key in a GitHub secret.
+  # lfme takes it only from an environment variable, never from the command line.
+  #
+  # dead-letter-check-sas:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with: { repository: acornsoft/luna-foundry-message-explorer, ref: develop, path: lfme }
+  #     - run: docker build -f lfme/eng/container/Dockerfile -t lfme:local lfme
+  #     - env:
+  #         SB_LISTEN_CONNECTION: ${{ secrets.SB_LISTEN_CONNECTION }}
+  #       run: docker run --rm --read-only -e SB_LISTEN_CONNECTION lfme:local check --connection-string-env SB_LISTEN_CONNECTION --max-dead-letter 0

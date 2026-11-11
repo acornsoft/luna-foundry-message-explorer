@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: MPL-2.0
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# Flow modelled (all names made up):
+#
+#   crew app --> crew.ticket-changes --[publish: dedupe by changeId, ~30-40 s]--> ops.ticket-events
+#   ops.ticket-events fans out to two independent branches:
+#     --[request-stock, ~5 s]--> stock.requests --[stock-service: throttled, transient faults,
+#        backoff, poison without itemCode -> stock.requests/$deadletterqueue]--> stock.reserved
+#        --[write-back: a few transient faults]--> crew.ticket-updated
+#     --[meter-usage, ~1 min]--> billing.usage
+#
+# Thirty changes trickle in over four hours; forty more arrive in two minutes when crews sync at
+# the end of a shift, which trips the stock service's throttle.
+job: shift-sync
+description: Ticket changes through a five-hop chain with a fan-out, a throttled service, retries and a dead-letter path.
+seed: 515151
+clock:
+  start: "2026-03-02T13:00:00Z"
+  step: PT1M
+  duration: PT5H
+  drain: PT6H
+target:
+  send: "{{ changes }}"
+plugins:
+  - use: crew-ticket-feed@0.1.0
+    roles: [generator, assertion]
+    config:
+      trickle: 30
+      window: PT4H
+      burst: { count: 40, at: PT2H, within: PT2M }
+      malformedRate: 0.05
+      duplicateRate: 0.08
+      sla: PT30M
+      sinks:
+        events: "{{ events }}"
+        usage: "{{ usage }}"
+        updated: "{{ updated }}"
+        deadLetter: "{{ stockRequests }}/$deadletterqueue"
+  - use: hop-relay@0.1.0
+    role: simulator
+    config:
+      hops:
+        - name: publish
+          from: "{{ changes }}"
+          to: ["{{ events }}"]
+          delay: PT30S
+          jitter: PT10S
+          dedupeBy: changeId
+        - name: request-stock
+          from: "{{ events }}"
+          to: ["{{ stockRequests }}"]
+          delay: PT5S
+        - name: meter-usage
+          from: "{{ events }}"
+          to: ["{{ usage }}"]
+          delay: PT1M
+        - name: stock-service
+          from: "{{ stockRequests }}"
+          to: ["{{ reserved }}"]
+          delay: PT2S
+          jitter: PT3S
+          require: [itemCode]
+          assign: { reservationRef: RSV }
+          faults:
+            throttle: { limit: 10, window: PT1M, retryAfter: PT30S }
+            transientRate: 0.1
+            backoff: PT5S
+            backoffCap: PT5M
+            maxDeliveries: 5
+        - name: write-back
+          from: "{{ reserved }}"
+          to: ["{{ updated }}"]
+          delay: PT10S
+          faults:
+            transientRate: 0.05
+            backoff: PT10S
+            maxDeliveries: 5
+  - use: bus-observer@1.0.0
+    role: observer
+    config:
+      sinks: ["{{ events }}", "{{ usage }}", "{{ updated }}", "{{ stockRequests }}/$deadletterqueue"]

@@ -1,0 +1,424 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i="https://github.com/projektanker/icons.avalonia"
+        xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+        xmlns:views="using:Acornsoft.MessageExplorer.Shell.Views"
+        xmlns:cred="using:Acornsoft.MessageExplorer.Credentials"
+        x:Class="Acornsoft.MessageExplorer.Shell.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1440"
+        Height="860"
+        Title="{Binding Title}">
+  <Window.Styles>
+    <Style Selector="TabControl#ConnectSources TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+  </Window.Styles>
+  <DockPanel>
+    <!-- The one slim bar: namespace switcher | search | mode, voice, settings. -->
+    <Border DockPanel.Dock="Top" x:Name="TopBar" Classes="topbar">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- The namespace switcher: name over account · cloud. Opens a quick switch (Recent, Saved, Manage accounts…). -->
+        <Button x:Name="NamespaceSwitcherButton" Classes="switcher" ToolTip.Tip="{Binding NamespaceDetail}"
+                AutomationProperties.Name="{Binding NamespaceLabel, StringFormat='Namespace switcher: {0}'}"
+                AutomationProperties.HelpText="{Binding NamespaceIdentity}">
+          <StackPanel VerticalAlignment="Center">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Classes="accent" Value="fa-solid fa-layer-group" FontSize="14" />
+              <TextBlock x:Name="NamespaceSwitcherText" Text="{Binding NamespaceLabel}" FontWeight="SemiBold" MaxWidth="280" TextTrimming="CharacterEllipsis" />
+              <i:Icon Classes="muted" Value="fa-solid fa-chevron-down" FontSize="10" />
+            </StackPanel>
+            <!-- Secondary label: account · cloud. -->
+            <TextBlock x:Name="NamespaceIdentityText" Classes="muted" Text="{Binding NamespaceIdentity}" IsVisible="{Binding HasNamespaceIdentity}"
+                       FontSize="11" MaxWidth="300" Margin="22,0,0,0" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <StackPanel x:Name="QuickSwitchPanel" Spacing="6" Width="320">
+                <TextBlock Text="Recent" FontWeight="SemiBold" IsVisible="{Binding Sources.HasRecent}" />
+                <ItemsControl x:Name="QuickSwitchRecent" ItemsSource="{Binding QuickRecent}" IsVisible="{Binding Sources.HasRecent}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:QuickSwitchItem">
+                      <Button Classes="quickitem" Click="OnQuickSwitchClick" CommandParameter="{Binding}"
+                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickSwitchCommand}"
+                              AutomationProperties.Name="{Binding Name}" ToolTip.Tip="{Binding Tip}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                          <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                          <i:Icon Grid.Column="2" Grid.RowSpan="2" x:Name="QuickSwitchCheck" Classes="accent" Value="fa-solid fa-check" FontSize="12"
+                                  Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsCurrent}"
+                                  ToolTip.Tip="Open now" AutomationProperties.Name="Open now" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="Saved" FontWeight="SemiBold" IsVisible="{Binding Connect.HasSavedConnections}" />
+                <ItemsControl x:Name="QuickSwitchSaved" ItemsSource="{Binding QuickSaved}" IsVisible="{Binding Connect.HasSavedConnections}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:QuickSwitchItem">
+                      <Button Classes="quickitem" Click="OnQuickSwitchClick" CommandParameter="{Binding}"
+                              Command="{Binding #QuickSwitchPanel.((vm:MainViewModel)DataContext).QuickSwitchCommand}"
+                              AutomationProperties.Name="{Binding Name}" ToolTip.Tip="{Binding Tip}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                          <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                          <i:Icon Grid.Column="2" Grid.RowSpan="2" x:Name="QuickSwitchCheck" Classes="accent" Value="fa-solid fa-check" FontSize="12"
+                                  Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsCurrent}"
+                                  ToolTip.Tip="Open now" AutomationProperties.Name="Open now" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="QuickSwitchEmpty" Classes="muted" Text="Nothing recent or saved yet." IsVisible="{Binding HasNoQuickSwitchItems}" FontSize="12" />
+                <Border Height="1" Background="{DynamicResource LfmeCardBorderBrush}" />
+                <Button x:Name="ManageAccountsButton" Classes="quickitem" Command="{Binding ManageAccountsCommand}" Click="OnQuickSwitchClick"
+                        AutomationProperties.Name="Manage accounts" ToolTip.Tip="Open the full switcher: connect, accounts and saved logins">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                    <i:Icon Classes="accent" Value="fa-solid fa-user-gear" FontSize="12" />
+                    <TextBlock Text="Manage accounts…" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <TextBox Grid.Column="1" x:Name="ResourceSearchBox" Classes="search" Text="{Binding QuickView.Filter}"
+                 Watermark="{Binding SearchHint}" AutomationProperties.Name="Search resources and receivers">
+          <TextBox.InnerLeftContent>
+            <i:Icon Value="fa-solid fa-magnifying-glass" FontSize="12" Margin="10,0,2,0" Foreground="{DynamicResource LfmeMutedTextBrush}" />
+          </TextBox.InnerLeftContent>
+        </TextBox>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+          <!-- The mode chip (unchanged from #18; where Move lives is being redesigned). Its tooltip is one phrase. -->
+          <ToggleButton x:Name="ModeChip" Classes="modechip" Classes.move="{Binding MoveModeOn}" IsChecked="{Binding MoveModeOn}"
+                        ToolTip.Tip="{Binding ModeTip}" AutomationProperties.Name="Mode">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+              <i:Icon Value="{Binding ModeIcon}" FontSize="11" />
+              <TextBlock x:Name="ModeChipText" Text="{Binding ModeText}" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="VoiceButton" Classes="baricon" IsChecked="{Binding IsVoiceOpen}" ToolTip.Tip="Voice: push to talk, read-only tools"
+                        AutomationProperties.Name="Voice">
+            <i:Icon Value="fa-solid fa-microphone" FontSize="14" />
+          </ToggleButton>
+          <Button x:Name="SettingsButton" Classes="baricon" ToolTip.Tip="Settings" AutomationProperties.Name="Settings">
+            <i:Icon Value="fa-solid fa-gear" FontSize="14" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel x:Name="SettingsPanel" Spacing="10" Width="340">
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                    <i:Icon Classes="accent" Value="fa-solid fa-palette" FontSize="14" />
+                    <TextBlock Text="Appearance" FontWeight="SemiBold" />
+                  </StackPanel>
+                  <views:ThemePicker x:Name="SettingsThemePicker" DataContext="{Binding Theme}" />
+                  <TextBlock Classes="muted" Text="{Binding Theme.Description}" TextWrapping="Wrap" FontSize="12" />
+                  <Border Height="1" Background="{DynamicResource LfmeCardBorderBrush}" />
+                  <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                    <i:Icon Classes="accent" Value="fa-solid fa-list-ol" FontSize="14" />
+                    <TextBlock Text="Peek" FontWeight="SemiBold" />
+                  </StackPanel>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Top N per section" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <NumericUpDown Grid.Column="1" x:Name="QuickPageSizeBox" Value="{Binding QuickView.PageSize}" Minimum="1" Maximum="100" Increment="5"
+                                   FormatString="0" Width="120" ToolTip.Tip="How many messages each section peeks per page (1 to 100)." />
+                  </Grid>
+                  <Border Height="1" Background="{DynamicResource LfmeCardBorderBrush}" />
+                  <Button x:Name="OpenJobsButton" Command="{Binding OpenJobsCommand}" HorizontalAlignment="Stretch">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                      <i:Icon Value="fa-solid fa-flask" FontSize="13" />
+                      <TextBlock Text="Test jobs…" />
+                    </StackPanel>
+                  </Button>
+                  <TextBlock Classes="muted" Text="Settings are remembered on this computer." FontSize="12" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Voice: a side panel, opened by the mic. -->
+    <Border DockPanel.Dock="Right" x:Name="VoicePanelHost" Classes="sidepanel" Width="420" IsVisible="{Binding IsVoiceOpen}">
+      <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="12,10,8,6">
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+            <i:Icon Classes="accent" Value="fa-solid fa-microphone" FontSize="14" />
+            <TextBlock Classes="title" Text="Grok Voice" />
+          </StackPanel>
+          <Button Grid.Column="1" x:Name="CloseVoiceButton" Classes="baricon" Click="OnCloseVoice" ToolTip.Tip="Close Voice (Esc)" AutomationProperties.Name="Close Voice">
+            <i:Icon Value="fa-solid fa-xmark" FontSize="14" />
+          </Button>
+        </Grid>
+        <views:VoiceView x:Name="VoicePanel" DataContext="{Binding Voice}" Margin="12,0,12,12" />
+      </DockPanel>
+    </Border>
+
+    <Panel>
+      <!-- Read-only: the Resources view. Move: the Move workspace. -->
+      <Panel x:Name="ResourcesWorkspace" IsVisible="{Binding IsReadOnly}">
+        <views:QuickView x:Name="QuickViewPanel" DataContext="{Binding QuickView}" />
+      </Panel>
+      <DockPanel x:Name="MoveWorkspace" IsVisible="{Binding MoveModeOn}" Margin="16">
+        <Border DockPanel.Dock="Top" x:Name="MoveModeBanner" Classes="movebanner" Margin="0,0,0,12">
+          <TextBlock x:Name="MoveModeBannerText" Text="{Binding MoveBannerText}" TextWrapping="Wrap" FontWeight="SemiBold" />
+        </Border>
+        <views:MoveView x:Name="MovePanel" DataContext="{Binding Move}" />
+      </DockPanel>
+
+      <!-- The namespace switcher sheet: Connect (Recent, Saved, details), Accounts, Saved logins. -->
+      <Panel x:Name="SwitcherSheet" IsVisible="{Binding IsSwitcherOpen}">
+        <Border Classes="scrim" PointerPressed="OnScrimPressed" />
+        <Border Classes="sheet" x:Name="SwitcherCard" Margin="12">
+          <DockPanel>
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="16,12,10,8">
+              <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                <i:Icon Classes="accent" Value="fa-solid fa-layer-group" FontSize="15" />
+                <TextBlock Classes="title" Text="Namespaces" />
+              </StackPanel>
+              <!-- Appearance lives only in Settings (the gear in the top bar). -->
+              <Button Grid.Column="2" x:Name="CloseSwitcherButton" Classes="baricon" Command="{Binding CloseSwitcherCommand}"
+                      IsVisible="{Binding Connect.IsConnected}" ToolTip.Tip="Close the switcher (Esc)" AutomationProperties.Name="Close the switcher">
+                <i:Icon Value="fa-solid fa-xmark" FontSize="14" />
+              </Button>
+            </Grid>
+            <!-- Left rail -->
+            <StackPanel DockPanel.Dock="Left" x:Name="SwitcherRail" Width="190" Spacing="2" Margin="10,4,8,10">
+              <RadioButton x:Name="SwitcherConnectPage" Classes="nav" IsChecked="{Binding IsConnectPage}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="10">
+                  <i:Icon Value="fa-solid fa-plug" FontSize="13" />
+                  <TextBlock Text="Connect" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton x:Name="SwitcherAccountsPage" Classes="nav" IsChecked="{Binding IsAccountsPage}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="10">
+                  <i:Icon Value="fa-solid fa-user-shield" FontSize="13" />
+                  <TextBlock Text="Accounts" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton x:Name="SwitcherLoginsPage" Classes="nav" IsChecked="{Binding IsLoginsPage}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="10">
+                  <i:Icon Value="fa-solid fa-bookmark" FontSize="13" />
+                  <TextBlock Text="Saved logins" />
+                </StackPanel>
+              </RadioButton>
+            </StackPanel>
+            <Panel Margin="8,4,16,12">
+              <!-- Connect: where a connection comes from (Recent, Saved), then the details (pasting a string stays). -->
+              <ScrollViewer x:Name="ConnectPage" IsVisible="{Binding IsConnectPage}" HorizontalScrollBarVisibility="Disabled">
+                <Grid x:Name="ConnectPanel" ColumnDefinitions="*,24,*" DataContext="{Binding Connect}" x:DataType="vm:ConnectViewModel">
+                  <StackPanel Spacing="10">
+                    <TabControl x:Name="ConnectSources" DataContext="{Binding Sources}" x:DataType="vm:ConnectSourcesViewModel" SelectedIndex="{Binding SelectedTab}" Padding="0,6,0,0">
+                      <TabItem x:Name="RecentTab">
+                        <TabItem.Header>
+                          <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                            <i:Icon Value="fa-solid fa-clock-rotate-left" FontSize="12" />
+                            <TextBlock Text="Recent" />
+                          </StackPanel>
+                        </TabItem.Header>
+                        <StackPanel Spacing="6">
+                          <TextBlock x:Name="RecentEmptyText" Classes="muted" Text="{Binding RecentEmptyText}" IsVisible="{Binding !HasRecent}" TextWrapping="Wrap" FontSize="12" />
+                          <ListBox x:Name="RecentList" ItemsSource="{Binding Recent}" SelectedItem="{Binding SelectedRecent}" IsVisible="{Binding HasRecent}" MaxHeight="220"
+                                   DoubleTapped="OnRecentDoubleTapped">
+                            <ListBox.ItemTemplate>
+                              <DataTemplate x:DataType="vm:RecentItemViewModel">
+                                <Grid ColumnDefinitions="Auto,*" Classes="il">
+                                  <i:Icon Classes="accent" Value="{Binding Icon}" FontSize="13" Margin="0,0,10,0" />
+                                  <StackPanel Grid.Column="1" Spacing="1">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted" Text="{Binding Detail}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                  </StackPanel>
+                                </Grid>
+                              </DataTemplate>
+                            </ListBox.ItemTemplate>
+                          </ListBox>
+                          <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" IsVisible="{Binding HasRecent}">
+                            <Button x:Name="OpenRecentButton" Classes="primary" Command="{Binding OpenRecentCommand}">
+                              <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                                <i:Icon Value="fa-solid fa-plug-circle-bolt" FontSize="12" />
+                                <TextBlock Text="Connect" />
+                              </StackPanel>
+                            </Button>
+                            <Button x:Name="ForgetRecentButton" Command="{Binding ForgetRecentCommand}">
+                              <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                                <i:Icon Value="fa-solid fa-xmark" FontSize="12" />
+                                <TextBlock Text="Forget" />
+                              </StackPanel>
+                            </Button>
+                            <Button x:Name="ClearRecentButton" Command="{Binding ClearRecentCommand}">
+                              <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                                <i:Icon Value="fa-regular fa-trash-can" FontSize="12" />
+                                <TextBlock Text="Clear all" />
+                              </StackPanel>
+                            </Button>
+                          </WrapPanel>
+                        </StackPanel>
+                      </TabItem>
+
+                      <TabItem x:Name="SavedTab">
+                        <TabItem.Header>
+                          <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                            <i:Icon Value="fa-solid fa-bookmark" FontSize="12" />
+                            <TextBlock Text="Saved" />
+                          </StackPanel>
+                        </TabItem.Header>
+                        <StackPanel Spacing="6" DataContext="{Binding Connect}" x:DataType="vm:ConnectViewModel">
+                          <TextBlock x:Name="SavedEmptyText" Classes="muted" Text="No saved Service Bus logins yet. Tick Save below when you connect, or add one on the Saved logins page." IsVisible="{Binding !HasSavedConnections}" TextWrapping="Wrap" FontSize="12" />
+                          <ListBox x:Name="SavedConnectionsList" ItemsSource="{Binding SavedConnections}" SelectedItem="{Binding SelectedSaved}" IsVisible="{Binding HasSavedConnections}" MaxHeight="220"
+                                   DoubleTapped="OnSavedDoubleTapped">
+                            <ListBox.ItemTemplate>
+                              <DataTemplate x:DataType="cred:LoginEntry">
+                                <Grid ColumnDefinitions="Auto,*" Classes="il">
+                                  <i:Icon Classes="accent" Value="fa-solid fa-bookmark" FontSize="13" Margin="0,0,10,0" />
+                                  <StackPanel Grid.Column="1" Spacing="1">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted" Text="{Binding Info.Label}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                  </StackPanel>
+                                </Grid>
+                              </DataTemplate>
+                            </ListBox.ItemTemplate>
+                          </ListBox>
+                          <Button x:Name="ConnectSavedButton" Classes="primary" Command="{Binding ConnectSavedCommand}" IsVisible="{Binding HasSavedConnections}">
+                            <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                              <i:Icon Value="fa-solid fa-plug-circle-bolt" FontSize="12" />
+                              <TextBlock Text="Connect saved" />
+                            </StackPanel>
+                          </Button>
+                          <TextBlock x:Name="ConnectSavedBlockedText" Classes="muted" Text="{Binding ConnectSavedBlockedReason}" FontSize="12" TextWrapping="Wrap">
+                            <TextBlock.IsVisible>
+                              <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="HasSavedConnections" />
+                                <Binding Path="HasConnectSavedBlockedReason" />
+                              </MultiBinding>
+                            </TextBlock.IsVisible>
+                          </TextBlock>
+                          <TextBlock Classes="muted" Text="Edit, rename, test or delete logins on the Saved logins page." FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </TabItem>
+
+                    </TabControl>
+                    <TextBlock x:Name="SourcesMessageText" DataContext="{Binding Sources}" x:DataType="vm:ConnectSourcesViewModel" Text="{Binding Message}" IsVisible="{Binding HasMessage}"
+                               Classes.error="{Binding MessageIsError}" Classes.passed="{Binding !MessageIsError}" TextWrapping="Wrap" FontSize="12" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="10">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                      <i:Icon Classes="accent" Value="fa-solid fa-sliders" FontSize="13" />
+                      <TextBlock Text="Connection details" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock Text="Provider" Classes="muted" FontSize="12" />
+                    <ItemsControl x:Name="ProviderList" ItemsSource="{Binding Providers}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ProviderOption">
+                          <StackPanel Margin="0,2">
+                            <RadioButton GroupName="provider"
+                                         Content="{Binding Label}"
+                                         IsEnabled="{Binding IsEnabled}"
+                                         IsChecked="{Binding IsSelected}"
+                                         ToolTip.Tip="{Binding Note}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="Sign in with" Classes="muted" FontSize="12" Margin="0,6,0,0" />
+                    <RadioButton x:Name="EntraOption" GroupName="auth" Content="Microsoft Entra ID" IsChecked="{Binding UseEntra}" />
+                    <RadioButton x:Name="ConnectionStringOption" GroupName="auth" Content="Connection string" IsChecked="{Binding UseConnectionString}" />
+
+                    <StackPanel Spacing="4" IsVisible="{Binding UseEntra}">
+                      <TextBlock Text="Namespace" />
+                      <TextBox x:Name="NamespaceBox" Text="{Binding NamespaceText}" Classes="example" Watermark="e.g. contoso-synthetic.servicebus.windows.net" />
+                      <TextBlock x:Name="EntraHintText" Classes="muted" Text="{Binding EntraHint}" TextWrapping="Wrap" FontSize="12" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4" IsVisible="{Binding UseConnectionString}">
+                      <TextBlock Text="Connection string or SAS token" />
+                      <TextBox x:Name="ConnectionStringBox" Text="{Binding ConnectionString}" PasswordChar="•" RevealPassword="False" Watermark="Endpoint=sb://... or SharedAccessSignature sr=..." />
+                      <TextBlock x:Name="DetectedText" Text="{Binding DetectedText}" IsVisible="{Binding HasDetectedText}" Classes.error="{Binding DetectedIsError}" TextWrapping="Wrap" FontSize="12" />
+                      <TextBlock Classes="muted" Text="Namespace key, entity key (EntityPath), SAS token, Endpoint only (signs in with your account), or the local emulator." TextWrapping="Wrap" FontSize="11" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4" IsVisible="{Binding ShowAccountPicker}">
+                      <TextBlock Text="Entra account" />
+                      <ComboBox x:Name="ConnectAccountBox" ItemsSource="{Binding AccountChoices}" SelectedItem="{Binding SelectedAccount}" HorizontalAlignment="Stretch" PlaceholderText="Choose a signed-in account" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                      <CheckBox x:Name="SaveConnectionBox" Content="{Binding SaveLabel}" IsChecked="{Binding SaveConnection}" IsEnabled="{Binding CanSave}" />
+                      <TextBox x:Name="SaveNameBox" Text="{Binding SaveName}" Watermark="Name (optional)" IsVisible="{Binding SaveConnection}" />
+                      <TextBlock x:Name="SaveNoteText" Classes="muted" Text="{Binding SaveNote}" TextWrapping="Wrap" FontSize="12" />
+                    </StackPanel>
+
+                    <Border Classes="callout" IsVisible="{Binding HasValidationMessage}">
+                      <Grid ColumnDefinitions="Auto,*" Classes="il">
+                        <i:Icon Classes="error" Value="fa-solid fa-triangle-exclamation" FontSize="13" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" x:Name="ValidationText" Classes="error" Text="{Binding ValidationMessage}" TextWrapping="Wrap" />
+                      </Grid>
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Button x:Name="ConnectButton" Classes="primary" Command="{Binding ConnectCommand}">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                          <i:Icon Value="fa-solid fa-plug-circle-bolt" FontSize="13" />
+                          <TextBlock Text="Connect" />
+                        </StackPanel>
+                      </Button>
+                      <Button x:Name="DisconnectButton" Command="{Binding DisconnectCommand}">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                          <i:Icon Value="fa-solid fa-plug-circle-xmark" FontSize="13" />
+                          <TextBlock Text="Disconnect" />
+                        </StackPanel>
+                      </Button>
+                    </StackPanel>
+                    <!-- A disabled primary action says why. -->
+                    <TextBlock x:Name="ConnectBlockedText" Classes="muted" Text="{Binding ConnectBlockedReason}" IsVisible="{Binding HasConnectBlockedReason}" FontSize="12" TextWrapping="Wrap" />
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsConnected}">
+                      <i:Icon Value="fa-solid fa-circle-check" FontSize="12" Foreground="{DynamicResource LfmeSuccessBrush}" />
+                      <TextBlock x:Name="ConnectedToText" Classes="muted" Text="{Binding ConnectedTo}" TextWrapping="Wrap" MaxWidth="300" />
+                    </StackPanel>
+                  </StackPanel>
+                </Grid>
+              </ScrollViewer>
+              <Panel x:Name="AccountsPage" IsVisible="{Binding IsAccountsPage}">
+                <views:AccountsView x:Name="AccountsPanel" DataContext="{Binding Accounts}" />
+              </Panel>
+              <Panel x:Name="LoginsPage" IsVisible="{Binding IsLoginsPage}">
+                <views:LoginsView x:Name="LoginsPanel" DataContext="{Binding Logins}" />
+              </Panel>
+            </Panel>
+          </DockPanel>
+        </Border>
+      </Panel>
+
+      <!-- Test jobs, opened from Settings. -->
+      <Panel x:Name="JobsSheet" IsVisible="{Binding IsJobsOpen}">
+        <Border Classes="scrim" PointerPressed="OnScrimPressed" />
+        <Border Classes="sheet" Margin="12">
+          <DockPanel>
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,12,10,8">
+              <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                <i:Icon Classes="accent" Value="fa-solid fa-flask" FontSize="15" />
+                <TextBlock Classes="title" Text="Test jobs" />
+              </StackPanel>
+              <Button Grid.Column="1" x:Name="CloseJobsButton" Classes="baricon" Command="{Binding CloseJobsCommand}" ToolTip.Tip="Close Test jobs (Esc)" AutomationProperties.Name="Close Test jobs">
+                <i:Icon Value="fa-solid fa-xmark" FontSize="14" />
+              </Button>
+            </Grid>
+            <views:JobsView x:Name="JobsPanel" DataContext="{Binding Jobs}" Margin="16,0,16,12" />
+          </DockPanel>
+        </Border>
+      </Panel>
+    </Panel>
+  </DockPanel>
+</Window>
