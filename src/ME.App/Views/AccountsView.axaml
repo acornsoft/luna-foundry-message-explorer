@@ -1,0 +1,291 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<!-- The sign-in page. Linked accounts as in Azure Data Studio: each account card expands to its tenants, with Add,
+     Refresh and Remove. Every colour is a palette resource, so it reads in Light and Dark. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             xmlns:views="using:Acornsoft.MessageExplorer.Shell.Views"
+             xmlns:accounts="using:Acornsoft.MessageExplorer.Shell.Accounts"
+             xmlns:brokers="using:Acornsoft.MessageExplorer.Brokers"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.AccountsView"
+             x:DataType="vm:AccountsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.account">
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="ToggleButton.tenants">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0,2" />
+    </Style>
+    <Style Selector="ToggleButton.tenants:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.tenants:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="420,16,*">
+    <!-- Linked accounts -->
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,10">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+          <i:Icon Classes="accent" Value="fa-solid fa-user-group" FontSize="16" />
+          <TextBlock Classes="title" Text="Linked accounts" />
+        </StackPanel>
+        <TextBlock x:Name="AccountsSummaryText" Classes="muted" Text="{Binding Summary}" />
+
+        <Border Classes="card" x:Name="AddAccountCard">
+          <StackPanel Spacing="6">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Classes="accent" Value="fa-solid fa-circle-plus" FontSize="14" />
+              <TextBlock Text="Add an account" FontWeight="SemiBold" />
+            </StackPanel>
+            <TextBlock Text="Cloud" Classes="muted" FontSize="12" />
+            <ComboBox x:Name="CloudBox" ItemsSource="{Binding Clouds}" SelectedItem="{Binding SelectedCloud}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="brokers:AzureCloud">
+                  <TextBlock Text="{Binding DisplayName}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Tenant (optional)" Classes="muted" FontSize="12" />
+            <TextBox x:Name="TenantBox" Text="{Binding TenantText}" Watermark="Any work or school account" />
+            <TextBlock Text="Sign in with" Classes="muted" FontSize="12" />
+            <ComboBox x:Name="BrowserBox" ItemsSource="{Binding Browsers}" SelectedItem="{Binding SelectedBrowser}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="accounts:BrowserChoice">
+                  <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" Margin="0,4,0,0">
+              <Button x:Name="AddAccountButton" Classes="primary" Command="{Binding AddAccountCommand}"
+                      ToolTip.Tip="Opens the Microsoft sign-in page in the browser above. It comes back here when you're done.">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                  <i:Icon Value="fa-solid fa-globe" FontSize="13" />
+                  <TextBlock Text="Add account" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="SignInWithCodeButton" Command="{Binding SignInWithCodeCommand}"
+                      ToolTip.Tip="Device code: enter a short code at the Microsoft device login page in any browser, on any device.">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                  <i:Icon Value="fa-solid fa-mobile-screen" FontSize="13" />
+                  <TextBlock Text="Sign in with a code" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="CancelSignInButton" Command="{Binding CancelSignInCommand}" IsVisible="{Binding IsSigningIn}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                  <i:Icon Value="fa-solid fa-xmark" FontSize="13" />
+                  <TextBlock Text="Cancel sign-in" />
+                </StackPanel>
+              </Button>
+            </WrapPanel>
+            <StackPanel Spacing="4" IsVisible="{Binding IsSigningIn}">
+              <TextBlock x:Name="SigningInText" Text="Waiting for sign-in to finish in the browser, or cancel." TextWrapping="Wrap" FontSize="12" />
+              <ProgressBar IsIndeterminate="True" Height="3" MinHeight="3" />
+            </StackPanel>
+            <StackPanel x:Name="SignInLinkPanel" Spacing="4" IsVisible="{Binding HasSignInLink}">
+              <TextBlock Classes="muted" Text="Wrong browser? Copy the sign-in link and paste it into any browser on this computer. It still comes back here." TextWrapping="Wrap" FontSize="12" />
+              <Button x:Name="CopySignInLinkButton" Command="{Binding CopySignInLinkCommand}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                  <i:Icon Value="fa-solid fa-link" FontSize="13" />
+                  <TextBlock Text="Copy sign-in link" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+            <Border x:Name="DeviceCodePanel" Classes="code" IsVisible="{Binding HasDeviceCode}">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap">
+                  <Run Text="Enter this code at " /><Run Text="{Binding DeviceCodeUrl}" FontWeight="SemiBold" />
+                </TextBlock>
+                <Grid ColumnDefinitions="*,Auto" Classes="il">
+                  <SelectableTextBlock x:Name="DeviceCodeValue" Text="{Binding DeviceCode}" FontSize="22" FontWeight="Bold"
+                                       FontFamily="Menlo, Consolas, monospace" Foreground="{DynamicResource LfmeAccentTextBrush}" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" x:Name="CopyDeviceCodeButton" Command="{Binding CopyDeviceCodeCommand}" VerticalAlignment="Center">
+                    <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                      <i:Icon Value="fa-regular fa-copy" FontSize="13" />
+                      <TextBlock Text="Copy code" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+                <SelectableTextBlock x:Name="DeviceCodeText" Classes="muted" Text="{Binding DeviceCodeText}" TextWrapping="Wrap" FontSize="11" />
+              </StackPanel>
+            </Border>
+            <TextBlock Classes="muted" Text="{Binding ClientIdText}" TextWrapping="Wrap" FontSize="11" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="callout" IsVisible="{Binding HasMessage}">
+          <Grid ColumnDefinitions="Auto,*" Classes="il">
+            <i:Icon Classes="error" Value="fa-solid fa-triangle-exclamation" FontSize="13" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="1" x:Name="AccountsMessageText" Classes="error" Text="{Binding Message}" TextWrapping="Wrap" />
+          </Grid>
+        </Border>
+
+        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+          <TextBlock Text="Accounts" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Button Grid.Column="1" x:Name="RefreshAccountsButton" Command="{Binding RefreshAllCommand}" VerticalAlignment="Center"
+                  ToolTip.Tip="List every signed-in account's tenants, subscriptions and namespaces again. Read-only.">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Value="fa-solid fa-rotate" FontSize="12" />
+              <TextBlock Text="Refresh" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </StackPanel>
+
+      <Panel>
+        <TextBlock x:Name="NoAccountsText" Classes="state muted" Text="{Binding EmptyText}" IsVisible="{Binding !HasAccounts}" TextWrapping="Wrap" />
+        <ScrollViewer>
+          <ItemsControl x:Name="AccountList" ItemsSource="{Binding Accounts}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountItemViewModel">
+                <Border Classes="card account">
+                  <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="Auto,*" Classes="il">
+                      <Border Classes="avatar" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding Initials}" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Username}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding CloudText}" /><Run Text=" · " /><Run Text="{Binding StatusText}" />
+                        </TextBlock>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="muted" Text="{Binding TenantText}" FontSize="12" TextWrapping="Wrap" />
+                    <ComboBox ItemsSource="{Binding Browsers}" SelectedItem="{Binding Browser}" HorizontalAlignment="Stretch" FontSize="12"
+                              ToolTip.Tip="Where this account's sign-in page opens next time.">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="accounts:BrowserChoice">
+                          <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Classes="error" Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}" TextWrapping="Wrap" FontSize="12" />
+
+                    <!-- Tenants, as Azure Data Studio lists them under an account. -->
+                    <ToggleButton Classes="tenants" IsChecked="{Binding IsExpanded}" IsVisible="{Binding HasTenants}" HorizontalAlignment="Left">
+                      <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                        <i:Icon Value="fa-solid fa-chevron-right" FontSize="10" IsVisible="{Binding !IsExpanded}" />
+                        <i:Icon Value="fa-solid fa-chevron-down" FontSize="10" IsVisible="{Binding IsExpanded}" />
+                        <TextBlock Text="{Binding TenantsToggleText}" FontSize="12" FontWeight="SemiBold" />
+                      </StackPanel>
+                    </ToggleButton>
+                    <ItemsControl ItemsSource="{Binding Tenants}" IsVisible="{Binding IsExpanded}" Margin="16,0,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TenantRow">
+                          <Grid ColumnDefinitions="Auto,*" Classes="il" Margin="0,2">
+                            <i:Icon Value="fa-regular fa-building" FontSize="12" Margin="0,0,8,0" IsVisible="{Binding !IsError}" />
+                            <i:Icon Classes="error" Value="fa-solid fa-triangle-exclamation" FontSize="12" Margin="0,0,8,0" IsVisible="{Binding IsError}" />
+                            <TextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap">
+                              <Run Text="{Binding Name}" FontWeight="SemiBold" /><Run Text="  " /><Run Text="{Binding Detail}" />
+                            </TextBlock>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" Margin="0,2,0,0">
+                      <Button Command="{Binding SignInCommand}" IsVisible="{Binding CanSignIn}">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                          <i:Icon Value="fa-solid fa-right-to-bracket" FontSize="12" />
+                          <TextBlock Text="Sign in" />
+                        </StackPanel>
+                      </Button>
+                      <Button Command="{Binding RefreshCommand}" IsVisible="{Binding IsSignedIn}" ToolTip.Tip="List this account's namespaces again. Read-only.">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                          <i:Icon Value="fa-solid fa-rotate" FontSize="12" />
+                          <TextBlock Text="Refresh" />
+                        </StackPanel>
+                      </Button>
+                      <Button Command="{Binding SignOutCommand}" IsVisible="{Binding IsSignedIn}">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                          <i:Icon Value="fa-solid fa-right-from-bracket" FontSize="12" />
+                          <TextBlock Text="Sign out" />
+                        </StackPanel>
+                      </Button>
+                      <Button Command="{Binding RemoveCommand}" ToolTip.Tip="Forget this account on this computer.">
+                        <StackPanel Classes="il" Orientation="Horizontal" Spacing="6">
+                          <i:Icon Value="fa-regular fa-trash-can" FontSize="12" />
+                          <TextBlock Text="Remove" />
+                        </StackPanel>
+                      </Button>
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Panel>
+    </DockPanel>
+
+    <!-- Browse: subscription, then resource group, then Service Bus or Event Hubs namespace, from the accounts on the
+         left. Read-only ARM lists; each account keeps its own cloud. -->
+    <DockPanel Grid.Column="2" x:Name="BrowsePanel" DataContext="{Binding Browse}" x:DataType="vm:ConnectSourcesViewModel"
+               IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,10">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+            <i:Icon Classes="accent" Value="fa-solid fa-cloud" FontSize="15" />
+            <TextBlock Classes="title" Text="Browse" />
+            <TextBlock x:Name="BrowseSummaryText" Classes="muted" Text="{Binding BrowseSummary}" FontSize="12" IsVisible="{Binding HasTree}" />
+          </StackPanel>
+          <Button Grid.Column="1" x:Name="BrowseOpenButton" Classes="primary" Command="{Binding OpenCommand}" IsVisible="{Binding !IsHubSelected}" VerticalAlignment="Center">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Value="fa-solid fa-folder-open" FontSize="13" />
+              <TextBlock Text="Open" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="1" x:Name="BrowseSaveHubButton" Command="{Binding SaveHubCommand}" IsVisible="{Binding IsHubSelected}" VerticalAlignment="Center">
+            <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+              <i:Icon Value="fa-solid fa-bookmark" FontSize="13" />
+              <TextBlock Text="Save as Event Hubs login" />
+            </StackPanel>
+          </Button>
+        </Grid>
+        <Grid ColumnDefinitions="260,8,*">
+          <ComboBox x:Name="BrowseSubscriptionBox" ItemsSource="{Binding Subscriptions}" SelectedItem="{Binding Subscription}" HorizontalAlignment="Stretch"
+                    ToolTip.Tip="Show one subscription, or all of them." />
+          <TextBox Grid.Column="2" x:Name="BrowseFilterBox" Text="{Binding FilterText}" Watermark="Filter by namespace or resource group">
+            <TextBox.InnerLeftContent>
+              <i:Icon Value="fa-solid fa-magnifying-glass" FontSize="12" Margin="8,0,0,0" Foreground="{DynamicResource LfmeMutedTextBrush}" />
+            </TextBox.InnerLeftContent>
+          </TextBox>
+        </Grid>
+        <TextBlock x:Name="BrowseSelectionText" Classes="muted" Text="{Binding SelectionNote}" IsVisible="{Binding SelectionNote, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" FontSize="12" />
+        <TextBlock x:Name="BrowseMessageText" Text="{Binding Message}" IsVisible="{Binding HasMessage}" Classes.error="{Binding MessageIsError}" Classes.passed="{Binding !MessageIsError}" TextWrapping="Wrap" FontSize="12" />
+      </StackPanel>
+      <Border Classes="card" Padding="4">
+        <Panel>
+          <TextBlock x:Name="BrowseEmptyText" Classes="state muted" Text="{Binding BrowseEmptyText}" IsVisible="{Binding !HasTree}" TextWrapping="Wrap" Margin="12" />
+          <TreeView x:Name="BrowseTree" ItemsSource="{Binding Tree}" SelectedItem="{Binding SelectedNode}" IsVisible="{Binding HasTree}" DoubleTapped="OnBrowseDoubleTapped">
+            <TreeView.Styles>
+              <Style Selector="TreeViewItem" x:DataType="vm:BrowseNode">
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+              </Style>
+            </TreeView.Styles>
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate x:DataType="vm:BrowseNode" ItemsSource="{Binding Children}">
+                <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+                  <i:Icon Value="{Binding Icon}" FontSize="13" Classes.accent="{Binding IsNamespace}" />
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                  <TextBlock Classes="muted" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" FontSize="12" TextWrapping="Wrap" MaxWidth="520" />
+                </StackPanel>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+        </Panel>
+      </Border>
+    </DockPanel>
+  </Grid>
+</UserControl>

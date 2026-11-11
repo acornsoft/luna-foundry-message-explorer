@@ -1,0 +1,79 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             xmlns:voice="using:Acornsoft.MessageExplorer.Voice"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.VoiceView"
+             x:DataType="vm:VoiceViewModel">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+      <TextBlock x:Name="VoiceReadOnlyText" Text="{Binding ReadOnlyNote}" TextWrapping="Wrap" Classes="state" />
+    </StackPanel>
+
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource LfmeCardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Settings" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="Auto,*">
+          <TextBlock Text="Voice" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <ComboBox Grid.Column="1" x:Name="VoicePicker" ItemsSource="{Binding Voices}" SelectedItem="{Binding SelectedVoice}" HorizontalAlignment="Stretch" IsEnabled="{Binding !IsRunning}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="voice:GrokVoice">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
+        <CheckBox x:Name="VoiceRedactBodies" Content="Redact message bodies (recommended)" IsChecked="{Binding RedactBodies}" IsEnabled="{Binding !IsRunning}" />
+        <TextBlock Text="xAI's built-in voices only." Classes="muted" FontSize="12" />
+        <TextBlock x:Name="VoiceKeyStatus" Text="{Binding KeyStatus}" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8">
+      <Button x:Name="VoiceStart" Content="Start session" Command="{Binding StartCommand}" />
+      <Button x:Name="VoiceStop" Content="Stop" Command="{Binding StopCommand}" />
+      <Button x:Name="VoiceTalk" IsEnabled="{Binding CanTalk}" MinWidth="140" Classes.talking="{Binding IsTalking}" VerticalAlignment="Center">
+        <StackPanel Classes="il" Orientation="Horizontal" Spacing="8">
+          <i:Icon Value="fa-solid fa-microphone" FontSize="14" />
+          <TextBlock Text="Hold to talk" />
+        </StackPanel>
+      </Button>
+      <TextBlock x:Name="VoiceStatus" Text="{Binding Status}" VerticalAlignment="Center" TextWrapping="Wrap" Classes="muted" />
+    </WrapPanel>
+    <!-- The question box: next to Start session when there is no audio device (typing is the way in), else at the bottom. -->
+    <DockPanel x:Name="VoiceAskRow" DockPanel.Dock="{Binding AskDock}" Margin="0,0,0,8">
+      <Button DockPanel.Dock="Right" x:Name="VoiceAsk" Content="Ask" Command="{Binding AskCommand}" Margin="8,0,0,0" IsDefault="True" />
+      <TextBox x:Name="VoiceAskText" Text="{Binding AskText}" Watermark="Type a question, for example: which queues have dead letters?" IsEnabled="{Binding IsRunning}" />
+    </DockPanel>
+    <TextBlock DockPanel.Dock="Top" x:Name="VoiceAudioNote" Text="{Binding AudioNote}" IsVisible="{Binding AudioNote, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Classes="muted" Margin="0,0,0,8" />
+    <TextBlock DockPanel.Dock="Top" x:Name="VoiceCredential" Text="{Binding Credential}" IsVisible="{Binding Credential, Converter={x:Static ObjectConverters.IsNotNull}}" TextWrapping="Wrap" Classes="muted" Margin="0,0,0,8" />
+
+
+    <!-- Side panel: the conversation on top, the read-only tool calls under it. -->
+    <Grid RowDefinitions="2*,12,*">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Conversation" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <ScrollViewer>
+          <ItemsControl x:Name="VoiceTranscript" ItemsSource="{Binding Lines}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:VoiceLine">
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                  <TextBlock Text="{Binding Who}" FontWeight="SemiBold" Width="48" />
+                  <TextBlock Text="{Binding Text}" TextWrapping="Wrap" MaxWidth="320" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+      <DockPanel Grid.Row="2">
+        <TextBlock DockPanel.Dock="Top" Text="Read-only tools used" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <ListBox x:Name="VoiceToolCalls" ItemsSource="{Binding ToolCalls}" />
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,24 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Acornsoft.MessageExplorer.Shell.ViewModels"
+             xmlns:views="using:Acornsoft.MessageExplorer.Shell.Views"
+             x:Class="Acornsoft.MessageExplorer.Shell.Views.MobileShellView"
+             x:DataType="vm:MainViewModel">
+  <!-- The single-view shell for phones and tablets: saved logins and accounts. Read-only; no Move mode. -->
+  <TabControl x:Name="MobileTabs" Margin="8">
+    <TabItem Header="Saved logins">
+      <ScrollViewer>
+        <views:LoginsView x:Name="MobileLoginsPanel" DataContext="{Binding Logins}" />
+      </ScrollViewer>
+    </TabItem>
+    <TabItem Header="Accounts">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto">
+        <views:AccountsView x:Name="MobileAccountsPanel" DataContext="{Binding Accounts}" />
+      </ScrollViewer>
+    </TabItem>
+  </TabControl>
+</UserControl>

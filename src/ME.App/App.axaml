@@ -1,0 +1,551 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
+             x:Class="Acornsoft.MessageExplorer.Shell.App"
+             Name="Luna Foundry Message Explorer"
+             RequestedThemeVariant="Default">
+  <!-- Theme palette. Light and Dark each define every key; views use DynamicResource only, so a theme switch
+       repaints at once. Acornsoft maroon #4F2001 and gold #FF9900 are the accents: maroon carries text in Light,
+       gold in Dark (gold on white is 2.1:1 and maroon on dark is 1.3:1, so neither is used for text there).
+       ThemePaletteTests checks every text pair below is at least 4.5:1 in both themes. -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <!-- Explorer (quick view): panels, lanes, and the queue and topic kinds. -->
+          <Color x:Key="LfmeQvRootColor">#FFFFFF</Color>
+          <Color x:Key="LfmeQvPanelColor">#FAF8F6</Color>
+          <Color x:Key="LfmeQvRaisedColor">#F6F2EE</Color>
+          <Color x:Key="LfmeQvHoverColor">#EFE7E0</Color>
+          <Color x:Key="LfmeQvLineColor">#DDD5CE</Color>
+          <Color x:Key="LfmeScrimColor">#661F1A17</Color>
+          <Color x:Key="LfmeActiveColor">#1A5FB4</Color>
+          <Color x:Key="LfmeActiveSoftColor">#E3EDFA</Color>
+          <Color x:Key="LfmeActiveTextColor">#0B4A9B</Color>
+          <Color x:Key="LfmeDeadColor">#C0262D</Color>
+          <Color x:Key="LfmeDeadSoftColor">#FCE8E6</Color>
+          <Color x:Key="LfmeDeadTextColor">#A4161A</Color>
+          <Color x:Key="LfmeDeadLineColor">#E3A5A2</Color>
+          <Color x:Key="LfmeScheduledColor">#5B3FB5</Color>
+          <Color x:Key="LfmeScheduledSoftColor">#ECE6FB</Color>
+          <Color x:Key="LfmeScheduledTextColor">#4B2FA3</Color>
+          <Color x:Key="LfmeTransferColor">#9A5B00</Color>
+          <Color x:Key="LfmeTransferSoftColor">#FFF0D6</Color>
+          <Color x:Key="LfmeTransferTextColor">#7A4600</Color>
+          <Color x:Key="LfmeQueueColor">#0F6E6E</Color>
+          <Color x:Key="LfmeQueueSoftColor">#DDF2F0</Color>
+          <Color x:Key="LfmeTopicColor">#7A2E9E</Color>
+          <Color x:Key="LfmeTopicSoftColor">#F3E6FA</Color>
+          <SolidColorBrush x:Key="LfmeQvRootBrush" Color="{StaticResource LfmeQvRootColor}" />
+          <SolidColorBrush x:Key="LfmeQvPanelBrush" Color="{StaticResource LfmeQvPanelColor}" />
+          <SolidColorBrush x:Key="LfmeQvRaisedBrush" Color="{StaticResource LfmeQvRaisedColor}" />
+          <SolidColorBrush x:Key="LfmeQvHoverBrush" Color="{StaticResource LfmeQvHoverColor}" />
+          <SolidColorBrush x:Key="LfmeQvLineBrush" Color="{StaticResource LfmeQvLineColor}" />
+          <SolidColorBrush x:Key="LfmeScrimBrush" Color="{StaticResource LfmeScrimColor}" />
+          <SolidColorBrush x:Key="LfmeActiveBrush" Color="{StaticResource LfmeActiveColor}" />
+          <SolidColorBrush x:Key="LfmeActiveSoftBrush" Color="{StaticResource LfmeActiveSoftColor}" />
+          <SolidColorBrush x:Key="LfmeActiveTextBrush" Color="{StaticResource LfmeActiveTextColor}" />
+          <SolidColorBrush x:Key="LfmeDeadBrush" Color="{StaticResource LfmeDeadColor}" />
+          <SolidColorBrush x:Key="LfmeDeadSoftBrush" Color="{StaticResource LfmeDeadSoftColor}" />
+          <SolidColorBrush x:Key="LfmeDeadTextBrush" Color="{StaticResource LfmeDeadTextColor}" />
+          <SolidColorBrush x:Key="LfmeDeadLineBrush" Color="{StaticResource LfmeDeadLineColor}" />
+          <SolidColorBrush x:Key="LfmeScheduledBrush" Color="{StaticResource LfmeScheduledColor}" />
+          <SolidColorBrush x:Key="LfmeScheduledSoftBrush" Color="{StaticResource LfmeScheduledSoftColor}" />
+          <SolidColorBrush x:Key="LfmeScheduledTextBrush" Color="{StaticResource LfmeScheduledTextColor}" />
+          <SolidColorBrush x:Key="LfmeTransferBrush" Color="{StaticResource LfmeTransferColor}" />
+          <SolidColorBrush x:Key="LfmeTransferSoftBrush" Color="{StaticResource LfmeTransferSoftColor}" />
+          <SolidColorBrush x:Key="LfmeTransferTextBrush" Color="{StaticResource LfmeTransferTextColor}" />
+          <SolidColorBrush x:Key="LfmeQueueBrush" Color="{StaticResource LfmeQueueColor}" />
+          <SolidColorBrush x:Key="LfmeQueueSoftBrush" Color="{StaticResource LfmeQueueSoftColor}" />
+          <SolidColorBrush x:Key="LfmeTopicBrush" Color="{StaticResource LfmeTopicColor}" />
+          <SolidColorBrush x:Key="LfmeTopicSoftBrush" Color="{StaticResource LfmeTopicSoftColor}" />
+          <Color x:Key="LfmeSurfaceColor">#FAF8F6</Color>
+          <Color x:Key="LfmeCardColor">#FFFFFF</Color>
+          <Color x:Key="LfmeCardBorderColor">#D9D1CA</Color>
+          <Color x:Key="LfmeTextColor">#1F1A17</Color>
+          <Color x:Key="LfmeMutedTextColor">#5E5650</Color>
+          <Color x:Key="LfmeAccentColor">#4F2001</Color>
+          <Color x:Key="LfmeAccentHoverColor">#6E3209</Color>
+          <Color x:Key="LfmeAccentPressedColor">#3A1700</Color>
+          <Color x:Key="LfmeOnAccentColor">#FFFFFF</Color>
+          <Color x:Key="LfmeAccentTextColor">#4F2001</Color>
+          <Color x:Key="LfmeAccentSoftColor">#F4E7DC</Color>
+          <Color x:Key="LfmeGoldColor">#FF9900</Color>
+          <Color x:Key="LfmeErrorColor">#B3261E</Color>
+          <Color x:Key="LfmeErrorBackgroundColor">#FCE8E6</Color>
+          <Color x:Key="LfmeSuccessColor">#1E6B2A</Color>
+          <Color x:Key="LfmeSuccessBackgroundColor">#E3F1E5</Color>
+          <Color x:Key="LfmeWarningColor">#8A4B00</Color>
+          <Color x:Key="LfmeWarningBackgroundColor">#FFF3CD</Color>
+          <Color x:Key="LfmeWarningTextColor">#5C3B00</Color>
+          <Color x:Key="LfmeWarningBorderColor">#B26A00</Color>
+          <Color x:Key="LfmeBadgeColor">#EFE4DA</Color>
+          <Color x:Key="LfmeCodeColor">#F1EAE3</Color>
+          <SolidColorBrush x:Key="LfmeSurfaceBrush" Color="{StaticResource LfmeSurfaceColor}" />
+          <SolidColorBrush x:Key="LfmeCardBrush" Color="{StaticResource LfmeCardColor}" />
+          <SolidColorBrush x:Key="LfmeCardBorderBrush" Color="{StaticResource LfmeCardBorderColor}" />
+          <SolidColorBrush x:Key="LfmeTextBrush" Color="{StaticResource LfmeTextColor}" />
+          <SolidColorBrush x:Key="LfmeMutedTextBrush" Color="{StaticResource LfmeMutedTextColor}" />
+          <SolidColorBrush x:Key="LfmeAccentBrush" Color="{StaticResource LfmeAccentColor}" />
+          <SolidColorBrush x:Key="LfmeAccentHoverBrush" Color="{StaticResource LfmeAccentHoverColor}" />
+          <SolidColorBrush x:Key="LfmeAccentPressedBrush" Color="{StaticResource LfmeAccentPressedColor}" />
+          <SolidColorBrush x:Key="LfmeOnAccentBrush" Color="{StaticResource LfmeOnAccentColor}" />
+          <SolidColorBrush x:Key="LfmeAccentTextBrush" Color="{StaticResource LfmeAccentTextColor}" />
+          <SolidColorBrush x:Key="LfmeAccentSoftBrush" Color="{StaticResource LfmeAccentSoftColor}" />
+          <SolidColorBrush x:Key="LfmeGoldBrush" Color="{StaticResource LfmeGoldColor}" />
+          <SolidColorBrush x:Key="LfmeErrorBrush" Color="{StaticResource LfmeErrorColor}" />
+          <SolidColorBrush x:Key="LfmeErrorBackgroundBrush" Color="{StaticResource LfmeErrorBackgroundColor}" />
+          <SolidColorBrush x:Key="LfmeSuccessBrush" Color="{StaticResource LfmeSuccessColor}" />
+          <SolidColorBrush x:Key="LfmeSuccessBackgroundBrush" Color="{StaticResource LfmeSuccessBackgroundColor}" />
+          <SolidColorBrush x:Key="LfmeWarningBrush" Color="{StaticResource LfmeWarningColor}" />
+          <SolidColorBrush x:Key="LfmeWarningBackgroundBrush" Color="{StaticResource LfmeWarningBackgroundColor}" />
+          <SolidColorBrush x:Key="LfmeWarningTextBrush" Color="{StaticResource LfmeWarningTextColor}" />
+          <SolidColorBrush x:Key="LfmeWarningBorderBrush" Color="{StaticResource LfmeWarningBorderColor}" />
+          <SolidColorBrush x:Key="LfmeBadgeBrush" Color="{StaticResource LfmeBadgeColor}" />
+          <SolidColorBrush x:Key="LfmeCodeBrush" Color="{StaticResource LfmeCodeColor}" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <!-- Explorer (quick view): panels, lanes, and the queue and topic kinds. -->
+          <Color x:Key="LfmeQvRootColor">#121417</Color>
+          <Color x:Key="LfmeQvPanelColor">#16191D</Color>
+          <Color x:Key="LfmeQvRaisedColor">#1A1D22</Color>
+          <Color x:Key="LfmeQvHoverColor">#20252C</Color>
+          <Color x:Key="LfmeQvLineColor">#2A2F37</Color>
+          <Color x:Key="LfmeScrimColor">#99000000</Color>
+          <Color x:Key="LfmeActiveColor">#4FA3FF</Color>
+          <Color x:Key="LfmeActiveSoftColor">#22324A</Color>
+          <Color x:Key="LfmeActiveTextColor">#A8CDFF</Color>
+          <Color x:Key="LfmeDeadColor">#FF5A5F</Color>
+          <Color x:Key="LfmeDeadSoftColor">#4A1E22</Color>
+          <Color x:Key="LfmeDeadTextColor">#FF8A8E</Color>
+          <Color x:Key="LfmeDeadLineColor">#8A2D31</Color>
+          <Color x:Key="LfmeScheduledColor">#A98BFF</Color>
+          <Color x:Key="LfmeScheduledSoftColor">#2E2547</Color>
+          <Color x:Key="LfmeScheduledTextColor">#C7B5FF</Color>
+          <Color x:Key="LfmeTransferColor">#F5A524</Color>
+          <Color x:Key="LfmeTransferSoftColor">#3F3014</Color>
+          <Color x:Key="LfmeTransferTextColor">#F5C46B</Color>
+          <Color x:Key="LfmeQueueColor">#5ED3C9</Color>
+          <Color x:Key="LfmeQueueSoftColor">#123331</Color>
+          <Color x:Key="LfmeTopicColor">#D59BFF</Color>
+          <Color x:Key="LfmeTopicSoftColor">#33203F</Color>
+          <SolidColorBrush x:Key="LfmeQvRootBrush" Color="{StaticResource LfmeQvRootColor}" />
+          <SolidColorBrush x:Key="LfmeQvPanelBrush" Color="{StaticResource LfmeQvPanelColor}" />
+          <SolidColorBrush x:Key="LfmeQvRaisedBrush" Color="{StaticResource LfmeQvRaisedColor}" />
+          <SolidColorBrush x:Key="LfmeQvHoverBrush" Color="{StaticResource LfmeQvHoverColor}" />
+          <SolidColorBrush x:Key="LfmeQvLineBrush" Color="{StaticResource LfmeQvLineColor}" />
+          <SolidColorBrush x:Key="LfmeScrimBrush" Color="{StaticResource LfmeScrimColor}" />
+          <SolidColorBrush x:Key="LfmeActiveBrush" Color="{StaticResource LfmeActiveColor}" />
+          <SolidColorBrush x:Key="LfmeActiveSoftBrush" Color="{StaticResource LfmeActiveSoftColor}" />
+          <SolidColorBrush x:Key="LfmeActiveTextBrush" Color="{StaticResource LfmeActiveTextColor}" />
+          <SolidColorBrush x:Key="LfmeDeadBrush" Color="{StaticResource LfmeDeadColor}" />
+          <SolidColorBrush x:Key="LfmeDeadSoftBrush" Color="{StaticResource LfmeDeadSoftColor}" />
+          <SolidColorBrush x:Key="LfmeDeadTextBrush" Color="{StaticResource LfmeDeadTextColor}" />
+          <SolidColorBrush x:Key="LfmeDeadLineBrush" Color="{StaticResource LfmeDeadLineColor}" />
+          <SolidColorBrush x:Key="LfmeScheduledBrush" Color="{StaticResource LfmeScheduledColor}" />
+          <SolidColorBrush x:Key="LfmeScheduledSoftBrush" Color="{StaticResource LfmeScheduledSoftColor}" />
+          <SolidColorBrush x:Key="LfmeScheduledTextBrush" Color="{StaticResource LfmeScheduledTextColor}" />
+          <SolidColorBrush x:Key="LfmeTransferBrush" Color="{StaticResource LfmeTransferColor}" />
+          <SolidColorBrush x:Key="LfmeTransferSoftBrush" Color="{StaticResource LfmeTransferSoftColor}" />
+          <SolidColorBrush x:Key="LfmeTransferTextBrush" Color="{StaticResource LfmeTransferTextColor}" />
+          <SolidColorBrush x:Key="LfmeQueueBrush" Color="{StaticResource LfmeQueueColor}" />
+          <SolidColorBrush x:Key="LfmeQueueSoftBrush" Color="{StaticResource LfmeQueueSoftColor}" />
+          <SolidColorBrush x:Key="LfmeTopicBrush" Color="{StaticResource LfmeTopicColor}" />
+          <SolidColorBrush x:Key="LfmeTopicSoftBrush" Color="{StaticResource LfmeTopicSoftColor}" />
+          <Color x:Key="LfmeSurfaceColor">#1C1A19</Color>
+          <Color x:Key="LfmeCardColor">#262321</Color>
+          <Color x:Key="LfmeCardBorderColor">#4A433D</Color>
+          <Color x:Key="LfmeTextColor">#F3EFEB</Color>
+          <Color x:Key="LfmeMutedTextColor">#BCB3AA</Color>
+          <Color x:Key="LfmeAccentColor">#FF9900</Color>
+          <Color x:Key="LfmeAccentHoverColor">#FFB347</Color>
+          <Color x:Key="LfmeAccentPressedColor">#E08600</Color>
+          <Color x:Key="LfmeOnAccentColor">#241300</Color>
+          <Color x:Key="LfmeAccentTextColor">#FFAE3D</Color>
+          <Color x:Key="LfmeAccentSoftColor">#3B2A14</Color>
+          <Color x:Key="LfmeGoldColor">#FF9900</Color>
+          <Color x:Key="LfmeErrorColor">#FF8A80</Color>
+          <Color x:Key="LfmeErrorBackgroundColor">#3B1A17</Color>
+          <Color x:Key="LfmeSuccessColor">#7BD88F</Color>
+          <Color x:Key="LfmeSuccessBackgroundColor">#1D3322</Color>
+          <Color x:Key="LfmeWarningColor">#FFC266</Color>
+          <Color x:Key="LfmeWarningBackgroundColor">#3D2E00</Color>
+          <Color x:Key="LfmeWarningTextColor">#FFE08A</Color>
+          <Color x:Key="LfmeWarningBorderColor">#FFC266</Color>
+          <Color x:Key="LfmeBadgeColor">#3A2E25</Color>
+          <Color x:Key="LfmeCodeColor">#302B27</Color>
+          <SolidColorBrush x:Key="LfmeSurfaceBrush" Color="{StaticResource LfmeSurfaceColor}" />
+          <SolidColorBrush x:Key="LfmeCardBrush" Color="{StaticResource LfmeCardColor}" />
+          <SolidColorBrush x:Key="LfmeCardBorderBrush" Color="{StaticResource LfmeCardBorderColor}" />
+          <SolidColorBrush x:Key="LfmeTextBrush" Color="{StaticResource LfmeTextColor}" />
+          <SolidColorBrush x:Key="LfmeMutedTextBrush" Color="{StaticResource LfmeMutedTextColor}" />
+          <SolidColorBrush x:Key="LfmeAccentBrush" Color="{StaticResource LfmeAccentColor}" />
+          <SolidColorBrush x:Key="LfmeAccentHoverBrush" Color="{StaticResource LfmeAccentHoverColor}" />
+          <SolidColorBrush x:Key="LfmeAccentPressedBrush" Color="{StaticResource LfmeAccentPressedColor}" />
+          <SolidColorBrush x:Key="LfmeOnAccentBrush" Color="{StaticResource LfmeOnAccentColor}" />
+          <SolidColorBrush x:Key="LfmeAccentTextBrush" Color="{StaticResource LfmeAccentTextColor}" />
+          <SolidColorBrush x:Key="LfmeAccentSoftBrush" Color="{StaticResource LfmeAccentSoftColor}" />
+          <SolidColorBrush x:Key="LfmeGoldBrush" Color="{StaticResource LfmeGoldColor}" />
+          <SolidColorBrush x:Key="LfmeErrorBrush" Color="{StaticResource LfmeErrorColor}" />
+          <SolidColorBrush x:Key="LfmeErrorBackgroundBrush" Color="{StaticResource LfmeErrorBackgroundColor}" />
+          <SolidColorBrush x:Key="LfmeSuccessBrush" Color="{StaticResource LfmeSuccessColor}" />
+          <SolidColorBrush x:Key="LfmeSuccessBackgroundBrush" Color="{StaticResource LfmeSuccessBackgroundColor}" />
+          <SolidColorBrush x:Key="LfmeWarningBrush" Color="{StaticResource LfmeWarningColor}" />
+          <SolidColorBrush x:Key="LfmeWarningBackgroundBrush" Color="{StaticResource LfmeWarningBackgroundColor}" />
+          <SolidColorBrush x:Key="LfmeWarningTextBrush" Color="{StaticResource LfmeWarningTextColor}" />
+          <SolidColorBrush x:Key="LfmeWarningBorderBrush" Color="{StaticResource LfmeWarningBorderColor}" />
+          <SolidColorBrush x:Key="LfmeBadgeBrush" Color="{StaticResource LfmeBadgeColor}" />
+          <SolidColorBrush x:Key="LfmeCodeBrush" Color="{StaticResource LfmeCodeColor}" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#4F2001" />
+        <ColorPaletteResources x:Key="Dark" Accent="#FF9900" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <!-- Icon + label pairs, app-wide. Put the icon and its TextBlock in a panel with class "il": both are centered
+         on the row, so the glyph's middle lines up with the text line's middle. No baseline nudges or top margins;
+         HeadlessIconAlignmentTests holds every pair to within 1px. -->
+    <Style Selector="i|Icon">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector=":is(Panel).il > i|Icon">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector=":is(Panel).il > TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <!-- Shared setup-page pieces: window surface, cards, muted text, the brand primary button, the segmented
+         theme picker and list selection. All colours come from the palette above. -->
+    <Style Selector=":is(Window)">
+      <Setter Property="Background" Value="{DynamicResource LfmeSurfaceBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector="SelectableTextBlock.muted">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.title">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.accent">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="i|Icon.accent">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="i|Icon.error">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeErrorBrush}" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12" />
+    </Style>
+    <Style Selector="Border.code">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="Border.callout">
+      <Setter Property="Background" Value="{DynamicResource LfmeErrorBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeErrorBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="Border.callout TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeErrorBrush}" />
+    </Style>
+    <Style Selector="Border.callout.warn">
+      <Setter Property="Background" Value="{DynamicResource LfmeWarningBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeWarningBorderBrush}" />
+    </Style>
+    <Style Selector="Border.callout.warn TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="Border.avatar">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="CornerRadius" Value="16" />
+    </Style>
+    <Style Selector="Border.avatar TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeOnAccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentPressedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.primary i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeOnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.primary:disabled i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundDisabled}" />
+    </Style>
+
+    <!-- The slim top bar and its controls. -->
+    <Style Selector="Border.topbar">
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Height" Value="48" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="Button.switcher">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.switcher:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="TextBox.search">
+      <Setter Property="Width" Value="520" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <Style Selector="ToggleButton.modechip">
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="12,4" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Background" Value="{DynamicResource LfmeSuccessBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ToggleButton.modechip /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeSuccessBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip.move /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeWarningBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeWarningBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip.move i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.modechip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <!-- Rows in the quick switch popover. -->
+    <Style Selector="Button.quickitem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <!-- An example in an empty box ("e.g. …"): muted and italic, so it doesn't read as typed text. -->
+    <Style Selector="TextBox.example /template/ TextBlock#PART_Watermark">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.quickitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector=":is(Button).baricon">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="17" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector=":is(Button).baricon i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector=":is(Button).baricon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.baricon:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.baricon:checked i|Icon">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+    </Style>
+    <Style Selector="i|Icon.muted">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+    </Style>
+    <Style Selector="Border.sidepanel">
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <!-- Sheets (namespace switcher, test jobs) over the main view, with a scrim behind. -->
+    <Style Selector="Border.scrim">
+      <Setter Property="Background" Value="{DynamicResource LfmeScrimBrush}" />
+    </Style>
+    <Style Selector="Border.sheet">
+      <Setter Property="Background" Value="{DynamicResource LfmeSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="BoxShadow" Value="0 8 28 0 #40000000" />
+    </Style>
+    <Style Selector="RadioButton.nav">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_Nav" Background="Transparent" CornerRadius="6" Padding="12,8">
+            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="RadioButton.nav:pointerover /template/ Border#PART_Nav">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="RadioButton.nav:checked /template/ Border#PART_Nav">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="RadioButton.nav:checked">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Theme picker: three radio buttons drawn as one segmented control. -->
+    <Style Selector="Border.segmented">
+      <Setter Property="Background" Value="{DynamicResource LfmeCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeCardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="2" />
+    </Style>
+    <Style Selector="RadioButton.segment">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_Segment" Background="Transparent" CornerRadius="6" Padding="10,5">
+            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Foreground" Value="{DynamicResource LfmeMutedTextBrush}" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="RadioButton.segment:pointerover /template/ Border#PART_Segment">
+      <Setter Property="Background" Value="{DynamicResource LfmeCodeBrush}" />
+    </Style>
+    <Style Selector="RadioButton.segment:checked /template/ Border#PART_Segment">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="RadioButton.segment:checked">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeAccentTextBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Selected rows: the brand's soft tint with normal text, so selection reads in both themes. -->
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource LfmeAccentSoftBrush}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeTextBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.deadletter">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeErrorBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="Border.deadletter">
+      <Setter Property="Background" Value="{DynamicResource LfmeErrorBackgroundBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TextBlock.passed">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeSuccessBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.failed">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeErrorBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.late">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.pending">
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="TextBlock.state">
+      <Setter Property="Margin" Value="0,16" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="FontSize" Value="15" />
+    </Style>
+    <Style Selector="TextBlock.error">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeErrorBrush}" />
+    </Style>
+    <Style Selector="Border.movebanner">
+      <Setter Property="Background" Value="{DynamicResource LfmeWarningBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeWarningBorderBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="Border.movebanner TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource LfmeWarningTextBrush}" />
+    </Style>
+    <Style Selector="Border.droptarget">
+      <Setter Property="Background" Value="{DynamicResource LfmeSuccessBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LfmeSuccessBrush}" />
+    </Style>
+  </Application.Styles>
+</Application>

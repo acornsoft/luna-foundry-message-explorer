@@ -1,0 +1,32 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+     License, v. 2.0. If a copy of the MPL was not distributed with this
+     file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Acornsoft.MessageExplorer.Shell.Views.MoveConfirmWindow"
+        Title="Confirm move"
+        Width="620"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="20" Spacing="8">
+    <TextBlock x:Name="ConfirmTitle" FontSize="18" FontWeight="SemiBold" />
+    <TextBlock x:Name="ConfirmFrom" TextWrapping="Wrap" />
+    <TextBlock x:Name="ConfirmTo" TextWrapping="Wrap" />
+    <TextBlock x:Name="ConfirmHow" TextWrapping="Wrap" Opacity="0.85" />
+    <TextBlock x:Name="ConfirmOrder" TextWrapping="Wrap" Opacity="0.85" />
+    <ItemsControl x:Name="ConfirmWarnings">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="x:String">
+          <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="{DynamicResource LfmeWarningBrush}" Margin="0,2" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <TextBlock Text="Each step is written to the audit log. Nothing moves until you click the button below." TextWrapping="Wrap" Opacity="0.7" FontSize="12" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="ConfirmCancelButton" Content="Don't move" IsCancel="True" IsDefault="True" Click="OnCancel" />
+      <Button x:Name="ConfirmMoveButton" Click="OnMove" />
+    </StackPanel>
+  </StackPanel>
+</Window>
