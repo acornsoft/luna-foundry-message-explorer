@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Adapters.EventGrid</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Adapters.EventGrid</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Model\ME.Model.csproj" />
+  </ItemGroup>
+</Project>

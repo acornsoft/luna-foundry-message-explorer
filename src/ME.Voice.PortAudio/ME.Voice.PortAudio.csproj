@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- PortAudio (MIT-style) through PortAudioSharp2 (Apache-2.0), with native builds for
+       win-x64, linux-x64, linux-arm64, osx-x64 and osx-arm64. Other platforms fall back to typed questions. -->
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Voice.PortAudio</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Voice.PortAudio</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="PortAudioSharp2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.Voice\ME.Voice.csproj" />
+  </ItemGroup>
+</Project>

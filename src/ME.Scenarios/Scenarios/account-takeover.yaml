@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MPL-2.0
+# Synthetic account-takeover scenario. No live send in this skeleton.
+id: account-takeover
+seed: 63002
+clock: virtual
+max_messages: 40
+max_duration_seconds: 180
+steps:
+  - id: plant-alerts
+    count: 40
+    template: synthetic-account-takeover
+expected_hops:
+  - alerts/case-sync

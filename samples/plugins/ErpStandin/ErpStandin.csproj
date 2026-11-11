@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acornsoft.MessageExplorer.Samples.ErpStandin</RootNamespace>
+    <AssemblyName>ErpStandin</AssemblyName>
+  </PropertyGroup>
+</Project>

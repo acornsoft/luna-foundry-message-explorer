@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Acornsoft.MessageExplorer.Desktop</RootNamespace>
+    <AssemblyName>Acornsoft.MessageExplorer.Desktop</AssemblyName>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ME.App\ME.App.csproj" />
+    <ProjectReference Include="..\ME.Voice.PortAudio\ME.Voice.PortAudio.csproj" />
+  </ItemGroup>
+</Project>
