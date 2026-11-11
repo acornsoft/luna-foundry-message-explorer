@@ -33,6 +33,7 @@ dotnet build MessageExplorer.sln -c Release           # builds the order generat
 az login                                              # your Entra account needs Azure Service Bus Data Sender on the queue and topic
 mkdir -p ~/.config/lfme && echo "<namespace-name>" >> ~/.config/lfme/live-namespaces.txt
 export LFME_LIVE_NAMESPACE=<namespace-name>.servicebus.windows.net
+export AZURE_TOKEN_CREDENTIALS=dev                     # off Azure: skip the managed-identity probe, which can hang for minutes
 dotnet src/ME.Jobs.Cli/bin/Release/net8.0/me-jobs.dll send samples/live/lfme-live/jobs/synth-traffic.job.yaml          # dry run
 dotnet src/ME.Jobs.Cli/bin/Release/net8.0/me-jobs.dll send samples/live/lfme-live/jobs/synth-traffic.job.yaml --send   # real send
 ```
